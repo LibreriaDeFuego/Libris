@@ -1,0 +1,54 @@
+:root{
+/* neutrals — cream to graphite ink */
+--neutral-0:#FFF8EC;
+--neutral-50:#F1F1EE;
+--neutral-100:#E4E3DE;
+--neutral-200:#CFCDC5;
+--neutral-300:#B5B2A7;
+--neutral-400:#8B8B85;
+--neutral-600:#5A5952;
+--neutral-800:#2E2D29;
+--neutral-900:#1B1B1F;
+
+/* accent — electric coral (primary actions, reading progress) */
+--accent-50:#FFEAE4;
+--accent-100:#FFD2C4;
+--accent-300:#FF8A6C;
+--accent-500:#FF4F32;
+--accent-600:#E63E22;
+--accent-700:#B8321A;
+
+/* gold — highlighted quotes & featured content */
+--gold-100:#FFF3D2;
+--gold-300:#FFDD7A;
+--gold-500:#FFC93F;
+--gold-700:#C9970A;
+
+/* semantic — green doubles as "social activity" (other clubs, feed events) */
+--success:#1BAA6B;
+--success-bg:#EAF7EE;
+--warning:#FFC93F;
+--warning-bg:#FFF3D2;
+--danger:#E63E22;
+--danger-bg:#FFEAE4;
+
+/* surfaces */
+--surface-page:var(--neutral-0);
+--surface-card:#FFFDF8;
+--surface-card-alt:var(--neutral-50);
+--surface-sunken:var(--neutral-100);
+--surface-overlay:rgba(27,27,31,0.55);
+--surface-accent:var(--accent-500);
+
+/* borders */
+--border-subtle:var(--neutral-100);
+--border-default:var(--neutral-200);
+--border-strong:var(--neutral-400);
+
+/* text */
+--text-primary:var(--neutral-900);
+--text-secondary:var(--neutral-600);
+--text-tertiary:var(--neutral-400);
+--text-on-accent:#FBF6EC;
+--text-link:var(--accent-600);
+}

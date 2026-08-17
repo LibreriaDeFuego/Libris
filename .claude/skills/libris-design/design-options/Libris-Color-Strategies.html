@@ -1,0 +1,132 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>*{box-sizing:border-box;margin:0}body{background:#e7e5e0;font-family:'Plus Jakarta Sans',sans-serif}
+.frame{position:absolute;width:390px;height:640px;border-radius:36px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.25);color:#1B1B1F}
+.label{position:absolute;top:-56px;left:0;font:700 15px system-ui;color:#222;max-width:390px;line-height:1.3}
+.scr{height:100%;overflow-y:auto;padding:22px 18px 30px;display:flex;flex-direction:column;gap:14px}
+.pill{border-radius:999px;padding:12px 18px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px}
+.card{border-radius:20px;padding:16px}
+.chip{border-radius:999px;padding:7px 13px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.disp{font-family:'Bricolage Grotesque';font-weight:800}
+.avatar{border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+</style></head><body>
+
+<!-- A: Accent-only — color lives only on the CTA + tiny icon touches; everything else neutral -->
+<div class="frame" style="left:60px;top:140px;background:#FAFAF8">
+<div class="label">A — Acento mínimo: color solo en la acción principal e íconos. Todo lo demás es neutro (blanco/negro/gris).</div>
+<div class="scr">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div><div class="disp" style="font-size:24px">Libris</div><div style="font-size:12px;color:#8b8b8b;font-weight:600">Letras en Vela · 14 miembros</div></div>
+    <div style="width:36px;height:36px;border-radius:50%;background:#F1F1EE;display:flex;align-items:center;justify-content:center"><i data-lucide="bell" color="#1B1B1F" width="16"></i></div>
+  </div>
+  <div class="card" style="background:#1B1B1F;color:#fff;display:flex;gap:14px">
+    <div style="width:54px;height:78px;border-radius:10px;background:#FF4F32"></div>
+    <div style="display:flex;flex-direction:column;justify-content:center;gap:4px">
+      <div class="disp" style="font-size:17px">Rayuela</div>
+      <div style="font-size:11px;color:#aaa">Julio Cortázar</div>
+      <div style="height:5px;width:130px;border-radius:99px;background:#3a3a3a;margin-top:4px"><div style="height:100%;width:68%;border-radius:99px;background:#FF4F32"></div></div>
+      <div style="font-size:10px;color:#FF4F32;font-weight:700">68%</div>
+    </div>
+  </div>
+  <div class="pill" style="background:#FF4F32;color:#fff"><i data-lucide="book-open" width="15"></i>Actualizar progreso</div>
+  <div class="card" style="background:#F1F1EE;display:flex;gap:10px;align-items:center">
+    <i data-lucide="users" color="#FF4F32" width="18"></i>
+    <div style="font-size:11px;font-weight:700;color:#555">3 clubes más leyendo Rayuela</div>
+  </div>
+  <div class="card" style="background:#F1F1EE;display:flex;gap:10px">
+    <div class="avatar" style="width:30px;height:30px;background:#1B1B1F;font-size:11px">JP</div>
+    <div style="font-size:13px">La parte del faro me dejó pensando toda la noche.</div>
+  </div>
+</div>
+</div>
+
+<!-- B: Soft tint blocks — pastel tinted backgrounds instead of full-saturation fills -->
+<div class="frame" style="left:520px;top:140px;background:#FFFBF3">
+<div class="label">B — Bloques suaves: cada color como fondo tenue (10-15% opacidad), nunca sólido a máxima saturación.</div>
+<div class="scr">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div><div class="disp" style="font-size:24px">Libris</div><div style="font-size:12px;color:#8b8b8b;font-weight:600">Letras en Vela · 14 miembros</div></div>
+    <div style="width:36px;height:36px;border-radius:50%;background:#FFE9DD;display:flex;align-items:center;justify-content:center"><i data-lucide="bell" color="#FF4F32" width="16"></i></div>
+  </div>
+  <div class="card" style="background:#FFE9DD;display:flex;gap:14px">
+    <div style="width:54px;height:78px;border-radius:10px;background:linear-gradient(160deg,#FF4F32,#FFC93F)"></div>
+    <div style="display:flex;flex-direction:column;justify-content:center;gap:4px">
+      <div class="disp" style="font-size:17px;color:#1B1B1F">Rayuela</div>
+      <div style="font-size:11px;color:#8b6a5f">Julio Cortázar</div>
+      <div style="height:5px;width:130px;border-radius:99px;background:#ffd8c7;margin-top:4px"><div style="height:100%;width:68%;border-radius:99px;background:#FF4F32"></div></div>
+      <div style="font-size:10px;color:#FF4F32;font-weight:700">68%</div>
+    </div>
+  </div>
+  <div class="pill" style="background:#FF4F32;color:#fff"><i data-lucide="book-open" width="15"></i>Actualizar progreso</div>
+  <div class="card" style="background:#E3F5EA;display:flex;gap:10px;align-items:center">
+    <i data-lucide="users" color="#1BAA6B" width="18"></i>
+    <div style="font-size:11px;font-weight:700;color:#1BAA6B">3 clubes más leyendo Rayuela</div>
+  </div>
+  <div class="card" style="background:#FFF3D6;display:flex;gap:10px">
+    <div class="avatar" style="width:30px;height:30px;background:#FFC93F;color:#1B1B1F;font-size:11px">JP</div>
+    <div style="font-size:13px;color:#7a5f00">La parte del faro me dejó pensando toda la noche.</div>
+  </div>
+</div>
+</div>
+
+<!-- C: Rotating duotone per card — each list item gets ONE full color from the trio, rotating -->
+<div class="frame" style="left:980px;top:140px;background:#1B1B1F">
+<div class="label">C — Duotono rotativo: fondo oscuro fijo, cada tarjeta de la lista toma un color completo distinto (coral → amarillo → verde) en rotación.</div>
+<div class="scr">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div><div class="disp" style="font-size:24px;color:#fff">Libris</div><div style="font-size:12px;color:#999;font-weight:600">Letras en Vela · 14 miembros</div></div>
+    <div style="width:36px;height:36px;border-radius:50%;background:#2A2A2A;display:flex;align-items:center;justify-content:center"><i data-lucide="bell" color="#FF4F32" width="16"></i></div>
+  </div>
+  <div class="card" style="background:#FF4F32;display:flex;gap:14px">
+    <div style="width:54px;height:78px;border-radius:10px;background:rgba(255,255,255,0.3)"></div>
+    <div style="display:flex;flex-direction:column;justify-content:center;gap:4px;color:#fff">
+      <div class="disp" style="font-size:17px">Rayuela</div>
+      <div style="font-size:11px;opacity:0.85">Julio Cortázar</div>
+      <div style="height:5px;width:130px;border-radius:99px;background:rgba(255,255,255,0.35);margin-top:4px"><div style="height:100%;width:68%;border-radius:99px;background:#fff"></div></div>
+      <div style="font-size:10px;font-weight:700">68%</div>
+    </div>
+  </div>
+  <div class="pill" style="background:#fff;color:#1B1B1F"><i data-lucide="book-open" width="15"></i>Actualizar progreso</div>
+  <div class="card" style="background:#FFC93F;display:flex;gap:10px;align-items:center">
+    <i data-lucide="users" color="#1B1B1F" width="18"></i>
+    <div style="font-size:11px;font-weight:700;color:#1B1B1F">3 clubes más leyendo Rayuela</div>
+  </div>
+  <div class="card" style="background:#1BAA6B;display:flex;gap:10px">
+    <div class="avatar" style="width:30px;height:30px;background:#fff;color:#1BAA6B;font-size:11px">JP</div>
+    <div style="font-size:13px;color:#fff">La parte del faro me dejó pensando toda la noche.</div>
+  </div>
+</div>
+</div>
+
+<!-- D: Semantic color — each color means one specific thing across the whole app, never decorative -->
+<div class="frame" style="left:60px;top:840px;background:#FAFAF8">
+<div class="label">D — Color con significado fijo (ajustado): tarjeta del libro en negro (como A); coral = tu progreso/acción, amarillo = citas/contenido destacado, verde = actividad social.</div>
+<div class="scr">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div><div class="disp" style="font-size:24px">Libris</div><div style="font-size:12px;color:#8b8b8b;font-weight:600">Letras en Vela · 14 miembros</div></div>
+    <div style="width:36px;height:36px;border-radius:50%;background:#EAF7EE;display:flex;align-items:center;justify-content:center"><i data-lucide="bell" color="#1BAA6B" width="16"></i></div>
+  </div>
+  <div class="card" style="background:#1B1B1F;color:#fff;display:flex;gap:14px">
+    <div style="width:54px;height:78px;border-radius:10px;background:#FF4F32"></div>
+    <div style="display:flex;flex-direction:column;justify-content:center;gap:4px">
+      <div class="disp" style="font-size:17px">Rayuela</div>
+      <div style="font-size:11px;color:#aaa">Julio Cortázar</div>
+      <div style="height:5px;width:130px;border-radius:99px;background:#3a3a3a;margin-top:4px"><div style="height:100%;width:68%;border-radius:99px;background:#FF4F32"></div></div>
+      <div style="font-size:10px;color:#FF4F32;font-weight:700">68% · tu progreso</div>
+    </div>
+  </div>
+  <div class="pill" style="background:#FF4F32;color:#fff"><i data-lucide="book-open" width="15"></i>Actualizar progreso</div>
+  <div class="card" style="background:#EAF7EE;display:flex;gap:10px;align-items:center">
+    <i data-lucide="users" color="#1BAA6B" width="18"></i>
+    <div style="font-size:11px;font-weight:700;color:#1BAA6B">3 clubes más leyendo Rayuela · actividad social</div>
+  </div>
+  <div class="card" style="background:#FFF8E5;display:flex;gap:10px">
+    <div class="avatar" style="width:30px;height:30px;background:#1B1B1F;font-size:11px">JP</div>
+    <div><div style="font-size:13px">La parte del faro me dejó pensando toda la noche.</div><div style="font-size:10px;color:#c9970a;font-weight:700;margin-top:2px">cita destacada</div></div>
+  </div>
+</div>
+</div>
+
+<script>lucide.createIcons();</script>
+</body></html>

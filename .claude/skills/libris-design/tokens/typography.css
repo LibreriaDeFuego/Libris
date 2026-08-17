@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+:root{
+--font-display:'Bricolage Grotesque', -apple-system, 'Segoe UI', sans-serif;
+--font-body:'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif;
+
+--fs-2xs:12px;
+--fs-xs:13px;
+--fs-sm:14px;
+--fs-base:16px;
+--fs-md:18px;
+--fs-lg:20px;
+--fs-xl:24px;
+--fs-2xl:30px;
+--fs-3xl:38px;
+--fs-4xl:48px;
+
+--lh-tight:1.15; /* @kind other */
+--lh-snug:1.3; /* @kind other */
+--lh-normal:1.5; /* @kind other */
+--lh-relaxed:1.65; /* @kind other */
+
+--fw-regular:400; /* @kind other */
+--fw-medium:500; /* @kind other */
+--fw-semibold:600; /* @kind other */
+--fw-bold:700; /* @kind other */
+
+--ls-tight:-0.01em; /* @kind other */
+--ls-wide:0.04em; /* @kind other */
+}

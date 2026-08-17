@@ -1,0 +1,176 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>*{box-sizing:border-box;margin:0}body{background:#e7e5e0;font-family:'Plus Jakarta Sans',sans-serif}
+.frame{position:absolute;width:390px;height:760px;border-radius:36px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.25);background:#FFF8EC;color:#1B1B1F}
+.label{position:absolute;top:-40px;left:0;font:700 15px system-ui;color:#222}
+.scr{height:100%;overflow-y:auto;padding:22px 18px 90px;display:flex;flex-direction:column;gap:16px}
+.pill{border-radius:999px;padding:12px 18px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px}
+.card{border-radius:20px;padding:16px}
+.chip{border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.disp{font-family:'Bricolage Grotesque';font-weight:800}
+.avatar{border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:70px;background:#fff;border-top:1px solid #eee;display:flex;justify-content:space-around;align-items:center;padding-bottom:6px}
+.tabitem{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;font-weight:700}
+</style></head><body>
+
+<div class="frame" style="left:60px;top:120px">
+<div class="label">1 — Ficha del club</div>
+<div class="scr">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div><div class="disp" style="font-size:26px">Libris</div><div style="font-size:12px;color:#8b8b8b;font-weight:600">Letras en Vela · 14 miembros</div></div>
+    <div style="width:38px;height:38px;border-radius:50%;background:#1B1B1F;display:flex;align-items:center;justify-content:center"><i data-lucide="bell" color="#FF4F32" width="17"></i></div>
+  </div>
+  <div class="card" style="background:#1B1B1F;color:#fff;display:flex;gap:14px">
+    <div style="width:60px;height:86px;border-radius:12px;background:linear-gradient(160deg,#FF4F32,#FFC93F)"></div>
+    <div style="display:flex;flex-direction:column;justify-content:center;gap:4px">
+      <div class="disp" style="font-size:19px">Rayuela</div>
+      <div style="font-size:12px;color:#aaa">Julio Cortázar</div>
+      <div style="height:6px;width:150px;border-radius:99px;background:#3a3a3a;margin-top:6px"><div style="height:100%;width:68%;border-radius:99px;background:#FF4F32"></div></div>
+      <div style="font-size:11px;color:#FF4F32;font-weight:700">Cap. 14 de 20 · 68%</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px">
+    <div class="pill" style="flex:1;background:#FF4F32;color:#fff"><i data-lucide="book-open" width="16"></i>Actualizar progreso</div>
+    <div class="pill" style="background:#fff;border:2px solid #1B1B1F;color:#1B1B1F">Comentarios</div>
+  </div>
+  <div class="card" style="background:#1BAA6B;display:flex;gap:10px;align-items:center">
+    <i data-lucide="users" color="#fff" width="20"></i>
+    <div style="font-size:12px;font-weight:700;color:#fff">3 clubes más están leyendo Rayuela esta semana</div>
+  </div>
+  <div class="disp" style="font-size:18px">Impresiones recientes</div>
+  <div class="card" style="background:#FFC93F;display:flex;gap:10px">
+    <div class="avatar" style="width:34px;height:34px;background:#1B1B1F;font-size:13px">JP</div>
+    <div><div style="font-size:12px;font-weight:700">Julián Pérez <span style="font-weight:400;color:#7a5f00">· hace 1h</span></div><div style="font-size:14px;margin-top:2px;color:#1B1B1F">La parte del faro me dejó pensando toda la noche.</div></div>
+  </div>
+  <div class="card" style="background:#1BAA6B;display:flex;gap:10px">
+    <div class="avatar" style="width:34px;height:34px;background:#1B1B1F;font-size:13px">MS</div>
+    <div><div style="font-size:12px;font-weight:700;color:#fff">Martina Solís <span style="font-weight:400;color:#dff5ea">· hace 2h</span></div><div style="font-size:14px;font-style:italic;margin-top:2px;color:#fff">"Un libro que se lee de un tirón."</div></div>
+  </div>
+</div>
+<div class="tabbar">
+  <div class="tabitem" style="color:#FF4F32"><i data-lucide="book-open" color="#FF4F32" width="20"></i>Club</div>
+  <div class="tabitem" style="color:#1BAA6B"><i data-lucide="bell" color="#1BAA6B" width="20"></i>Novedades</div>
+  <div class="tabitem" style="color:#E0A200"><i data-lucide="compass" color="#E0A200" width="20"></i>Descubrir</div>
+</div>
+</div>
+
+<div class="frame" style="left:520px;top:120px">
+<div class="label">2 — Actualizar progreso</div>
+<div class="scr" style="justify-content:flex-end;padding:0">
+  <div style="background:#fff;border-radius:28px 28px 0 0;padding:26px 22px;box-shadow:0 -10px 40px rgba(0,0,0,0.12);display:flex;flex-direction:column;gap:18px;margin-top:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="disp" style="font-size:20px">Actualizar progreso</div>
+      <div style="width:30px;height:30px;border-radius:50%;background:#F1F1EE;display:flex;align-items:center;justify-content:center;font-weight:700">×</div>
+    </div>
+    <div>
+      <div style="font-size:12px;font-weight:700;color:#8b8b8b;margin-bottom:8px">Capítulo</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="chip" style="background:#FFC93F;color:#1B1B1F">Cap. 13</div>
+        <div class="chip" style="background:#FF4F32;color:#fff">Cap. 14</div>
+        <div class="chip" style="background:#1BAA6B;color:#fff">Cap. 15</div>
+        <div class="chip" style="background:#1B1B1F;color:#fff"><i data-lucide="plus" width="12"></i>Nuevo</div>
+      </div>
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#8b8b8b;margin-bottom:8px"><span>Avance en el capítulo</span><span style="color:#FF4F32">55%</span></div>
+      <div style="height:8px;border-radius:99px;background:#F1F1EE"><div style="width:55%;height:100%;border-radius:99px;background:#FF4F32"></div></div>
+    </div>
+    <div>
+      <div style="font-size:12px;font-weight:700;color:#8b8b8b;margin-bottom:8px">¿Cómo estuvo?</div>
+      <div style="display:flex;gap:8px">
+        <div class="chip" style="background:#1BAA6B;color:#fff"><i data-lucide="thumbs-up" width="13"></i>Genial capítulo</div>
+        <div class="chip" style="background:#FFC93F;color:#1B1B1F"><i data-lucide="thumbs-down" width="13"></i>Capítulo lento</div>
+      </div>
+    </div>
+    <div style="background:#F1F1EE;border-radius:14px;padding:12px 16px;font-size:14px;color:#999">Escribe una cita destacada...</div>
+    <div class="pill" style="background:#FF4F32;color:#fff">Guardar progreso</div>
+  </div>
+</div>
+</div>
+
+<div class="frame" style="left:980px;top:120px">
+<div class="label">3 — Feed de comentarios</div>
+<div class="scr">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div style="width:36px;height:36px;border-radius:50%;background:#F1F1EE;display:flex;align-items:center;justify-content:center"><i data-lucide="arrow-left" width="18"></i></div>
+    <div class="disp" style="font-size:22px">Comentarios</div>
+  </div>
+  <div style="display:flex;gap:10px">
+    <div class="avatar" style="width:36px;height:36px;background:#FF4F32;font-size:13px">JP</div>
+    <div><div style="font-size:12px;font-weight:700">Julián Pérez <span style="font-weight:400;color:#999">· Cap. 13 · hace 1h</span></div><p style="font-size:14px;margin-top:4px;line-height:1.5">La parte del faro me dejó pensando toda la noche.</p></div>
+  </div>
+  <div style="display:flex;gap:10px">
+    <div class="avatar" style="width:36px;height:36px;background:#1B1B1F;font-size:13px">MS</div>
+    <div style="flex:1"><div style="font-size:12px;font-weight:700">Martina Solís <span style="font-weight:400;color:#999">· Cap. 14 · hace 2h</span></div>
+      <div style="background:#FFC93F;border-radius:14px;padding:12px 14px;margin-top:6px;font-size:15px;font-style:italic;color:#1B1B1F">"Un libro que se lee de un tirón."</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px">
+    <div class="avatar" style="width:36px;height:36px;background:#1BAA6B;font-size:13px">CI</div>
+    <div style="flex:1"><div style="font-size:12px;font-weight:700">Cande Ibarra <span style="font-weight:400;color:#999">· Cap. 14 · hace 4h</span></div>
+      <div style="background:#EAF7EE;border-radius:14px;padding:10px 12px;margin-top:6px;display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;border-radius:50%;background:#1BAA6B;display:flex;align-items:center;justify-content:center"><i data-lucide="play" color="#fff" width="12"></i></div>
+        <div style="flex:1;display:flex;gap:2px;align-items:center;height:16px">
+          <div style="width:2px;background:#1BAA6B;height:6px;border-radius:1px"></div><div style="width:2px;background:#1BAA6B;height:12px;border-radius:1px"></div><div style="width:2px;background:#1BAA6B;height:8px;border-radius:1px"></div><div style="width:2px;background:#1BAA6B;height:14px;border-radius:1px"></div><div style="width:2px;background:#1BAA6B;height:7px;border-radius:1px"></div><div style="width:2px;background:#1BAA6B;height:11px;border-radius:1px"></div><div style="width:2px;background:#1BAA6B;height:9px;border-radius:1px"></div><div style="width:2px;background:#1BAA6B;height:13px;border-radius:1px"></div><div style="width:2px;background:#1BAA6B;height:6px;border-radius:1px"></div><div style="width:2px;background:#1BAA6B;height:10px;border-radius:1px"></div><div style="width:2px;background:#1BAA6B;height:8px;border-radius:1px"></div><div style="width:2px;background:#1BAA6B;height:12px;border-radius:1px"></div>
+        </div>
+        <span style="font-size:11px;color:#4a8a68">0:38</span>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px">
+    <div class="avatar" style="width:36px;height:36px;background:#1B1B1F;font-size:13px">ND</div>
+    <div style="flex:1"><div style="font-size:12px;font-weight:700">Nico Duarte <span style="font-weight:400;color:#999">· Cap. 16 · hace 5h</span></div>
+      <div style="background:#F1F1EE;border:1px dashed #ccc;border-radius:14px;padding:12px 14px;margin-top:6px;display:flex;gap:8px;align-items:center;font-size:13px;color:#8b8b8b"><i data-lucide="eye-off" width="15"></i>Este comentario tiene spoiler · toca para ver</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="frame" style="left:60px;top:940px">
+<div class="label">4 — Feed de novedades</div>
+<div class="scr">
+  <div class="disp" style="font-size:22px">Novedades</div>
+  <div style="display:flex;gap:8px">
+    <div class="chip" style="background:#FF4F32;color:#fff">Mis clubes</div>
+    <div class="chip" style="background:#FFC93F;color:#1B1B1F">Otros clubes</div>
+  </div>
+  <div class="card" style="background:#1BAA6B;display:flex;gap:12px;align-items:flex-start">
+    <div style="width:34px;height:34px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><i data-lucide="check-circle-2" color="#1BAA6B" width="16"></i></div>
+    <div><div style="font-size:14px;line-height:1.4;color:#fff">Letras en Vela terminó <b>Los detectives salvajes</b></div><div style="font-size:11px;color:#dff5ea;margin-top:2px">hoy</div></div>
+  </div>
+  <div class="card" style="background:#FFC93F;display:flex;gap:12px;align-items:flex-start">
+    <div style="width:34px;height:34px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center"><i data-lucide="message-circle" color="#FF4F32" width="16"></i></div>
+    <div><div style="font-size:14px;line-height:1.4;color:#1B1B1F">Martina comentó en <b>Rayuela</b></div><div style="font-size:11px;color:#7a5f00;margin-top:2px">hace 2h</div></div>
+  </div>
+  <div class="card" style="background:#1B1B1F;display:flex;gap:12px;align-items:flex-start">
+    <div style="width:34px;height:34px;border-radius:50%;background:#FF4F32;display:flex;align-items:center;justify-content:center"><i data-lucide="book-open" color="#fff" width="16"></i></div>
+    <div><div style="font-size:14px;line-height:1.4;color:#fff">Julián actualizó su progreso a <b>Cap. 13</b></div><div style="font-size:11px;color:#aaa;margin-top:2px">ayer</div></div>
+  </div>
+</div>
+</div>
+
+<div class="frame" style="left:520px;top:940px">
+<div class="label">5 — Descubrir</div>
+<div class="scr">
+  <div class="disp" style="font-size:22px">Descubrir</div>
+  <div style="display:flex;gap:20px;border-bottom:2px solid #F1F1EE;font-weight:700;font-size:15px">
+    <div style="padding-bottom:10px;border-bottom:2px solid #FF4F32;margin-bottom:-2px">Guías</div>
+    <div style="padding-bottom:10px;color:#999">Autores</div>
+    <div style="padding-bottom:10px;color:#999">Cursos</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="card" style="background:#F1F1EE;padding:0;overflow:hidden">
+      <div style="height:90px;background:linear-gradient(135deg,#1BAA6B,#FFC93F)"></div>
+      <div style="padding:12px"><div style="font-size:10px;font-weight:800;color:#1BAA6B;text-transform:uppercase;letter-spacing:0.04em">Guía</div><div style="font-weight:700;font-size:14px;margin-top:4px">Cómo armar un club</div><div style="font-size:11px;color:#999;margin-top:2px">8 pasos para empezar</div></div>
+    </div>
+    <div class="card" style="background:#F1F1EE;padding:0;overflow:hidden">
+      <div style="height:90px;background:linear-gradient(135deg,#FF4F32,#FFC93F)"></div>
+      <div style="padding:12px"><div style="font-size:10px;font-weight:800;color:#E0A200;text-transform:uppercase;letter-spacing:0.04em">Guía</div><div style="font-weight:700;font-size:14px;margin-top:4px">Manejar spoilers</div><div style="font-size:11px;color:#999;margin-top:2px">Reglas simples</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>lucide.createIcons();</script>
+</body></html>
