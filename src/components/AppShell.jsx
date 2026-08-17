@@ -12,6 +12,7 @@ const TABS = [
 
 export function AppShell({ children }) {
   const pathname = usePathname();
+  const showTabBar = pathname !== '/login';
 
   return (
     <div
@@ -36,6 +37,7 @@ export function AppShell({ children }) {
       >
         <main style={{ flex: 1 }}>{children}</main>
 
+        {showTabBar && (
         <nav
           style={{
             position: 'sticky',
@@ -74,6 +76,7 @@ export function AppShell({ children }) {
             );
           })}
         </nav>
+        )}
       </div>
     </div>
   );
