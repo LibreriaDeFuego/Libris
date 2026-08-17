@@ -5,7 +5,8 @@ App social para clubes de lectura: progreso de lectura compartido, comentarios (
 ## Stack
 
 - **Next.js (App Router) + React**, PWA instalable en Android desde el navegador (manifest + service worker mínimo) en lugar de una app nativa — evita costos/tiempos de publicación en App Store; se puede envolver la misma PWA con Bubblewrap para Play Store más adelante si hace falta.
-- Sin backend todavía: las pantallas usan datos de ejemplo (`TODO` marcados en cada `src/screens/*.jsx`) a la espera de API/auth.
+- **Supabase** (Postgres + Auth + Realtime) como backend — ver `supabase/schema.sql` para el modelo de datos y la sección **Backend / Supabase** más abajo para configurarlo.
+- Las pantallas en `src/screens/` todavía usan datos de ejemplo (`TODO` marcados en cada archivo) hasta que se conecten a Supabase.
 
 ## Estructura
 
@@ -30,6 +31,9 @@ public/
 design-reference/          # specimens del design system, opciones de dirección visual descartadas,
                             # y el UI kit clickeable original — documentación, no se importa en la app
 .claude/skills/libris-design/  # el design system empaquetado como skill de Claude Code
+supabase/
+  schema.sql              # esquema Postgres: perfiles, clubes, membresías, libros,
+                           # capítulos, progreso, comentarios — con Row Level Security
 ```
 
 ## Desarrollo
@@ -38,6 +42,17 @@ design-reference/          # specimens del design system, opciones de dirección
 npm install
 npm run dev
 ```
+
+## Backend / Supabase
+
+1. Creá un proyecto gratis en [supabase.com](https://supabase.com).
+2. En el **SQL Editor** del proyecto, pegá y ejecutá el contenido de `supabase/schema.sql` — crea las tablas y las políticas de Row Level Security (cada usuario solo ve/edita lo de sus propios clubes).
+3. Copiá `.env.local.example` a `.env.local` y completá con los valores de **Project Settings → API**:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+   Ambas son claves públicas (protegidas por RLS) — nunca commitear `.env.local` ni exponer la `service_role` key.
+4. `src/lib/supabase/client.js` (Client Components), `server.js` (Server Components / Route Handlers) y `src/proxy.js` (refresco de sesión) ya están armados con [`@supabase/ssr`](https://supabase.com/docs/guides/auth/server-side/nextjs) — listos para usarse una vez cargadas las variables de entorno.
 
 ## Sistema de diseño
 
