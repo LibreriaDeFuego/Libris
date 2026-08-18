@@ -1,0 +1,27 @@
+-- Libris — chequeo rápido del setup de la base.
+-- Pegar en el SQL Editor de Supabase y correr: cada fila debe decir OK.
+-- Si alguna dice FALTA, correr la migración correspondiente de supabase/migrations/.
+
+select 'Migración 002 — trigger que crea el perfil al registrarse' as paso,
+       case when exists (select 1 from pg_trigger where tgname = 'on_auth_user_created')
+            then 'OK' else 'FALTA' end as estado
+union all
+select 'Migración 002 — política: crear libros',
+       case when exists (select 1 from pg_policies where tablename = 'books' and policyname = 'authenticated users create books')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 002 — política: crear libro activo del club',
+       case when exists (select 1 from pg_policies where tablename = 'club_books' and policyname = 'members create club_books in their clubs')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 002 — política: crear capítulos',
+       case when exists (select 1 from pg_policies where tablename = 'chapters' and policyname = 'members create chapters in their clubs')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 002 — política: guardar progreso',
+       case when exists (select 1 from pg_policies where tablename = 'reading_progress' and policyname = 'users create progress in clubs they belong to')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 003 — política: el creador puede leer su club',
+       case when exists (select 1 from pg_policies where tablename = 'clubs' and policyname = 'members and creator read their clubs')
+            then 'OK' else 'FALTA' end;
