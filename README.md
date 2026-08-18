@@ -27,12 +27,13 @@ src/
     manifest.js            # genera /manifest.webmanifest (PWA)
   components/
     AppShell.jsx           # shell con tab bar inferior (Club / Novedades / Descubrir)
-    LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx, InviteButton.jsx
+    LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx, InviteButton.jsx,
+    GoogleSignInButton.jsx
     ServiceWorkerRegistration.jsx
   screens/                # pantallas de producto (usan el design system + props con datos reales)
   lib/
     supabase/               client.js, server.js, middleware.js (@supabase/ssr)
-    getMyActiveClubBook.js, formatRelativeTime.js
+    getMyActiveClubBook.js, formatRelativeTime.js, safeNext.js, authProviders.js
   design-system/           # sistema de diseño Libris (tokens + 18 componentes reutilizables)
     tokens/                 colors.css, typography.css, spacing.css, effects.css
     components/              core/ forms/ content/ navigation/ feedback/
@@ -75,6 +76,12 @@ npm run dev
 Verificado funcionando de punta a punta contra Supabase real: registro/login, crear club con su primer libro, actualizar progreso (persiste), publicar comentarios (texto, cita, spoiler), feed de Novedades, y persistencia entre sesiones.
 
 **Setup de la base:** correr en orden `supabase/schema.sql` y después cada archivo de `supabase/migrations/` por número (002, 003, 004). `supabase/verificar-setup.sql` chequea que las tres estén aplicadas (todas las filas deben decir OK). Para probar sin esperar mails, desactivar **Confirm email** en Authentication → Sign In / Providers; antes de abrir al público conviene reactivarlo (la ruta `/auth/callback` ya está lista para recibir esos links).
+
+### Login con Google (opcional, no configurado todavía)
+
+El código está listo: `signInWithGoogle` en `src/app/login/actions.js` y el botón en `GoogleSignInButton.jsx`. **El botón solo se muestra si el proveedor está habilitado en Supabase** — `src/lib/authProviders.js` consulta `/auth/v1/settings` y no lo renderiza si Google está apagado, para que nunca quede un botón que falla al tocarlo.
+
+Para activarlo: crear credenciales OAuth en Google Cloud Console, cargarlas en Supabase (Authentication → Sign In / Providers → Google) y agregar `https://<dominio>/auth/callback` a las Redirect URLs del proyecto. No hace falta tocar código ni redesplegar.
 
 ### Limitaciones conocidas
 

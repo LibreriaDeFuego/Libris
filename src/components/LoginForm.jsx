@@ -4,10 +4,11 @@ import { useActionState, useState } from 'react';
 import { signIn, signUp } from '@/app/login/actions';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Input } from '@/design-system/components/forms/Input.jsx';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 
 const initialState = { error: null };
 
-export function LoginForm({ next = '/' }) {
+export function LoginForm({ next = '/', googleEnabled = false }) {
   const [mode, setMode] = useState('signIn'); // 'signIn' | 'signUp'
   const [signInState, signInAction, signInPending] = useActionState(signIn, initialState);
   const [signUpState, signUpAction, signUpPending] = useActionState(signUp, initialState);
@@ -60,6 +61,8 @@ export function LoginForm({ next = '/' }) {
           {pending ? 'Un momento...' : mode === 'signIn' ? 'Entrar' : 'Crear cuenta'}
         </Button>
       </form>
+
+      {googleEnabled && <GoogleSignInButton next={next} />}
 
       <button
         type="button"
