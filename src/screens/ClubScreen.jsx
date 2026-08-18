@@ -7,6 +7,7 @@ import { Button } from '@/design-system/components/core/Button.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { SignOutButton } from '@/components/SignOutButton';
+import { InviteButton } from '@/components/InviteButton';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
@@ -26,11 +27,13 @@ export function ClubScreen({ club, book, clubBookId, chapters, myProgress, previ
             {club.name}
           </div>
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-            {club.is_private ? 'Club privado' : 'Club público'} · {club.memberCount} {club.memberCount === 1 ? 'miembro' : 'miembros'} ·{' '}
-            <span style={{ fontFamily: 'monospace' }} title="ID para invitar gente">{club.id.slice(0, 8)}…</span>
+            {club.is_private ? 'Club privado' : 'Club público'} · {club.memberCount} {club.memberCount === 1 ? 'miembro' : 'miembros'}
           </div>
         </div>
-        <SignOutButton />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <InviteButton clubId={club.id} />
+          <SignOutButton />
+        </div>
       </div>
 
       {book ? (

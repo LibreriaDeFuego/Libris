@@ -2,22 +2,25 @@
 
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { safeNext } from '@/lib/safeNext';
 
 export async function signIn(prevState, formData) {
   const email = formData.get('email');
   const password = formData.get('password');
+  const next = safeNext(formData.get('next'));
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: error.message };
 
-  redirect('/');
+  redirect(next);
 }
 
 export async function signUp(prevState, formData) {
   const email = formData.get('email');
   const password = formData.get('password');
   const displayName = formData.get('displayName');
+  const next = safeNext(formData.get('next'));
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signUp({
@@ -33,7 +36,7 @@ export async function signUp(prevState, formData) {
   // sin ninguna explicación.
   if (!data.session) return { error: null, needsConfirmation: true };
 
-  redirect('/');
+  redirect(next);
 }
 
 export async function signOut() {

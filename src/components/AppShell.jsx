@@ -12,7 +12,7 @@ const TABS = [
 
 export function AppShell({ children }) {
   const pathname = usePathname();
-  const showTabBar = pathname !== '/login';
+  const showTabBar = pathname !== '/login' && !pathname.startsWith('/unirse');
 
   return (
     <div

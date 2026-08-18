@@ -20,11 +20,14 @@ src/
     novedades/page.js
     descubrir/page.js
     club/comentarios/page.js
-    actions/clubs.js       # Server Actions: createClub, joinClub, updateProgress, postComment
+    unirse/[clubId]/       # pantalla de invitación (link para compartir)
+    auth/callback/         # aterrizaje de los links que manda Supabase por mail
+    actions/clubs.js       # Server Actions: createClub, joinClub, addChapter,
+                           #   joinClubFromInvite, updateProgress, postComment
     manifest.js            # genera /manifest.webmanifest (PWA)
   components/
     AppShell.jsx           # shell con tab bar inferior (Club / Novedades / Descubrir)
-    LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx
+    LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx, InviteButton.jsx
     ServiceWorkerRegistration.jsx
   screens/                # pantallas de producto (usan el design system + props con datos reales)
   lib/
@@ -44,7 +47,8 @@ supabase/
   schema.sql              # esquema Postgres: perfiles, clubes, membresías, libros,
                            # capítulos, progreso, comentarios — con Row Level Security
   migrations/            002_app_additions.sql (trigger de perfil + políticas de insert),
-                           003_fix_club_creation.sql (el creador puede leer su club)
+                           003_fix_club_creation.sql (el creador puede leer su club),
+                           004_invitaciones.sql (datos del club para la pantalla de invitación)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -70,13 +74,11 @@ npm run dev
 
 Verificado funcionando de punta a punta contra Supabase real: registro/login, crear club con su primer libro, actualizar progreso (persiste), publicar comentarios (texto, cita, spoiler), feed de Novedades, y persistencia entre sesiones.
 
-**Setup de la base:** correr en orden `supabase/schema.sql`, `supabase/migrations/002_app_additions.sql` y `supabase/migrations/003_fix_club_creation.sql`. `supabase/verificar-setup.sql` chequea que las tres estén aplicadas (todas las filas deben decir OK). Para probar sin esperar mails, desactivar **Confirm email** en Authentication → Sign In / Providers; antes de abrir al público conviene reactivarlo (la ruta `/auth/callback` ya está lista para recibir esos links).
+**Setup de la base:** correr en orden `supabase/schema.sql` y después cada archivo de `supabase/migrations/` por número (002, 003, 004). `supabase/verificar-setup.sql` chequea que las tres estén aplicadas (todas las filas deben decir OK). Para probar sin esperar mails, desactivar **Confirm email** en Authentication → Sign In / Providers; antes de abrir al público conviene reactivarlo (la ruta `/auth/callback` ya está lista para recibir esos links).
 
 ### Limitaciones conocidas
 
 - **El descubrimiento social no funciona todavía.** El recuadro "otros clubes están leyendo este libro" y la solapa "Otros clubes" de Novedades siempre salen vacíos: la política RLS de `club_books` solo deja ver los clubes propios, así que las consultas a otros clubes devuelven 0 filas. Hace falta una vista/política que exponga de forma acotada (sin datos privados) qué libros están leyendo otros clubes.
-- **Los clubes arrancan con un solo capítulo.** `createClub` crea "Cap. 1" y no hay UI para agregar más, así que el modal de progreso siempre ofrece esa única opción. Falta ABM de capítulos.
-- **Unirse a un club es pegando su UUID** — no hay links de invitación ni QR. El UUID funciona como token de invitación (no se puede adivinar), pero la experiencia es mala.
 - Un usuario pertenece a **un solo club** (`src/lib/getMyActiveClubBook.js` toma el primero). Multi-club implica sacar `.limit(1)`/`.maybeSingle()` y agregar un selector de club en el shell.
 - **Comentarios de voz** (`VoiceNotePlayer`) están en el design system pero no se pueden crear desde la UI — falta subida de audio (Supabase Storage) y transcripción.
 - **Descubrir** sigue siendo contenido de ejemplo hardcodeado — no hay tabla editorial.

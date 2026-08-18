@@ -7,7 +7,7 @@ import { Input } from '@/design-system/components/forms/Input.jsx';
 
 const initialState = { error: null };
 
-export function LoginForm() {
+export function LoginForm({ next = '/' }) {
   const [mode, setMode] = useState('signIn'); // 'signIn' | 'signUp'
   const [signInState, signInAction, signInPending] = useActionState(signIn, initialState);
   const [signUpState, signUpAction, signUpPending] = useActionState(signUp, initialState);
@@ -28,6 +28,7 @@ export function LoginForm() {
       </div>
 
       <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <input type="hidden" name="next" value={next} />
         {mode === 'signUp' && (
           <div>
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Tu nombre</div>

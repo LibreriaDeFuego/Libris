@@ -20,7 +20,7 @@ export function OnboardingScreen() {
           Todavía no estás en ningún club
         </div>
         <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>
-          Armá uno nuevo o unite a uno existente con su ID.
+          Armá uno nuevo o unite con el link que te compartieron.
         </div>
       </div>
 
@@ -40,6 +40,13 @@ export function OnboardingScreen() {
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Autor</div>
             <Input name="bookAuthor" placeholder="ej. Julio Cortázar" required />
           </div>
+          <div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>¿Cuántos capítulos tiene?</div>
+            <Input name="chapterCount" type="number" min={1} max={300} defaultValue={12} />
+            <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+              Después podés agregar más desde “Actualizar progreso”.
+            </div>
+          </div>
           {createState?.error && (
             <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 10 }}>
               {createState.error}
@@ -52,8 +59,8 @@ export function OnboardingScreen() {
       ) : (
         <form action={joinAction} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>ID del club</div>
-            <Input name="clubId" placeholder="Pegá el ID que te compartieron" required />
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Link de invitación</div>
+            <Input name="clubId" placeholder="Pegá el link que te compartieron" required />
           </div>
           {joinState?.error && (
             <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 10 }}>
