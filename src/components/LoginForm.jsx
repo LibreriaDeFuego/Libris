@@ -49,6 +49,12 @@ export function LoginForm() {
           </div>
         )}
 
+        {state?.needsConfirmation && (
+          <div style={{ color: 'var(--gold-700)', fontSize: 'var(--fs-xs)', background: 'var(--gold-100)', borderRadius: 'var(--radius-md)', padding: 10, lineHeight: 'var(--lh-snug)' }}>
+            Te mandamos un mail para confirmar tu cuenta. Abrí el link y después entrá con tu email y contraseña.
+          </div>
+        )}
+
         <Button variant="primary" size="lg" disabled={pending} type="submit">
           {pending ? 'Un momento...' : mode === 'signIn' ? 'Entrar' : 'Crear cuenta'}
         </Button>

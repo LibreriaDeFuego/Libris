@@ -20,12 +20,18 @@ export async function signUp(prevState, formData) {
   const displayName = formData.get('displayName');
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { data: { display_name: displayName } },
   });
   if (error) return { error: error.message };
+
+  // Con "Confirm email" activado (default de Supabase) signUp no devuelve
+  // sesión: la cuenta existe pero recién queda usable al abrir el link del
+  // mail. Sin este chequeo redirigíamos a "/" y el usuario rebotaba al login
+  // sin ninguna explicación.
+  if (!data.session) return { error: null, needsConfirmation: true };
 
   redirect('/');
 }
