@@ -5,22 +5,33 @@ import { createClub, joinClub } from '@/app/actions/clubs';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Input } from '@/design-system/components/forms/Input.jsx';
 import { Tabs } from '@/design-system/components/navigation/Tabs.jsx';
+import { IconButton } from '@/design-system/components/core/IconButton.jsx';
+import { Icon } from '@/design-system/components/core/Icon.jsx';
+import { useRouter } from 'next/navigation';
 
 const initialState = { error: null };
 
-export function OnboardingScreen() {
+export function OnboardingScreen({ showBack = false }) {
   const [mode, setMode] = useState('Crear club');
+  const router = useRouter();
   const [createState, createAction, createPending] = useActionState(createClub, initialState);
   const [joinState, joinAction, joinPending] = useActionState(joinClub, initialState);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '32px 18px' }}>
-      <div>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
-          Todavía no estás en ningún club
-        </div>
-        <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>
-          Armá uno nuevo o unite con el link que te compartieron.
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        {showBack && (
+          <IconButton aria-label="Volver" onClick={() => router.push('/')}>
+            <Icon name="arrow-left" size={18} />
+          </IconButton>
+        )}
+        <div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
+            {showBack ? 'Otro club' : 'Todavía no estás en ningún club'}
+          </div>
+          <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>
+            Armá uno nuevo o unite con el link que te compartieron.
+          </div>
         </div>
       </div>
 

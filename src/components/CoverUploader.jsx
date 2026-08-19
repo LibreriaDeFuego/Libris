@@ -1,41 +1,59 @@
 'use client';
 
-import { useActionState, useRef } from 'react';
+import { useState, useTransition } from 'react';
 import { uploadBookCover } from '@/app/actions/media';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 
-const initialState = { error: null };
+// Sin <form> propio a propósito: este control se usa dentro del formulario de
+// preferencias, y HTML no permite formularios anidados (rompe la hidratación).
+// tone='dark' para la tarjeta negra del libro; 'light' sobre fondo claro.
+export function CoverUploader({ bookId, hasCover, tone = 'dark' }) {
+  const [error, setError] = useState(null);
+  const [pending, startTransition] = useTransition();
 
-// Botón discreto sobre la tarjeta del libro: abre el selector de archivos y
-// envía en cuanto se elige una imagen, sin un paso extra de confirmación.
-export function CoverUploader({ bookId, hasCover }) {
-  const [state, action] = useActionState(uploadBookCover, initialState);
-  const formRef = useRef(null);
+  const palette = tone === 'dark'
+    ? { color: '#fff', background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.25)' }
+    : { color: 'var(--text-primary)', background: 'var(--surface-card)', border: '1px solid var(--border-default)' };
+
+  function handleChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.set('bookId', bookId);
+    formData.set('file', file);
+    // Limpiamos el input para poder reintentar con el mismo archivo si falla.
+    event.target.value = '';
+
+    startTransition(async () => {
+      const result = await uploadBookCover(null, formData);
+      setError(result?.error ?? null);
+    });
+  }
 
   return (
-    <form ref={formRef} action={action}>
-      <input type="hidden" name="bookId" value={bookId} />
+    <div>
       <label
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-          fontSize: 'var(--fs-2xs)', fontWeight: 600, color: '#fff',
-          background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.25)',
-          borderRadius: 'var(--radius-pill)', padding: '5px 10px',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          cursor: pending ? 'default' : 'pointer', opacity: pending ? 0.6 : 1,
+          fontSize: 'var(--fs-2xs)', fontWeight: 600,
+          borderRadius: 'var(--radius-pill)', padding: '5px 10px', ...palette,
         }}
       >
-        <Icon name="image-plus" size={13} color="#fff" />
-        {hasCover ? 'Cambiar portada' : 'Subir portada'}
+        <Icon name="image-plus" size={13} color={palette.color} />
+        {pending ? 'Subiendo…' : hasCover ? 'Cambiar portada' : 'Subir portada'}
         <input
           type="file"
-          name="file"
           accept="image/jpeg,image/png,image/webp"
+          disabled={pending}
+          onChange={handleChange}
           style={{ display: 'none' }}
-          onChange={() => formRef.current?.requestSubmit()}
         />
       </label>
-      {state?.error && (
-        <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-2xs)', marginTop: 6 }}>{state.error}</div>
+      {error && (
+        <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-2xs)', marginTop: 6 }}>{error}</div>
       )}
-    </form>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getActiveClub, getActiveClubBook } from '@/lib/activeClub';
 import { OnboardingScreen } from '@/screens/OnboardingScreen.jsx';
 import { ClubScreen } from '@/screens/ClubScreen.jsx';
 
@@ -8,43 +9,24 @@ export default async function Page() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: membership } = await supabase
-    .from('club_members')
-    .select('club_id')
-    .eq('profile_id', user.id)
-    .limit(1)
-    .maybeSingle();
+  const { clubs, active } = await getActiveClub(supabase, user.id);
+  if (!active) return <OnboardingScreen />;
 
-  if (!membership) return <OnboardingScreen />;
-
-  const clubId = membership.club_id;
-
-  const [{ data: club }, { count: memberCount }, { data: clubBook }] = await Promise.all([
-    supabase.from('clubs').select('id, name, is_private, created_by').eq('id', clubId).single(),
-    supabase.from('club_members').select('*', { count: 'exact', head: true }).eq('club_id', clubId),
-    supabase
-      .from('club_books')
-      .select('id, book_id, books(id, title, author, cover_url)')
-      .eq('club_id', clubId)
-      .eq('is_active', true)
-      .maybeSingle(),
+  const [{ count: memberCount }, clubBook] = await Promise.all([
+    supabase.from('club_members').select('*', { count: 'exact', head: true }).eq('club_id', active.id),
+    getActiveClubBook(supabase, active.id),
   ]);
+
+  const baseProps = {
+    club: { ...active, memberCount: memberCount ?? 0 },
+    clubs,
+    isOwner: active.created_by === user.id,
+  };
 
   if (!clubBook) {
     // Club sin libro activo (no debería pasar vía el onboarding actual, pero
     // cubrimos el caso para no romper la pantalla).
-    return (
-      <ClubScreen
-        club={{ ...club, memberCount }}
-        book={null}
-        clubBookId={null}
-        chapters={[]}
-        myProgress={null}
-        previews={[]}
-        otherClubsCount={0}
-        isOwner={club?.created_by === user.id}
-      />
-    );
+    return <ClubScreen {...baseProps} book={null} clubBookId={null} chapters={[]} myProgress={null} previews={[]} otherClubsCount={0} />;
   }
 
   const [{ data: chapters }, { data: myProgress }, { data: comments }, { data: otherClubsCount }] = await Promise.all([
@@ -65,20 +47,19 @@ export default async function Page() {
     // leyendo lo mismo" tiene que venir de una función security definer.
     supabase.rpc('other_clubs_reading_count', {
       target_book_id: clubBook.book_id,
-      exclude_club_id: clubId,
+      exclude_club_id: active.id,
     }),
   ]);
 
   return (
     <ClubScreen
-      club={{ ...club, memberCount }}
+      {...baseProps}
       book={clubBook.books}
       clubBookId={clubBook.id}
       chapters={chapters ?? []}
       myProgress={myProgress ?? null}
       previews={comments ?? []}
       otherClubsCount={Number(otherClubsCount ?? 0)}
-      isOwner={club.created_by === user.id}
     />
   );
 }

@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { Tabs } from '@/design-system/components/navigation/Tabs.jsx';
 import { EditorialCard } from '@/design-system/components/content/EditorialCard.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
-import { Icon } from '@/design-system/components/core/Icon.jsx';
 
-const TABS = ['Leyendo', 'Guías', 'Autores', 'Cursos'];
+// "Qué se está leyendo" vive en Novedades → Otros clubes: acá queda solo el
+// contenido editorial, que es de lo que hablaba el brief original.
+const TABS = ['Guías', 'Autores', 'Cursos'];
 const CATEGORY_BY_TAB = { 'Guías': 'Guía', 'Autores': 'Autor', 'Cursos': 'Curso' };
 
 function EmptyState({ children }) {
@@ -17,8 +18,8 @@ function EmptyState({ children }) {
   );
 }
 
-export function DescubrirScreen({ items, books }) {
-  const [tab, setTab] = useState('Leyendo');
+export function DescubrirScreen({ items }) {
+  const [tab, setTab] = useState('Guías');
   const [openItem, setOpenItem] = useState(null);
 
   const category = CATEGORY_BY_TAB[tab];
@@ -32,37 +33,7 @@ export function DescubrirScreen({ items, books }) {
 
       <Tabs items={TABS} active={tab} onChange={setTab} />
 
-      {tab === 'Leyendo' ? (
-        books.length === 0 ? (
-          <EmptyState>Todavía no hay libros en curso.</EmptyState>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {books.map((book) => (
-              <div
-                key={book.book_id}
-                style={{ display: 'flex', gap: 12, alignItems: 'center', background: 'var(--surface-card)', borderRadius: 'var(--radius-md)', padding: 12, boxShadow: 'var(--shadow-sm)' }}
-              >
-                <div
-                  style={{
-                    width: 42, height: 60, borderRadius: 'var(--radius-sm)', flexShrink: 0,
-                    background: book.cover_url ? `center/cover no-repeat url(${book.cover_url})` : 'var(--accent-500)',
-                  }}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {book.title}
-                  </div>
-                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>{book.author}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4, fontSize: 'var(--fs-2xs)', color: 'var(--success)', fontWeight: 600 }}>
-                    <Icon name="users" size={12} color="var(--success)" />
-                    {book.club_count} {Number(book.club_count) === 1 ? 'club lo está leyendo' : 'clubes lo están leyendo'}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      ) : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <EmptyState>Todavía no hay contenido en esta sección.</EmptyState>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

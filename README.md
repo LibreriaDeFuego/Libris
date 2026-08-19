@@ -20,22 +20,26 @@ src/
     novedades/page.js
     descubrir/page.js
     club/comentarios/page.js
+    club/preferencias/     # nombre, visibilidad, libro y salir del club
+    club/nuevo/            # crear o unirse a otro club (multi-club)
     unirse/[clubId]/       # pantalla de invitación (link para compartir)
     auth/callback/         # aterrizaje de los links que manda Supabase por mail
     actions/clubs.js       # Server Actions: createClub, joinClub, addChapter,
-                           #   joinClubFromInvite, setClubVisibility, updateProgress, postComment
+                           #   joinClubFromInvite, selectClub, leaveClub,
+                           #   updateClubPreferences, updateProgress, postComment
     actions/media.js       # Server Actions: uploadBookCover, postVoiceComment
     manifest.js            # genera /manifest.webmanifest (PWA)
   components/
     AppShell.jsx           # shell con tab bar inferior (Club / Novedades / Descubrir)
     LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx, InviteButton.jsx,
     GoogleSignInButton.jsx, VoiceRecorder.jsx, CoverUploader.jsx,
-    ClubVisibilityToggle.jsx
+    ClubSwitcher.jsx
     ServiceWorkerRegistration.jsx
   screens/                # pantallas de producto (usan el design system + props con datos reales)
   lib/
     supabase/               client.js, server.js, middleware.js (@supabase/ssr)
-    getMyActiveClubBook.js, formatRelativeTime.js, safeNext.js, authProviders.js
+    activeClub.js (multi-club: clubes del usuario + club activo por cookie),
+    formatRelativeTime.js, safeNext.js, authProviders.js, requireUser.js
   design-system/           # sistema de diseño Libris (tokens + 18 componentes reutilizables)
     tokens/                 colors.css, typography.css, spacing.css, effects.css
     components/              core/ forms/ content/ navigation/ feedback/
@@ -53,7 +57,8 @@ supabase/
                            003_fix_club_creation.sql (el creador puede leer su club),
                            004_invitaciones.sql (datos del club para la pantalla de invitación),
                            005_descubrimiento_voz_editorial.sql (buckets de Storage,
-                             funciones de descubrimiento y tabla editorial)
+                             funciones de descubrimiento y tabla editorial),
+                           006_multiclub.sql (poder salir de un club)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -91,11 +96,21 @@ Para activarlo en otro entorno: crear credenciales OAuth en Google Cloud Console
 
 ### Descubrimiento social — cómo está resuelto
 
-RLS solo deja ver los clubes propios, y eso no se toca. Lo que otros clubes leen se expone por funciones `security definer` (migración 005) que devuelven lo mínimo: `other_clubs_reading_count`, `other_clubs_activity` y `popular_books`. Los clubes **privados aparecen anonimizados** ("Un club"); solo los que se marcan como públicos muestran su nombre, desde el interruptor que ve el creador en la pantalla del club.
+RLS solo deja ver los clubes propios, y eso no se toca. Lo que otros clubes leen se expone por funciones `security definer` (migración 005) que devuelven lo mínimo: `other_clubs_reading_count`, `other_clubs_activity` y `popular_books`. Los clubes **privados aparecen anonimizados** ("Un club"); solo los que se marcan como públicos muestran su nombre, desde **Preferencias del club** (ícono de engranaje), donde cada opción explica exactamente qué ven los demás.
+
+### Multi-club
+
+Un usuario puede pertenecer a varios clubes. El club que se está viendo se guarda en la cookie `libris_club` (`src/lib/activeClub.js`), así las tres pestañas muestran siempre el mismo; si la cookie apunta a un club del que ya no es miembro, cae al primero. Se cambia desde el menú que despliega el nombre del club, que también lleva a `/club/nuevo`.
 
 ### Contenido editorial
 
 `editorial_items` alimenta las solapas Guías/Autores/Cursos de Descubrir. No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.
+
+"Qué se está leyendo" (los libros más leídos entre todos los clubes) vive en **Novedades → Otros clubes**, junto al resto de la actividad social; Descubrir quedó solo para contenido editorial.
+
+### Si Storage da "Bucket not found"
+
+El SQL Editor de Supabase corre cada script en **una sola transacción**: si una sentencia falla al final, se revierte todo, incluidos los buckets creados al principio. `supabase/diagnostico-storage.sql` lista qué quedó realmente creado. Si faltan los buckets, se pueden crear a mano desde **Storage → New bucket** (`book-covers` público, `voice-notes` privado) y después correr solo el bloque de políticas de la migración 005.
 
 ### Limitaciones conocidas
 

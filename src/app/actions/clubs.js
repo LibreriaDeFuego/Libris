@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/requireUser';
+import { cookies } from 'next/headers';
+import { ACTIVE_CLUB_COOKIE } from '@/lib/activeClub';
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const MAX_CHAPTERS = 300;
@@ -87,7 +89,8 @@ export async function createClub(prevState, formData) {
     .insert(chapterRows(clubBook.id, 1, chapterCount));
   if (chapterError) return { error: chapterError.message };
 
-  revalidatePath('/');
+  await setActiveClubCookie(club.id);
+  revalidatePath('/', 'layout');
   redirect('/');
 }
 
@@ -139,6 +142,43 @@ export async function joinClubFromInvite(prevState, formData) {
   return joinClubId(clubId);
 }
 
+async function setActiveClubCookie(clubId) {
+  const store = await cookies();
+  store.set(ACTIVE_CLUB_COOKIE, clubId, {
+    path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax',
+  });
+}
+
+// Cambia el club que se está viendo. Con multi-club, la elección se guarda en
+// una cookie para que las tres pestañas muestren el mismo club.
+export async function selectClub(formData) {
+  const clubId = formData.get('clubId')?.toString();
+  if (!clubId) return { error: 'Falta el club.' };
+  await setActiveClubCookie(clubId);
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
+// Salir de un club. Si era el club activo, la cookie queda apuntando a uno
+// inexistente y getActiveClub cae al primero que quede.
+export async function leaveClub(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const clubId = formData.get('clubId')?.toString();
+  if (!clubId) return { error: 'Falta el club.' };
+
+  const { error } = await supabase
+    .from('club_members')
+    .delete()
+    .eq('club_id', clubId)
+    .eq('profile_id', user.id);
+  if (error) return { error: error.message };
+
+  revalidatePath('/', 'layout');
+  redirect('/');
+}
+
 async function joinClubId(clubId) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
@@ -157,25 +197,46 @@ async function joinClubId(clubId) {
     if (error) return { error: 'No pudimos unirte — revisá que el link o el ID sean correctos.' };
   }
 
-  revalidatePath('/');
+  await setActiveClubCookie(clubId);
+  revalidatePath('/', 'layout');
   redirect('/');
 }
 
-// Un club público muestra su nombre a otros clubes que leen el mismo libro;
-// uno privado aparece anonimizado como "Un club". Solo lo cambia quien lo creó.
-export async function setClubVisibility(formData) {
+// Preferencias del club: nombre, visibilidad y datos del libro en curso.
+// Solo quien creó el club puede guardar (lo impone la política de RLS).
+export async function updateClubPreferences(prevState, formData) {
   const supabase = await createClient();
   await requireUser(supabase);
 
   const clubId = formData.get('clubId')?.toString();
-  const isPrivate = formData.get('isPrivate') === 'true';
+  const bookId = formData.get('bookId')?.toString();
+  const clubName = formData.get('clubName')?.toString().trim();
+  const bookTitle = formData.get('bookTitle')?.toString().trim();
+  const bookAuthor = formData.get('bookAuthor')?.toString().trim();
+  // El formulario manda "publico" o "privado"; ausente = sin cambios.
+  const visibility = formData.get('visibility')?.toString();
+
   if (!clubId) return { error: 'Falta el club.' };
+  if (!clubName) return { error: 'El club necesita un nombre.' };
 
-  const { error } = await supabase.from('clubs').update({ is_private: isPrivate }).eq('id', clubId);
-  if (error) return { error: error.message };
+  const clubChanges = { name: clubName };
+  if (visibility === 'publico' || visibility === 'privado') {
+    clubChanges.is_private = visibility === 'privado';
+  }
 
-  revalidatePath('/');
-  return { error: null };
+  const { error: clubError } = await supabase.from('clubs').update(clubChanges).eq('id', clubId);
+  if (clubError) return { error: clubError.message };
+
+  if (bookId && bookTitle && bookAuthor) {
+    const { error: bookError } = await supabase
+      .from('books')
+      .update({ title: bookTitle, author: bookAuthor })
+      .eq('id', bookId);
+    if (bookError) return { error: bookError.message };
+  }
+
+  revalidatePath('/', 'layout');
+  return { error: null, saved: true };
 }
 
 // Actualiza el progreso del usuario en el libro activo de un club.

@@ -6,14 +6,15 @@ import { BookCard } from '@/design-system/components/content/BookCard.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
+import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { SignOutButton } from '@/components/SignOutButton';
 import { InviteButton } from '@/components/InviteButton';
 import { CoverUploader } from '@/components/CoverUploader';
-import { ClubVisibilityToggle } from '@/components/ClubVisibilityToggle';
+import { ClubSwitcher } from '@/components/ClubSwitcher';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
-export function ClubScreen({ club, book, clubBookId, chapters, myProgress, previews, otherClubsCount, isOwner }) {
+export function ClubScreen({ club, clubs, book, clubBookId, chapters, myProgress, previews, otherClubsCount }) {
   const [showModal, setShowModal] = useState(false);
 
   const totalChapters = chapters.length;
@@ -24,21 +25,17 @@ export function ClubScreen({ club, book, clubBookId, chapters, myProgress, previ
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '20px 18px 24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
-            {club.name}
-          </div>
+        <div style={{ minWidth: 0 }}>
+          <ClubSwitcher clubs={clubs} activeClub={club} />
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
             {club.is_private ? 'Club privado' : 'Club público'} · {club.memberCount} {club.memberCount === 1 ? 'miembro' : 'miembros'}
           </div>
-          {isOwner && (
-            <div style={{ marginTop: 4 }}>
-              <ClubVisibilityToggle clubId={club.id} isPrivate={club.is_private} />
-            </div>
-          )}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <InviteButton clubId={club.id} />
+          <Link href="/club/preferencias">
+            <IconButton aria-label="Preferencias del club"><Icon name="settings" size={18} /></IconButton>
+          </Link>
           <SignOutButton />
         </div>
       </div>

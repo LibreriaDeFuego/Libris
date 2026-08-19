@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getMyActiveClubBook } from '@/lib/getMyActiveClubBook';
+import { getActiveClub, getActiveClubBook } from '@/lib/activeClub';
 import { NovedadesScreen } from '@/screens/NovedadesScreen.jsx';
 
 export const metadata = { title: 'Novedades · Libris' };
@@ -10,10 +10,13 @@ export default async function Page() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const clubBook = await getMyActiveClubBook(supabase, user.id);
-  if (!clubBook) return <NovedadesScreen events={[]} />;
+  const { active } = await getActiveClub(supabase, user.id);
+  if (!active) return <NovedadesScreen events={[]} books={[]} />;
 
-  const [{ data: comments }, { data: progress }, { data: otherClubs }] = await Promise.all([
+  const clubBook = await getActiveClubBook(supabase, active.id);
+  if (!clubBook) return <NovedadesScreen events={[]} books={[]} />;
+
+  const [{ data: comments }, { data: progress }, { data: otherClubs }, { data: books }] = await Promise.all([
     supabase
       .from('comments')
       .select('id, created_at, profiles(display_name)')
@@ -30,8 +33,9 @@ export default async function Page() {
     // security definer devuelve solo lo justo, y anonimiza a los privados.
     supabase.rpc('other_clubs_activity', {
       target_book_id: clubBook.book_id,
-      exclude_club_id: clubBook.club_id,
+      exclude_club_id: active.id,
     }),
+    supabase.rpc('popular_books', { limit_count: 10 }),
   ]);
 
   const bookTitle = clubBook.books?.title ?? 'el libro';
@@ -67,5 +71,10 @@ export default async function Page() {
     club: 'Otros clubes',
   }));
 
-  return <NovedadesScreen events={[...misClubesEvents, ...otrosClubesEvents]} />;
+  return (
+    <NovedadesScreen
+      events={[...misClubesEvents, ...otrosClubesEvents]}
+      books={(books ?? []).filter((b) => b.book_id !== clubBook.book_id)}
+    />
+  );
 }
