@@ -6,7 +6,9 @@ export async function getEnabledProviders() {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/settings`, {
       headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY },
-      next: { revalidate: 3600 },
+      // 60s: al activar un proveedor en Supabase el botón aparece casi
+      // enseguida, sin pegarle a /settings en cada request.
+      next: { revalidate: 60 },
     });
     if (!res.ok) return {};
     const settings = await res.json();
