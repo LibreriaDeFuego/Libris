@@ -3,15 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { requireUser } from '@/lib/requireUser';
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const MAX_CHAPTERS = 300;
-
-async function requireUser(supabase) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
-  return user;
-}
 
 function chapterRows(clubBookId, from, count) {
   return Array.from({ length: count }, (_, i) => ({
@@ -144,6 +139,23 @@ async function joinClubId(clubId) {
 
   revalidatePath('/');
   redirect('/');
+}
+
+// Un club público muestra su nombre a otros clubes que leen el mismo libro;
+// uno privado aparece anonimizado como "Un club". Solo lo cambia quien lo creó.
+export async function setClubVisibility(formData) {
+  const supabase = await createClient();
+  await requireUser(supabase);
+
+  const clubId = formData.get('clubId')?.toString();
+  const isPrivate = formData.get('isPrivate') === 'true';
+  if (!clubId) return { error: 'Falta el club.' };
+
+  const { error } = await supabase.from('clubs').update({ is_private: isPrivate }).eq('id', clubId);
+  if (error) return { error: error.message };
+
+  revalidatePath('/');
+  return { error: null };
 }
 
 // Actualiza el progreso del usuario en el libro activo de un club.

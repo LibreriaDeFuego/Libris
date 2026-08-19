@@ -8,7 +8,7 @@ App social para clubes de lectura: progreso de lectura compartido, comentarios (
 
 - **Next.js (App Router) + React**, PWA instalable en Android desde el navegador (manifest + service worker mínimo) en lugar de una app nativa — evita costos/tiempos de publicación en App Store; se puede envolver la misma PWA con Bubblewrap para Play Store más adelante si hace falta.
 - **Supabase** (Postgres + Auth + Realtime) como backend — ver `supabase/schema.sql` para el modelo de datos y la sección **Backend / Supabase** más abajo para configurarlo.
-- Auth (login/registro) + Club + Novedades + Comentarios ya leen y escriben datos reales en Supabase (Server Components + Server Actions, sin API routes intermedias). **Descubrir** sigue con contenido de ejemplo hardcodeado — no hay todavía una tabla/CMS editorial.
+- Todas las pantallas leen y escriben datos reales en Supabase (Server Components + Server Actions, sin API routes intermedias). **Supabase Storage** guarda las portadas de libros (bucket público) y las notas de voz (bucket privado, servidas con URLs firmadas).
 
 ## Estructura
 
@@ -23,12 +23,14 @@ src/
     unirse/[clubId]/       # pantalla de invitación (link para compartir)
     auth/callback/         # aterrizaje de los links que manda Supabase por mail
     actions/clubs.js       # Server Actions: createClub, joinClub, addChapter,
-                           #   joinClubFromInvite, updateProgress, postComment
+                           #   joinClubFromInvite, setClubVisibility, updateProgress, postComment
+    actions/media.js       # Server Actions: uploadBookCover, postVoiceComment
     manifest.js            # genera /manifest.webmanifest (PWA)
   components/
     AppShell.jsx           # shell con tab bar inferior (Club / Novedades / Descubrir)
     LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx, InviteButton.jsx,
-    GoogleSignInButton.jsx
+    GoogleSignInButton.jsx, VoiceRecorder.jsx, CoverUploader.jsx,
+    ClubVisibilityToggle.jsx
     ServiceWorkerRegistration.jsx
   screens/                # pantallas de producto (usan el design system + props con datos reales)
   lib/
@@ -49,7 +51,9 @@ supabase/
                            # capítulos, progreso, comentarios — con Row Level Security
   migrations/            002_app_additions.sql (trigger de perfil + políticas de insert),
                            003_fix_club_creation.sql (el creador puede leer su club),
-                           004_invitaciones.sql (datos del club para la pantalla de invitación)
+                           004_invitaciones.sql (datos del club para la pantalla de invitación),
+                           005_descubrimiento_voz_editorial.sql (buckets de Storage,
+                             funciones de descubrimiento y tabla editorial)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -75,20 +79,28 @@ npm run dev
 
 Verificado funcionando de punta a punta contra Supabase real: registro/login, crear club con su primer libro, actualizar progreso (persiste), publicar comentarios (texto, cita, spoiler), feed de Novedades, y persistencia entre sesiones.
 
-**Setup de la base:** correr en orden `supabase/schema.sql` y después cada archivo de `supabase/migrations/` por número (002, 003, 004). `supabase/verificar-setup.sql` chequea que las tres estén aplicadas (todas las filas deben decir OK). Para probar sin esperar mails, desactivar **Confirm email** en Authentication → Sign In / Providers; antes de abrir al público conviene reactivarlo (la ruta `/auth/callback` ya está lista para recibir esos links).
+**Setup de la base:** correr en orden `supabase/schema.sql` y después cada archivo de `supabase/migrations/` por número. `supabase/verificar-setup.sql` chequea que estén todas aplicadas (todas las filas deben decir OK). Para probar sin esperar mails, desactivar **Confirm email** en Authentication → Sign In / Providers; antes de abrir al público conviene reactivarlo (la ruta `/auth/callback` ya está lista para recibir esos links).
 
-### Login con Google (opcional, no configurado todavía)
+### Login con Google
 
-El código está listo: `signInWithGoogle` en `src/app/login/actions.js` y el botón en `GoogleSignInButton.jsx`. **El botón solo se muestra si el proveedor está habilitado en Supabase** — `src/lib/authProviders.js` consulta `/auth/v1/settings` y no lo renderiza si Google está apagado, para que nunca quede un botón que falla al tocarlo.
+Ya configurado y funcionando en producción. `signInWithGoogle` en `src/app/login/actions.js` y el botón en `GoogleSignInButton.jsx`. **El botón solo se muestra si el proveedor está habilitado en Supabase** — `src/lib/authProviders.js` consulta `/auth/v1/settings` y no lo renderiza si Google está apagado, para que nunca quede un botón que falla al tocarlo.
 
-Para activarlo: crear credenciales OAuth en Google Cloud Console, cargarlas en Supabase (Authentication → Sign In / Providers → Google) y agregar `https://<dominio>/auth/callback` a las Redirect URLs del proyecto. No hace falta tocar código ni redesplegar.
+Para activarlo en otro entorno: crear credenciales OAuth en Google Cloud Console (redirect URI = `https://<proyecto>.supabase.co/auth/v1/callback`), cargarlas en Supabase (Authentication → Sign In / Providers → Google), y poner el Site URL + Redirect URLs del proyecto apuntando al dominio de la app. No hace falta tocar código ni redesplegar.
+
+**Pendiente de marca:** la pantalla de consentimiento de Google muestra el dominio de Supabase en vez de "Libris". Para que diga Libris hace falta un dominio propio + el add-on Custom Domain de Supabase (pago) + verificación de la app en Google.
+
+### Descubrimiento social — cómo está resuelto
+
+RLS solo deja ver los clubes propios, y eso no se toca. Lo que otros clubes leen se expone por funciones `security definer` (migración 005) que devuelven lo mínimo: `other_clubs_reading_count`, `other_clubs_activity` y `popular_books`. Los clubes **privados aparecen anonimizados** ("Un club"); solo los que se marcan como públicos muestran su nombre, desde el interruptor que ve el creador en la pantalla del club.
+
+### Contenido editorial
+
+`editorial_items` alimenta las solapas Guías/Autores/Cursos de Descubrir. No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.
 
 ### Limitaciones conocidas
 
-- **El descubrimiento social no funciona todavía.** El recuadro "otros clubes están leyendo este libro" y la solapa "Otros clubes" de Novedades siempre salen vacíos: la política RLS de `club_books` solo deja ver los clubes propios, así que las consultas a otros clubes devuelven 0 filas. Hace falta una vista/política que exponga de forma acotada (sin datos privados) qué libros están leyendo otros clubes.
+- **Las notas de voz no se transcriben solas.** Quien graba puede escribir la transcripción a mano (opcional). La transcripción automática necesitaría un servicio externo pago.
 - Un usuario pertenece a **un solo club** (`src/lib/getMyActiveClubBook.js` toma el primero). Multi-club implica sacar `.limit(1)`/`.maybeSingle()` y agregar un selector de club en el shell.
-- **Comentarios de voz** (`VoiceNotePlayer`) están en el design system pero no se pueden crear desde la UI — falta subida de audio (Supabase Storage) y transcripción.
-- **Descubrir** sigue siendo contenido de ejemplo hardcodeado — no hay tabla editorial.
 - El modal de progreso no guarda "cita destacada" ni "nota" (esos campos del mock no tienen columna en `reading_progress`).
 
 ## Sistema de diseño

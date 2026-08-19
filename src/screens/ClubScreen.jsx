@@ -8,10 +8,12 @@ import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { SignOutButton } from '@/components/SignOutButton';
 import { InviteButton } from '@/components/InviteButton';
+import { CoverUploader } from '@/components/CoverUploader';
+import { ClubVisibilityToggle } from '@/components/ClubVisibilityToggle';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
-export function ClubScreen({ club, book, clubBookId, chapters, myProgress, previews, otherClubsCount }) {
+export function ClubScreen({ club, book, clubBookId, chapters, myProgress, previews, otherClubsCount, isOwner }) {
   const [showModal, setShowModal] = useState(false);
 
   const totalChapters = chapters.length;
@@ -29,6 +31,11 @@ export function ClubScreen({ club, book, clubBookId, chapters, myProgress, previ
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
             {club.is_private ? 'Club privado' : 'Club público'} · {club.memberCount} {club.memberCount === 1 ? 'miembro' : 'miembros'}
           </div>
+          {isOwner && (
+            <div style={{ marginTop: 4 }}>
+              <ClubVisibilityToggle clubId={club.id} isPrivate={club.is_private} />
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <InviteButton clubId={club.id} />
@@ -38,12 +45,18 @@ export function ClubScreen({ club, book, clubBookId, chapters, myProgress, previ
 
       {book ? (
         <>
-          <BookCard
-            title={book.title}
-            club={book.author}
-            chapterLabel={totalChapters > 0 ? `Cap. ${currentChapterNumber} de ${totalChapters}` : 'Sin capítulos todavía'}
-            progress={percent}
-          />
+          <div style={{ position: 'relative' }}>
+            <BookCard
+              title={book.title}
+              club={book.author}
+              chapterLabel={totalChapters > 0 ? `Cap. ${currentChapterNumber} de ${totalChapters}` : 'Sin capítulos todavía'}
+              progress={percent}
+              cover={book.cover_url}
+            />
+            <div style={{ position: 'absolute', right: 12, bottom: 12 }}>
+              <CoverUploader bookId={book.id} hasCover={Boolean(book.cover_url)} />
+            </div>
+          </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
@@ -88,7 +101,11 @@ export function ClubScreen({ club, book, clubBookId, chapters, myProgress, previ
                           marginTop: 2,
                         }}
                       >
-                        {p.is_spoiler ? 'Comentario con spoiler — abrilo en Comentarios' : p.body}
+                        {p.is_spoiler
+                          ? 'Comentario con spoiler — abrilo en Comentarios'
+                          : p.kind === 'voice'
+                            ? 'Nota de voz — escuchala en Comentarios'
+                            : p.body}
                       </div>
                     </div>
                   </div>

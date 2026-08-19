@@ -21,7 +21,9 @@ export function NovedadesScreen({ events }) {
             </div>
             <div>
               <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-primary)', lineHeight: 'var(--lh-snug)' }}>{e.title}</div>
-              <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>{formatRelativeTime(e.time)}</div>
+              <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                {formatRelativeTime(e.time)}{e.subtitle ? ` · ${e.subtitle}` : ''}
+              </div>
             </div>
           </div>
         ))}

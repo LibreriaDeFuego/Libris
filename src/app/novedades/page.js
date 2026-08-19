@@ -13,7 +13,7 @@ export default async function Page() {
   const clubBook = await getMyActiveClubBook(supabase, user.id);
   if (!clubBook) return <NovedadesScreen events={[]} />;
 
-  const [{ data: comments }, { data: progress }, { data: otherClubBooks }] = await Promise.all([
+  const [{ data: comments }, { data: progress }, { data: otherClubs }] = await Promise.all([
     supabase
       .from('comments')
       .select('id, created_at, profiles(display_name)')
@@ -26,14 +26,12 @@ export default async function Page() {
       .eq('club_book_id', clubBook.id)
       .order('updated_at', { ascending: false })
       .limit(10),
-    supabase
-      .from('club_books')
-      .select('id, started_at')
-      .eq('book_id', clubBook.book_id)
-      .eq('is_active', true)
-      .neq('club_id', clubBook.club_id)
-      .order('started_at', { ascending: false })
-      .limit(10),
+    // Los clubes ajenos son invisibles para RLS (y está bien): esta función
+    // security definer devuelve solo lo justo, y anonimiza a los privados.
+    supabase.rpc('other_clubs_activity', {
+      target_book_id: clubBook.book_id,
+      exclude_club_id: clubBook.club_id,
+    }),
   ]);
 
   const bookTitle = clubBook.books?.title ?? 'el libro';
@@ -57,11 +55,14 @@ export default async function Page() {
     })),
   ].sort((a, b) => new Date(b.time) - new Date(a.time));
 
-  const otrosClubesEvents = (otherClubBooks ?? []).map((cb) => ({
+  const otrosClubesEvents = (otherClubs ?? []).map((cb) => ({
     id: `other-club-${cb.id}`,
     icon: 'users',
     color: 'var(--gold-500)',
-    title: `Otro club también está leyendo ${bookTitle}`,
+    title: cb.is_public
+      ? `${cb.club_label} también está leyendo ${bookTitle}`
+      : `Otro club también está leyendo ${bookTitle}`,
+    subtitle: `${cb.member_count} ${Number(cb.member_count) === 1 ? 'miembro' : 'miembros'}`,
     time: cb.started_at,
     club: 'Otros clubes',
   }));

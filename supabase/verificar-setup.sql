@@ -24,4 +24,25 @@ select 'Migración 002 — política: guardar progreso',
 union all
 select 'Migración 003 — política: el creador puede leer su club',
        case when exists (select 1 from pg_policies where tablename = 'clubs' and policyname = 'members and creator read their clubs')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 004 — datos del club para invitaciones',
+       case when exists (select 1 from pg_proc where proname = 'club_invite_info')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 005 — bucket de portadas',
+       case when exists (select 1 from storage.buckets where id = 'book-covers')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 005 — bucket de notas de voz',
+       case when exists (select 1 from storage.buckets where id = 'voice-notes')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 005 — funciones de descubrimiento',
+       case when exists (select 1 from pg_proc where proname = 'other_clubs_activity')
+        and exists (select 1 from pg_proc where proname = 'popular_books')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 005 — tabla editorial con contenido',
+       case when exists (select 1 from information_schema.tables where table_name = 'editorial_items')
             then 'OK' else 'FALTA' end;
