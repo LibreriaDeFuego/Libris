@@ -8,6 +8,27 @@ import { requireUser } from '@/lib/requireUser';
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const MAX_CHAPTERS = 300;
 
+// Busca un libro por título y autor sin distinguir mayúsculas ni espacios de
+// más; si no existe, lo crea. Devuelve { id } o { error }.
+async function findOrCreateBook(supabase, title, author) {
+  const { data: existing } = await supabase
+    .from('books')
+    .select('id')
+    .ilike('title', title)
+    .ilike('author', author)
+    .limit(1)
+    .maybeSingle();
+  if (existing) return { id: existing.id };
+
+  const { data: created, error } = await supabase
+    .from('books')
+    .insert({ title, author })
+    .select('id')
+    .single();
+  if (error) return { error: error.message };
+  return { id: created.id };
+}
+
 function chapterRows(clubBookId, from, count) {
   return Array.from({ length: count }, (_, i) => ({
     club_book_id: clubBookId,
@@ -48,12 +69,11 @@ export async function createClub(prevState, formData) {
     .insert({ club_id: club.id, profile_id: user.id, role: 'owner' });
   if (memberError) return { error: memberError.message };
 
-  const { data: book, error: bookError } = await supabase
-    .from('books')
-    .insert({ title: bookTitle, author: bookAuthor })
-    .select('id')
-    .single();
-  if (bookError) return { error: bookError.message };
+  // Reutilizamos el libro si ya existe con el mismo título y autor. Sin esto,
+  // dos clubes leyendo "Rayuela" quedarían apuntando a dos filas distintas y
+  // el descubrimiento social ("otros clubes leyendo lo mismo") nunca cruzaría.
+  const book = await findOrCreateBook(supabase, bookTitle, bookAuthor);
+  if (book.error) return { error: book.error };
 
   const { data: clubBook, error: clubBookError } = await supabase
     .from('club_books')
