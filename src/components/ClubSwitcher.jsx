@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { selectClub } from '@/app/actions/clubs';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 
@@ -10,14 +11,20 @@ import { Icon } from '@/design-system/components/core/Icon.jsx';
 export function ClubSwitcher({ clubs, activeClub }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
+  // "/" ya no muestra el detalle de un club (es la lista de "Mis clubes"),
+  // así que cambiar de club navega a la ruta de ese club, no solo cambia
+  // la cookie. La cookie igual se actualiza, para que Comentarios y
+  // Preferencias sigan apuntando al club correcto.
   function choose(clubId) {
-    if (clubId === activeClub.id) { setOpen(false); return; }
+    setOpen(false);
+    if (clubId === activeClub.id) return;
     const formData = new FormData();
     formData.set('clubId', clubId);
     startTransition(async () => {
       await selectClub(formData);
-      setOpen(false);
+      router.push(`/club/${clubId}`);
     });
   }
 

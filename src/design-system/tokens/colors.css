@@ -1,6 +1,6 @@
 :root{
-/* neutrals — cream to graphite ink */
---neutral-0:#FFF8EC;
+/* neutrals — white to graphite ink */
+--neutral-0:#FFFFFF;
 --neutral-50:#F1F1EE;
 --neutral-100:#E4E3DE;
 --neutral-200:#CFCDC5;
@@ -34,7 +34,7 @@
 
 /* surfaces */
 --surface-page:var(--neutral-0);
---surface-card:#FFFDF8;
+--surface-card:#FFFFFF;
 --surface-card-alt:var(--neutral-50);
 --surface-sunken:var(--neutral-100);
 --surface-overlay:rgba(27,27,31,0.55);

@@ -1,19 +1,21 @@
-import { redirect } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getActiveClub, getActiveClubBook } from '@/lib/activeClub';
+import { getMyClubs, getActiveClubBook } from '@/lib/activeClub';
 import { ComentariosScreen } from '@/screens/ComentariosScreen.jsx';
 
 export const metadata = { title: 'Comentarios · Libris' };
 
-export default async function Page() {
+export default async function Page({ params }) {
+  const { clubId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { active } = await getActiveClub(supabase, user.id);
-  if (!active) redirect('/');
-  const clubBook = await getActiveClubBook(supabase, active.id);
-  if (!clubBook) redirect('/');
+  const clubs = await getMyClubs(supabase, user.id);
+  if (!clubs.some((c) => c.id === clubId)) notFound();
+
+  const clubBook = await getActiveClubBook(supabase, clubId);
+  if (!clubBook) redirect(`/club/${clubId}`);
 
   const { data: comments } = await supabase
     .from('comments')

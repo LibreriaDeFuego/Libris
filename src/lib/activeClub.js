@@ -37,3 +37,45 @@ export async function getActiveClubBook(supabase, clubId) {
     .maybeSingle();
   return data ?? null;
 }
+
+// Última novedad de un club (comentario o progreso más reciente), para la
+// tarjeta de "Mis clubes de lectura". No hay tracking de "visto/no visto"
+// todavía — es un resumen de actividad, no un contador de no leídos.
+export async function getClubActivityPreview(supabase, clubBookId, bookTitle) {
+  if (!clubBookId) return null;
+
+  const [{ data: comment }, { data: progress }] = await Promise.all([
+    supabase
+      .from('comments')
+      .select('created_at, profiles(display_name)')
+      .eq('club_book_id', clubBookId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('reading_progress')
+      .select('updated_at, profiles(display_name), chapters(label)')
+      .eq('club_book_id', clubBookId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const candidates = [];
+  if (comment) {
+    candidates.push({
+      time: comment.created_at,
+      text: `${comment.profiles?.display_name ?? 'Alguien'} comentó en ${bookTitle}`,
+    });
+  }
+  if (progress) {
+    candidates.push({
+      time: progress.updated_at,
+      text: `${progress.profiles?.display_name ?? 'Alguien'} avanzó a ${progress.chapters?.label ?? 'un nuevo capítulo'}`,
+    });
+  }
+  if (candidates.length === 0) return null;
+
+  candidates.sort((a, b) => new Date(b.time) - new Date(a.time));
+  return candidates[0];
+}

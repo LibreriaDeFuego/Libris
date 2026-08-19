@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { BookCard } from '@/design-system/components/content/BookCard.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
@@ -16,6 +17,7 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
 export function ClubScreen({ club, clubs, book, clubBookId, chapters, myProgress, previews, otherClubsCount }) {
   const [showModal, setShowModal] = useState(false);
+  const router = useRouter();
 
   const totalChapters = chapters.length;
   const currentChapter = chapters.find((c) => c.id === myProgress?.chapter_id) ?? chapters[0] ?? null;
@@ -25,15 +27,20 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, myProgress
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '20px 18px 24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ minWidth: 0 }}>
-          <ClubSwitcher clubs={clubs} activeClub={club} />
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-            {club.is_private ? 'Club privado' : 'Club público'} · {club.memberCount} {club.memberCount === 1 ? 'miembro' : 'miembros'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <IconButton aria-label="Volver a mis clubes" onClick={() => router.push('/')}>
+            <Icon name="arrow-left" size={16} />
+          </IconButton>
+          <div style={{ minWidth: 0 }}>
+            <ClubSwitcher clubs={clubs} activeClub={club} />
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
+              {club.is_private ? 'Club privado' : 'Club público'} · {club.memberCount} {club.memberCount === 1 ? 'miembro' : 'miembros'}
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <InviteButton clubId={club.id} />
-          <Link href="/club/preferencias">
+          <Link href={`/club/${club.id}/preferencias`}>
             <IconButton aria-label="Preferencias del club"><Icon name="settings" size={18} /></IconButton>
           </Link>
           <SignOutButton />
@@ -62,7 +69,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, myProgress
                 Actualizar progreso
               </Button>
             </div>
-            <Link href="/club/comentarios">
+            <Link href={`/club/${club.id}/comentarios`}>
               <Button variant="secondary" size="md">Comentarios</Button>
             </Link>
           </div>

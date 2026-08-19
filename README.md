@@ -15,12 +15,14 @@ App social para clubes de lectura: progreso de lectura compartido, comentarios (
 ```
 src/
   app/                    # rutas de Next.js (App Router)
-    page.js               # / → pantalla Club (home) — Server Component, lee Supabase
+    page.js               # / → "Mis clubes de lectura" (lista + preview de Descubrir otros clubes)
     login/                 page.js + actions.js (signIn/signUp/signOut, Server Actions)
-    novedades/page.js
-    descubrir/page.js
-    club/comentarios/page.js
-    club/preferencias/     # nombre, visibilidad, libro y salir del club
+    novedades/page.js      # feed editorial (artículos), ordenado por fecha
+    descubrir/page.js      # Guías/Autores/Cursos (mismo contenido, ver nota de nombre)
+    club/[clubId]/page.js         # detalle de un club puntual
+    club/[clubId]/comentarios/    # comentarios de ESE club (lee el id de la URL, no una cookie)
+    club/[clubId]/preferencias/   # nombre, visibilidad, libro y salir de ESE club
+    club/otros/            # directorio de clubes públicos para unirse
     club/nuevo/            # crear o unirse a otro club (multi-club)
     unirse/[clubId]/       # pantalla de invitación (link para compartir)
     auth/callback/         # aterrizaje de los links que manda Supabase por mail
@@ -33,7 +35,7 @@ src/
     AppShell.jsx           # shell con tab bar inferior (Club / Novedades / Descubrir)
     LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx, InviteButton.jsx,
     GoogleSignInButton.jsx, VoiceRecorder.jsx, CoverUploader.jsx,
-    ClubSwitcher.jsx
+    ClubSwitcher.jsx (menú para cambiar de club dentro del detalle)
     ServiceWorkerRegistration.jsx
   screens/                # pantallas de producto (usan el design system + props con datos reales)
   lib/
@@ -58,7 +60,8 @@ supabase/
                            004_invitaciones.sql (datos del club para la pantalla de invitación),
                            005_descubrimiento_voz_editorial.sql (buckets de Storage,
                              funciones de descubrimiento y tabla editorial),
-                           006_multiclub.sql (poder salir de un club)
+                           006_multiclub.sql (poder salir de un club),
+                           007_descubrir_clubes.sql (directorio de clubes públicos)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -94,19 +97,23 @@ Para activarlo en otro entorno: crear credenciales OAuth en Google Cloud Console
 
 **Pendiente de marca:** la pantalla de consentimiento de Google muestra el dominio de Supabase en vez de "Libris". Para que diga Libris hace falta un dominio propio + el add-on Custom Domain de Supabase (pago) + verificación de la app en Google.
 
+### Estructura de navegación (Club / Novedades / Descubrir)
+
+- **Club** (`/`) — ya no es el detalle de un club: es **"Mis clubes de lectura"**, la lista completa de los clubes en los que participás (los hayas creado o no), cada uno con su actividad más reciente. Tocar uno lleva a `/club/[clubId]`, el detalle real (libro, progreso, comentarios). Abajo, una vista previa de **"Descubrir otros clubes"** con link a `/club/otros`, el directorio completo de clubes públicos para unirse.
+- **Novedades** (`/novedades`) — el feed editorial: los artículos que se van publicando (guías, recomendaciones, cursos), del más nuevo al más viejo. La actividad de los clubes (comentarios, progreso, otros clubes leyendo lo mismo) vive ahora en cada club individual, no acá.
+- **Descubrir** (`/descubrir`) — sin cambios de contenido: Guías/Autores/Cursos. Candidato a renombrarse para no confundirse con "Descubrir otros clubes" del tab Club — ver charla del proyecto para las opciones evaluadas.
+
 ### Descubrimiento social — cómo está resuelto
 
-RLS solo deja ver los clubes propios, y eso no se toca. Lo que otros clubes leen se expone por funciones `security definer` (migración 005) que devuelven lo mínimo: `other_clubs_reading_count`, `other_clubs_activity` y `popular_books`. Los clubes **privados aparecen anonimizados** ("Un club"); solo los que se marcan como públicos muestran su nombre, desde **Preferencias del club** (ícono de engranaje), donde cada opción explica exactamente qué ven los demás.
+RLS solo deja ver los clubes propios, y eso no se toca. Lo que otros clubes leen se expone por funciones `security definer`: `other_clubs_reading_count` y `other_clubs_activity` (migración 005) para "otros clubes leyendo el mismo libro", y `discover_public_clubs` (migración 007) para el directorio de `/club/otros`. Los clubes **privados aparecen anonimizados** ("Un club") y no aparecen en el directorio; solo los que se marcan como públicos muestran su nombre y son unibles desde ahí, desde **Preferencias del club** (ícono de engranaje), donde cada opción explica exactamente qué ven los demás.
 
 ### Multi-club
 
-Un usuario puede pertenecer a varios clubes. El club que se está viendo se guarda en la cookie `libris_club` (`src/lib/activeClub.js`), así las tres pestañas muestran siempre el mismo; si la cookie apunta a un club del que ya no es miembro, cae al primero. Se cambia desde el menú que despliega el nombre del club, que también lleva a `/club/nuevo`.
+Un usuario puede pertenecer a varios clubes (`getMyClubs` en `src/lib/activeClub.js`). El "club activo" (cookie `libris_club`) ya no determina qué se ve en `/` — ahora es solo un atajo para recordar, al entrar a un club desde la lista, cuál se está viendo. **`/club/[clubId]/comentarios` y `/club/[clubId]/preferencias` leen el id de la URL, no la cookie** — evita el bug de mostrar el club equivocado si se entra por un link directo en vez de por la lista.
 
 ### Contenido editorial
 
-`editorial_items` alimenta las solapas Guías/Autores/Cursos de Descubrir. No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.
-
-"Qué se está leyendo" (los libros más leídos entre todos los clubes) vive en **Novedades → Otros clubes**, junto al resto de la actividad social; Descubrir quedó solo para contenido editorial.
+`editorial_items` alimenta tanto **Novedades** (feed cronológico) como las solapas Guías/Autores/Cursos de **Descubrir** (mismos datos, agrupados por categoría). No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.
 
 ### Si Storage da "Bucket not found"
 
@@ -115,12 +122,12 @@ El SQL Editor de Supabase corre cada script en **una sola transacción**: si una
 ### Limitaciones conocidas
 
 - **Las notas de voz no se transcriben solas.** Quien graba puede escribir la transcripción a mano (opcional). La transcripción automática necesitaría un servicio externo pago.
-- Un usuario pertenece a **un solo club** (`src/lib/getMyActiveClubBook.js` toma el primero). Multi-club implica sacar `.limit(1)`/`.maybeSingle()` y agregar un selector de club en el shell.
+- **"Mis clubes de lectura" no tiene notificaciones de no leído**, solo muestra la última novedad de cada club (comentario o progreso más reciente). Hace falta una tabla de "último visto" por usuario/club para un contador real.
 - El modal de progreso no guarda "cita destacada" ni "nota" (esos campos del mock no tienen columna en `reading_progress`).
 
 ## Sistema de diseño
 
-Paleta **Electric Coral** sobre fondo crema: coral (`--accent-500`) = progreso/acciones primarias, dorado (`--gold-500`) = citas destacadas/contenido editorial, verde (`--success`) = actividad social (otros clubes, feed). Tipografía Bricolage Grotesque (headlines) + Plus Jakarta Sans (UI/cuerpo). Íconos vía [Lucide](https://lucide.dev) (`lucide-react`).
+Paleta **Electric Coral** sobre fondo blanco (page y cards — el crema del brief original se descartó a pedido): coral (`--accent-500`) = progreso/acciones primarias, dorado (`--gold-500`) = citas destacadas/contenido editorial, verde (`--success`) = actividad social (otros clubes, feed). Tipografía Bricolage Grotesque (headlines) + Plus Jakarta Sans (UI/cuerpo). Íconos vía [Lucide](https://lucide.dev) (`lucide-react`).
 
 Ver `design-reference/readme.md` para el detalle completo de fundamentos visuales y contenido, y las notas de **sustitución** — este sistema de diseño se armó desde un brief sin logo, fuentes propias ni set de íconos, así que ningún wordmark/tipografía/ícono actual debe tratarse como marca final:
 
