@@ -7,7 +7,7 @@ import { Icon } from '@/design-system/components/core/Icon.jsx';
 const TABS = [
   { href: '/', match: (path) => path === '/' || path.startsWith('/club'), icon: 'book-open', label: 'Club' },
   { href: '/novedades', match: (path) => path.startsWith('/novedades'), icon: 'bell', label: 'Novedades' },
-  { href: '/descubrir', match: (path) => path.startsWith('/descubrir'), icon: 'compass', label: 'Descubrir' },
+  { href: '/recursos', match: (path) => path.startsWith('/recursos'), icon: 'compass', label: 'Recursos' },
 ];
 
 export function AppShell({ children }) {

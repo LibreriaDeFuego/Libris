@@ -7,8 +7,8 @@ import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 
 // "Qué se está leyendo" vive en Novedades → Otros clubes: acá queda solo el
 // contenido editorial, que es de lo que hablaba el brief original.
-const TABS = ['Guías', 'Autores', 'Cursos'];
-const CATEGORY_BY_TAB = { 'Guías': 'Guía', 'Autores': 'Autor', 'Cursos': 'Curso' };
+const TABS = ['Guías', 'Cursos'];
+const CATEGORY_BY_TAB = { 'Guías': 'Guía', 'Cursos': 'Curso' };
 
 function EmptyState({ children }) {
   return (
@@ -28,7 +28,7 @@ export function DescubrirScreen({ items }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '20px 18px 24px' }}>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
-        Descubrir
+        Recursos
       </div>
 
       <Tabs items={TABS} active={tab} onChange={setTab} />

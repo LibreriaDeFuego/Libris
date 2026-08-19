@@ -45,4 +45,9 @@ select 'Migración 005 — funciones de descubrimiento',
 union all
 select 'Migración 005 — tabla editorial con contenido',
        case when exists (select 1 from information_schema.tables where table_name = 'editorial_items')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 008 — Recursos sin categoría Autor',
+       case when not exists (select 1 from public.editorial_items where category = 'Autor')
+        and exists (select 1 from information_schema.check_constraints where constraint_name = 'editorial_items_category_check' and check_clause not like '%Autor%')
             then 'OK' else 'FALTA' end;

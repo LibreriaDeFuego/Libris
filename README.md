@@ -1,6 +1,6 @@
 # Libris
 
-App social para clubes de lectura: progreso de lectura compartido, comentarios (texto, citas destacadas, notas de voz), spoilers colapsables, feed de novedades y una sección editorial ("Descubrir").
+App social para clubes de lectura: progreso de lectura compartido, comentarios (texto, citas destacadas, notas de voz), spoilers colapsables, feed de novedades y una sección editorial ("Recursos").
 
 **En producción:** https://libris-relea.vercel.app — se despliega solo en cada push a `main` (proyecto `libris` en Vercel, equipo RELEA). Instalable como PWA desde Chrome en Android.
 
@@ -18,7 +18,7 @@ src/
     page.js               # / → "Mis clubes de lectura" (lista + preview de Descubrir otros clubes)
     login/                 page.js + actions.js (signIn/signUp/signOut, Server Actions)
     novedades/page.js      # feed editorial (artículos), ordenado por fecha
-    descubrir/page.js      # Guías/Autores/Cursos (mismo contenido, ver nota de nombre)
+    recursos/page.js       # Guías/Cursos (contenido editorial curado)
     club/[clubId]/page.js         # detalle de un club puntual
     club/[clubId]/comentarios/    # comentarios de ESE club (lee el id de la URL, no una cookie)
     club/[clubId]/preferencias/   # nombre, visibilidad, libro y salir de ESE club
@@ -32,7 +32,7 @@ src/
     actions/media.js       # Server Actions: uploadBookCover, postVoiceComment
     manifest.js            # genera /manifest.webmanifest (PWA)
   components/
-    AppShell.jsx           # shell con tab bar inferior (Club / Novedades / Descubrir)
+    AppShell.jsx           # shell con tab bar inferior (Club / Novedades / Recursos)
     LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx, InviteButton.jsx,
     GoogleSignInButton.jsx, VoiceRecorder.jsx, CoverUploader.jsx,
     ClubSwitcher.jsx (menú para cambiar de club dentro del detalle)
@@ -61,7 +61,8 @@ supabase/
                            005_descubrimiento_voz_editorial.sql (buckets de Storage,
                              funciones de descubrimiento y tabla editorial),
                            006_multiclub.sql (poder salir de un club),
-                           007_descubrir_clubes.sql (directorio de clubes públicos)
+                           007_descubrir_clubes.sql (directorio de clubes públicos),
+                           008_recursos_sin_autores.sql (Descubrir → Recursos, se saca la categoría Autor)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -97,11 +98,11 @@ Para activarlo en otro entorno: crear credenciales OAuth en Google Cloud Console
 
 **Pendiente de marca:** la pantalla de consentimiento de Google muestra el dominio de Supabase en vez de "Libris". Para que diga Libris hace falta un dominio propio + el add-on Custom Domain de Supabase (pago) + verificación de la app en Google.
 
-### Estructura de navegación (Club / Novedades / Descubrir)
+### Estructura de navegación (Club / Novedades / Recursos)
 
 - **Club** (`/`) — ya no es el detalle de un club: es **"Mis clubes de lectura"**, la lista completa de los clubes en los que participás (los hayas creado o no), cada uno con su actividad más reciente. Tocar uno lleva a `/club/[clubId]`, el detalle real (libro, progreso, comentarios). Abajo, una vista previa de **"Descubrir otros clubes"** con link a `/club/otros`, el directorio completo de clubes públicos para unirse.
 - **Novedades** (`/novedades`) — el feed editorial: los artículos que se van publicando (guías, recomendaciones, cursos), del más nuevo al más viejo. La actividad de los clubes (comentarios, progreso, otros clubes leyendo lo mismo) vive ahora en cada club individual, no acá.
-- **Descubrir** (`/descubrir`) — sin cambios de contenido: Guías/Autores/Cursos. Candidato a renombrarse para no confundirse con "Descubrir otros clubes" del tab Club — ver charla del proyecto para las opciones evaluadas.
+- **Recursos** (`/recursos`, antes `/descubrir`) — contenido curado en dos secciones: **Guías** y **Cursos**. Se sacó la categoría "Autor" (migración 008) para no pisarse con "Descubrir otros clubes" del tab Club.
 
 ### Descubrimiento social — cómo está resuelto
 
@@ -113,7 +114,7 @@ Un usuario puede pertenecer a varios clubes (`getMyClubs` en `src/lib/activeClub
 
 ### Contenido editorial
 
-`editorial_items` alimenta tanto **Novedades** (feed cronológico) como las solapas Guías/Autores/Cursos de **Descubrir** (mismos datos, agrupados por categoría). No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.
+`editorial_items` alimenta tanto **Novedades** (feed cronológico) como las solapas Guías/Cursos de **Recursos** (mismos datos, agrupados por categoría). No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.
 
 ### Si Storage da "Bucket not found"
 

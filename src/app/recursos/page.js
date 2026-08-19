@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { DescubrirScreen } from '@/screens/DescubrirScreen.jsx';
 
-export const metadata = { title: 'Descubrir · Libris' };
+export const metadata = { title: 'Recursos · Libris' };
 
 export default async function Page() {
   const supabase = await createClient();

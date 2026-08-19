@@ -44,7 +44,7 @@ export async function uploadBookCover(prevState, formData) {
   if (error) return { error: error.message };
 
   revalidatePath('/');
-  revalidatePath('/descubrir');
+  revalidatePath('/recursos');
   return { error: null };
 }
 

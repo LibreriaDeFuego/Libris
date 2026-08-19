@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
-const CATEGORY_COLOR = { 'Guía': 'var(--gold-700)', 'Autor': 'var(--accent-600)', 'Curso': 'var(--success)' };
+const CATEGORY_COLOR = { 'Guía': 'var(--gold-700)', 'Curso': 'var(--success)' };
 
 export function NovedadesScreen({ items }) {
   const [openItem, setOpenItem] = useState(null);
