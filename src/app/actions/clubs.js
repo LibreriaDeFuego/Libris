@@ -134,7 +134,7 @@ export async function addChapter(formData) {
     .select('id, number, title, label, volume_id')
     .single();
   if (error) {
-    if (error.code === '23505') return { error: `Ya existe el capítulo ${number} en este libro.` };
+    if (error.code === '23505') return { error: `Ya existe el capítulo ${number} ${volumeId ? 'en ese volumen' : 'sin volumen asignado'}.` };
     return { error: friendlyDbError(error) };
   }
 
@@ -164,7 +164,7 @@ export async function renameChapter(formData) {
 
   const { error } = await supabase.from('chapters').update(changes).eq('id', chapterId);
   if (error) {
-    if (error.code === '23505') return { error: 'Ya existe otro capítulo con ese número en este libro.' };
+    if (error.code === '23505') return { error: `Ya existe otro capítulo con ese número ${volumeId ? 'en ese volumen' : 'sin volumen asignado'}.` };
     return { error: friendlyDbError(error) };
   }
 
