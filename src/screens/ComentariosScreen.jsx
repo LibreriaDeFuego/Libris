@@ -1,8 +1,10 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
+import { Chip } from '@/design-system/components/core/Chip.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { Blockquote } from '@/design-system/components/content/Blockquote.jsx';
 import { SpoilerBlock } from '@/design-system/components/content/SpoilerBlock.jsx';
@@ -10,6 +12,7 @@ import { VoiceNotePlayer } from '@/design-system/components/content/VoiceNotePla
 import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
+import { orderChapters, chapterDisplayLabel } from '@/lib/orderChapters';
 
 function formatDuration(seconds) {
   if (!seconds && seconds !== 0) return '';
@@ -35,8 +38,12 @@ function CommentBody({ comment }) {
   );
 }
 
-export function ComentariosScreen({ clubBookId, comments }) {
+export function ComentariosScreen({ clubBookId, comments, chapters, volumes }) {
   const router = useRouter();
+  const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
+  const [chapterId, setChapterId] = useState(null); // null = comentarios generales del libro
+
+  const visibleComments = comments.filter((c) => (c.chapter_id ?? null) === chapterId);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 18px 24px' }}>
@@ -45,10 +52,19 @@ export function ComentariosScreen({ clubBookId, comments }) {
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>Comentarios</div>
       </div>
 
-      <NewCommentForm clubBookId={clubBookId} />
-      <VoiceRecorder clubBookId={clubBookId} />
+      {orderedChapters.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: 'auto' }}>
+          <Chip selected={chapterId === null} onClick={() => setChapterId(null)}>General del libro</Chip>
+          {orderedChapters.map((c) => (
+            <Chip key={c.id} selected={chapterId === c.id} onClick={() => setChapterId(c.id)}>{chapterDisplayLabel(c)}</Chip>
+          ))}
+        </div>
+      )}
 
-      {comments.map((comment) => {
+      <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} />
+      <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} />
+
+      {visibleComments.map((comment) => {
         const name = comment.profiles?.display_name ?? 'Alguien';
         return (
           <div key={comment.id} style={{ display: 'flex', gap: 10 }}>
@@ -69,9 +85,9 @@ export function ComentariosScreen({ clubBookId, comments }) {
         );
       })}
 
-      {comments.length === 0 && (
+      {visibleComments.length === 0 && (
         <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '20px 0', textAlign: 'center' }}>
-          Sé el primero en comentar.
+          {chapterId === null ? 'Sé el primero en comentar el libro.' : 'Sé el primero en comentar este capítulo.'}
         </div>
       )}
     </div>

@@ -15,8 +15,14 @@ export default async function Page({ params }) {
   const club = clubs.find((c) => c.id === clubId);
   if (!club) notFound();
 
-  const [{ count: memberCount }, clubBook] = await Promise.all([
-    supabase.from('club_members').select('*', { count: 'exact', head: true }).eq('club_id', clubId),
+  const isAdmin = club.role === 'admin';
+
+  const [{ data: members }, clubBook] = await Promise.all([
+    supabase
+      .from('club_members')
+      .select('profile_id, role, joined_at, profiles(display_name)')
+      .eq('club_id', clubId)
+      .order('joined_at'),
     getActiveClubBook(supabase, clubId),
   ]);
 
@@ -24,8 +30,9 @@ export default async function Page({ params }) {
     <PreferenciasScreen
       club={club}
       book={clubBook?.books ?? null}
-      isOwner={club.created_by === user.id}
-      memberCount={memberCount ?? 0}
+      isAdmin={isAdmin}
+      currentUserId={user.id}
+      members={members ?? []}
     />
   );
 }

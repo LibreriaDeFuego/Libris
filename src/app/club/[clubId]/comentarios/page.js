@@ -17,11 +17,15 @@ export default async function Page({ params }) {
   const clubBook = await getActiveClubBook(supabase, clubId);
   if (!clubBook) redirect(`/club/${clubId}`);
 
-  const { data: comments } = await supabase
-    .from('comments')
-    .select('id, kind, body, is_spoiler, created_at, profile_id, voice_url, voice_transcript, voice_duration_seconds, profiles(display_name)')
-    .eq('club_book_id', clubBook.id)
-    .order('created_at', { ascending: false });
+  const [{ data: comments }, { data: chapters }, { data: volumes }] = await Promise.all([
+    supabase
+      .from('comments')
+      .select('id, kind, body, is_spoiler, created_at, profile_id, chapter_id, voice_url, voice_transcript, voice_duration_seconds, profiles(display_name)')
+      .eq('club_book_id', clubBook.id)
+      .order('created_at', { ascending: false }),
+    supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
+    supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
+  ]);
 
   // El bucket de audio es privado: cada nota necesita una URL firmada, que
   // solo se genera si la política de Storage confirma la membresía.
@@ -41,5 +45,12 @@ export default async function Page({ params }) {
     audio_url: c.voice_url ? signedByPath.get(c.voice_url) ?? null : null,
   }));
 
-  return <ComentariosScreen clubBookId={clubBook.id} comments={withAudio} />;
+  return (
+    <ComentariosScreen
+      clubBookId={clubBook.id}
+      comments={withAudio}
+      chapters={chapters ?? []}
+      volumes={volumes ?? []}
+    />
+  );
 }

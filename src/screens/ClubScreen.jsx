@@ -14,14 +14,15 @@ import { CoverUploader } from '@/components/CoverUploader';
 import { ClubSwitcher } from '@/components/ClubSwitcher';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
+import { orderChapters, chapterDisplayLabel } from '@/lib/orderChapters';
 
-export function ClubScreen({ club, clubs, book, clubBookId, chapters, myProgress, previews, otherClubsCount }) {
+export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, previews, otherClubsCount, isAdmin }) {
   const [showModal, setShowModal] = useState(false);
   const router = useRouter();
 
+  const orderedChapters = orderChapters(chapters, volumes ?? []);
   const totalChapters = chapters.length;
-  const currentChapter = chapters.find((c) => c.id === myProgress?.chapter_id) ?? chapters[0] ?? null;
-  const currentChapterNumber = currentChapter?.number ?? 0;
+  const currentChapter = chapters.find((c) => c.id === myProgress?.chapter_id) ?? orderedChapters[0] ?? null;
   const percent = myProgress?.percent ?? 0;
 
   return (
@@ -40,6 +41,11 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, myProgress
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <InviteButton clubId={club.id} />
+          {isAdmin && (
+            <Link href={`/club/${club.id}/capitulos`}>
+              <IconButton aria-label="Gestionar capítulos"><Icon name="list" size={18} /></IconButton>
+            </Link>
+          )}
           <Link href={`/club/${club.id}/preferencias`}>
             <IconButton aria-label="Preferencias del club"><Icon name="settings" size={18} /></IconButton>
           </Link>
@@ -53,7 +59,11 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, myProgress
             <BookCard
               title={book.title}
               club={book.author}
-              chapterLabel={totalChapters > 0 ? `Cap. ${currentChapterNumber} de ${totalChapters}` : 'Sin capítulos todavía'}
+              chapterLabel={
+                currentChapter
+                  ? `${chapterDisplayLabel(currentChapter)} · ${totalChapters} en total`
+                  : 'Sin capítulos todavía'
+              }
               progress={percent}
               cover={book.cover_url}
             />
@@ -126,7 +136,8 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, myProgress
           {showModal && (
             <UpdateProgressModal
               clubBookId={clubBookId}
-              chapters={chapters}
+              chapters={orderedChapters}
+              isAdmin={isAdmin}
               initialChapterId={currentChapter?.id}
               initialPercent={percent}
               initialReaction={myProgress?.reaction ?? null}

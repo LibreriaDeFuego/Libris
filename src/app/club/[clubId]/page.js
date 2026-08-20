@@ -21,15 +21,16 @@ export default async function Page({ params }) {
   const baseProps = {
     club: { ...club, memberCount: memberCount ?? 0 },
     clubs,
-    isOwner: club.created_by === user.id,
+    isAdmin: club.role === 'admin',
   };
 
   if (!clubBook) {
-    return <ClubScreen {...baseProps} book={null} clubBookId={null} chapters={[]} myProgress={null} previews={[]} otherClubsCount={0} />;
+    return <ClubScreen {...baseProps} book={null} clubBookId={null} chapters={[]} volumes={[]} myProgress={null} previews={[]} otherClubsCount={0} />;
   }
 
-  const [{ data: chapters }, { data: myProgress }, { data: comments }, { data: otherClubsCount }] = await Promise.all([
-    supabase.from('chapters').select('id, number, label').eq('club_book_id', clubBook.id).order('number'),
+  const [{ data: chapters }, { data: volumes }, { data: myProgress }, { data: comments }, { data: otherClubsCount }] = await Promise.all([
+    supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
+    supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
     supabase
       .from('reading_progress')
       .select('chapter_id, percent, reaction')
@@ -56,6 +57,7 @@ export default async function Page({ params }) {
       book={clubBook.books}
       clubBookId={clubBook.id}
       chapters={chapters ?? []}
+      volumes={volumes ?? []}
       myProgress={myProgress ?? null}
       previews={comments ?? []}
       otherClubsCount={Number(otherClubsCount ?? 0)}

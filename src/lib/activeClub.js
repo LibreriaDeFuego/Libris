@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { chapterDisplayLabel } from '@/lib/orderChapters';
 
 export const ACTIVE_CLUB_COOKIE = 'libris_club';
 
@@ -54,7 +55,7 @@ export async function getClubActivityPreview(supabase, clubBookId, bookTitle) {
       .maybeSingle(),
     supabase
       .from('reading_progress')
-      .select('updated_at, profiles(display_name), chapters(label)')
+      .select('updated_at, profiles(display_name), chapters(number, title, label)')
       .eq('club_book_id', clubBookId)
       .order('updated_at', { ascending: false })
       .limit(1)
@@ -71,7 +72,7 @@ export async function getClubActivityPreview(supabase, clubBookId, bookTitle) {
   if (progress) {
     candidates.push({
       time: progress.updated_at,
-      text: `${progress.profiles?.display_name ?? 'Alguien'} avanzó a ${progress.chapters?.label ?? 'un nuevo capítulo'}`,
+      text: `${progress.profiles?.display_name ?? 'Alguien'} avanzó a ${progress.chapters ? chapterDisplayLabel(progress.chapters) : 'un nuevo capítulo'}`,
     });
   }
   if (candidates.length === 0) return null;

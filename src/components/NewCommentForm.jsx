@@ -6,7 +6,7 @@ import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { postComment } from '@/app/actions/clubs';
 
-export function NewCommentForm({ clubBookId }) {
+export function NewCommentForm({ clubBookId, chapterId }) {
   const [kind, setKind] = useState('text');
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [error, setError] = useState(null);
@@ -18,6 +18,7 @@ export function NewCommentForm({ clubBookId }) {
     const formData = new FormData(formRef.current);
     formData.set('clubBookId', clubBookId);
     formData.set('kind', kind);
+    if (chapterId) formData.set('chapterId', chapterId);
     if (isSpoiler) formData.set('isSpoiler', 'on');
 
     startTransition(async () => {

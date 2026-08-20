@@ -20,15 +20,18 @@ src/
     novedades/page.js      # feed editorial (artículos), ordenado por fecha
     recursos/page.js       # Guías/Cursos (contenido editorial curado)
     club/[clubId]/page.js         # detalle de un club puntual
-    club/[clubId]/comentarios/    # comentarios de ESE club (lee el id de la URL, no una cookie)
-    club/[clubId]/preferencias/   # nombre, visibilidad, libro y salir de ESE club
+    club/[clubId]/comentarios/    # comentarios de ESE club, generales o por capítulo
+    club/[clubId]/preferencias/   # nombre, visibilidad, libro, administradores y salir de ESE club
+    club/[clubId]/capitulos/      # gestión de capítulos y volúmenes (solo administradores)
     club/otros/            # directorio de clubes públicos para unirse
     club/nuevo/            # crear o unirse a otro club (multi-club)
     unirse/[clubId]/       # pantalla de invitación (link para compartir)
     auth/callback/         # aterrizaje de los links que manda Supabase por mail
     actions/clubs.js       # Server Actions: createClub, joinClub, addChapter,
-                           #   joinClubFromInvite, selectClub, leaveClub,
-                           #   updateClubPreferences, updateProgress, postComment
+                           #   renameChapter, createVolume, renameVolume,
+                           #   promoteAdmin, demoteAdmin, joinClubFromInvite,
+                           #   selectClub, leaveClub, updateClubPreferences,
+                           #   updateProgress, postComment
     actions/media.js       # Server Actions: uploadBookCover, postVoiceComment
     manifest.js            # genera /manifest.webmanifest (PWA)
   components/
@@ -41,6 +44,8 @@ src/
   lib/
     supabase/               client.js, server.js, middleware.js (@supabase/ssr)
     activeClub.js (multi-club: clubes del usuario + club activo por cookie),
+    orderChapters.js (orden y nombre de capítulos, agrupados por volumen),
+    friendlyError.js (traduce errores de Postgres/RLS a mensajes en español),
     formatRelativeTime.js, safeNext.js, authProviders.js, requireUser.js
   design-system/           # sistema de diseño Libris (tokens + 18 componentes reutilizables)
     tokens/                 colors.css, typography.css, spacing.css, effects.css
@@ -62,7 +67,9 @@ supabase/
                              funciones de descubrimiento y tabla editorial),
                            006_multiclub.sql (poder salir de un club),
                            007_descubrir_clubes.sql (directorio de clubes públicos),
-                           008_recursos_sin_autores.sql (Descubrir → Recursos, se saca la categoría Autor)
+                           008_recursos_sin_autores.sql (Descubrir → Recursos, se saca la categoría Autor),
+                           009_administradores_y_volumenes.sql (administradores del club,
+                             capítulos con nombre propio agrupados en volúmenes)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -111,6 +118,16 @@ RLS solo deja ver los clubes propios, y eso no se toca. Lo que otros clubes leen
 ### Multi-club
 
 Un usuario puede pertenecer a varios clubes (`getMyClubs` en `src/lib/activeClub.js`). El "club activo" (cookie `libris_club`) ya no determina qué se ve en `/` — ahora es solo un atajo para recordar, al entrar a un club desde la lista, cuál se está viendo. **`/club/[clubId]/comentarios` y `/club/[clubId]/preferencias` leen el id de la URL, no la cookie** — evita el bug de mostrar el club equivocado si se entra por un link directo en vez de por la lista.
+
+### Administradores, capítulos y volúmenes
+
+Cada club tiene hasta **3 administradores**, todos con las mismas facultades (no hay jerarquía entre ellos): quien crea el club es el primero, y desde **Preferencias** cualquier administrador puede nombrar hasta 2 más, o sacarle el rol a otro. La base impide que un club se quede sin ningún administrador (no deja sacar al último si todavía hay más miembros) y que se pase de 3.
+
+Ser administrador da acceso a **Gestionar capítulos** (ícono de lista en el detalle del club, o desde Preferencias): ahí se define cuántos capítulos tiene el libro, se les puede poner nombre propio (se sigue mostrando el número: "Cap. 1. El inicio") y se pueden agrupar en **volúmenes** con el nombre que tenga sentido — "Libro 1"/"Libro 2", un año como "2026", lo que sea. Cada volumen decide su propia numeración: se puede seguir la secuencia anterior (10, 11, 12...) o arrancar de nuevo en 1, según cómo esté publicado el libro real. Los miembros que no son administradores ya no pueden agregar ni renombrar capítulos, solo elegir en cuál están al actualizar su progreso.
+
+### Comentarios por capítulo
+
+Además del hilo general del libro, ahora se puede comentar (texto, cita o nota de voz) un capítulo puntual — la pantalla de Comentarios tiene chips arriba para elegir "General del libro" o un capítulo específico, y solo muestra los comentarios de lo que está seleccionado.
 
 ### Contenido editorial
 

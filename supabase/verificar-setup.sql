@@ -14,9 +14,6 @@ select 'Migración 002 — política: crear libro activo del club',
        case when exists (select 1 from pg_policies where tablename = 'club_books' and policyname = 'members create club_books in their clubs')
             then 'OK' else 'FALTA' end
 union all
-select 'Migración 002 — política: crear capítulos',
-       case when exists (select 1 from pg_policies where tablename = 'chapters' and policyname = 'members create chapters in their clubs')
-            then 'OK' else 'FALTA' end
 union all
 select 'Migración 002 — política: guardar progreso',
        case when exists (select 1 from pg_policies where tablename = 'reading_progress' and policyname = 'users create progress in clubs they belong to')
@@ -50,4 +47,29 @@ union all
 select 'Migración 008 — Recursos sin categoría Autor',
        case when not exists (select 1 from public.editorial_items where category = 'Autor')
         and exists (select 1 from information_schema.check_constraints where constraint_name = 'editorial_items_category_check' and check_clause not like '%Autor%')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 009 — función is_club_admin',
+       case when exists (select 1 from pg_proc where proname = 'is_club_admin')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 009 — tope de 3 administradores (trigger)',
+       case when exists (select 1 from pg_trigger where tgname = 'trg_max_admins')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 009 — protección contra quedarse sin administradores',
+       case when exists (select 1 from pg_trigger where tgname = 'trg_prevent_last_admin_leaving')
+        and exists (select 1 from pg_trigger where tgname = 'trg_prevent_last_admin_demotion')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 009 — tabla de volúmenes',
+       case when exists (select 1 from information_schema.tables where table_name = 'volumes')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 009 — política: administradores crean capítulos',
+       case when exists (select 1 from pg_policies where tablename = 'chapters' and policyname = 'administradores crean capítulos en su club')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 009 — ya no quedan roles "owner"',
+       case when not exists (select 1 from public.club_members where role = 'owner')
             then 'OK' else 'FALTA' end;

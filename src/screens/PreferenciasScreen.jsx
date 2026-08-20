@@ -2,11 +2,13 @@
 
 import { useActionState, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { updateClubPreferences, leaveClub } from '@/app/actions/clubs';
+import Link from 'next/link';
+import { updateClubPreferences, leaveClub, promoteAdmin, demoteAdmin } from '@/app/actions/clubs';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Input } from '@/design-system/components/forms/Input.jsx';
+import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { CoverUploader } from '@/components/CoverUploader';
 
 const initialState = { error: null };
@@ -63,17 +65,79 @@ function VisibilityOption({ value, current, onChange, icon, title, description }
   );
 }
 
-export function PreferenciasScreen({ club, book, isOwner, memberCount }) {
+// Una fila por miembro: nombre, insignia de "Administrador" si aplica, y —
+// solo si quien mira la pantalla es administrador — un botón para nombrar o
+// sacar administradores. Nunca se puede sacar el propio rol si sos el único
+// administrador que queda (lo impide el servidor con un mensaje claro).
+function MemberRow({ member, canManage, adminCount, currentUserId }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState(null);
+  const name = member.profiles?.display_name ?? 'Alguien';
+  const isAdminRow = member.role === 'admin';
+  const isSelf = member.profile_id === currentUserId;
+  const blockedByLimit = !isAdminRow && adminCount >= 3;
+
+  function toggle() {
+    const formData = new FormData();
+    formData.set('clubId', member.clubId);
+    formData.set('profileId', member.profile_id);
+    setError(null);
+    startTransition(async () => {
+      const action = isAdminRow ? demoteAdmin : promoteAdmin;
+      const result = await action(formData);
+      if (result?.error) setError(result.error);
+    });
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Avatar name={name} size={32} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
+            {name} {isSelf && <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(vos)</span>}
+          </div>
+          {isAdminRow && (
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-600)', fontWeight: 600 }}>Administrador</div>
+          )}
+        </div>
+        {canManage && (
+          <Button variant="secondary" size="sm" type="button" onClick={toggle} disabled={pending || blockedByLimit}>
+            {pending ? '...' : isAdminRow ? 'Sacar admin' : 'Hacer admin'}
+          </Button>
+        )}
+      </div>
+      {blockedByLimit && (
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Ya hay 3 administradores — sacá a uno antes de agregar otro.</div>
+      )}
+      {error && (
+        <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 8 }}>
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members }) {
   const router = useRouter();
   const [state, action, pending] = useActionState(updateClubPreferences, initialState);
   const [visibility, setVisibility] = useState(club.is_private ? 'privado' : 'publico');
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [leaveError, setLeaveError] = useState(null);
   const [leavePending, startLeave] = useTransition();
+
+  const memberCount = members.length;
+  const adminCount = members.filter((m) => m.role === 'admin').length;
 
   function handleLeave() {
     const formData = new FormData();
     formData.set('clubId', club.id);
-    startLeave(() => leaveClub(formData));
+    setLeaveError(null);
+    startLeave(async () => {
+      const result = await leaveClub(formData);
+      if (result?.error) setLeaveError(result.error);
+    });
   }
 
   return (
@@ -87,7 +151,7 @@ export function PreferenciasScreen({ club, book, isOwner, memberCount }) {
         </div>
       </div>
 
-      {isOwner ? (
+      {isAdmin ? (
         <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <input type="hidden" name="clubId" value={club.id} />
           {book && <input type="hidden" name="bookId" value={book.id} />}
@@ -145,6 +209,12 @@ export function PreferenciasScreen({ club, book, isOwner, memberCount }) {
                 />
                 <CoverUploader bookId={book.id} hasCover={Boolean(book.cover_url)} tone="light" />
               </div>
+              <Link href={`/club/${club.id}/capitulos`}>
+                <Button variant="secondary" size="md" type="button">
+                  <Icon name="list" size={15} />
+                  Gestionar capítulos
+                </Button>
+              </Link>
             </Section>
           )}
 
@@ -165,9 +235,28 @@ export function PreferenciasScreen({ club, book, isOwner, memberCount }) {
         </form>
       ) : (
         <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>
-          Solo quien creó <strong>{club.name}</strong> puede cambiar el nombre, la visibilidad y el libro en curso.
+          Solo los administradores de <strong>{club.name}</strong> pueden cambiar el nombre, la visibilidad, el libro en curso y los capítulos.
         </div>
       )}
+
+      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Section
+          title="Administradores"
+          description={`Hasta 3 por club, todos con las mismas facultades: editar el club, los capítulos y nombrar a otros administradores. ${adminCount}/3 en uso.`}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {members.map((member) => (
+              <MemberRow
+                key={member.profile_id}
+                member={{ ...member, clubId: club.id }}
+                canManage={isAdmin}
+                adminCount={adminCount}
+                currentUserId={currentUserId}
+              />
+            ))}
+          </div>
+        </Section>
+      </div>
 
       <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -177,11 +266,18 @@ export function PreferenciasScreen({ club, book, isOwner, memberCount }) {
           Dejás de ver el club y su actividad. Tus comentarios y tu progreso quedan guardados por si volvés a entrar con el link de invitación.
         </div>
         {confirmLeave ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="secondary" size="md" onClick={() => setConfirmLeave(false)} type="button">Cancelar</Button>
-            <Button variant="primary" size="md" onClick={handleLeave} disabled={leavePending} type="button">
-              {leavePending ? 'Saliendo…' : 'Sí, salir del club'}
-            </Button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {leaveError && (
+              <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 10 }}>
+                {leaveError}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Button variant="secondary" size="md" onClick={() => setConfirmLeave(false)} type="button">Cancelar</Button>
+              <Button variant="primary" size="md" onClick={handleLeave} disabled={leavePending} type="button">
+                {leavePending ? 'Saliendo…' : 'Sí, salir del club'}
+              </Button>
+            </div>
           </div>
         ) : (
           <div>

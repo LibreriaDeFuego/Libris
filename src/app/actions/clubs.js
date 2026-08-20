@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/requireUser';
+import { friendlyDbError } from '@/lib/friendlyError';
 import { cookies } from 'next/headers';
 import { ACTIVE_CLUB_COOKIE } from '@/lib/activeClub';
 
@@ -39,7 +40,7 @@ function chapterRows(clubBookId, from, count) {
   }));
 }
 
-// Crea un club nuevo con su primer libro y sus capítulos, y hace socio (owner)
+// Crea un club nuevo con su primer libro y sus capítulos, y hace administrador
 // al que lo crea. No es atómico (son varios inserts) — aceptable para un MVP;
 // si un paso falla, el club queda a medio armar y el usuario puede reintentar
 // desde el onboarding (todavía no tiene libro activo => vuelve a ver el form).
@@ -66,9 +67,10 @@ export async function createClub(prevState, formData) {
     .single();
   if (clubError) return { error: clubError.message };
 
+  // Quien crea el club es su primer administrador — puede nombrar hasta 2 más.
   const { error: memberError } = await supabase
     .from('club_members')
-    .insert({ club_id: club.id, profile_id: user.id, role: 'owner' });
+    .insert({ club_id: club.id, profile_id: user.id, role: 'admin' });
   if (memberError) return { error: memberError.message };
 
   // Reutilizamos el libro si ya existe con el mismo título y autor. Sin esto,
@@ -94,37 +96,168 @@ export async function createClub(prevState, formData) {
   redirect('/');
 }
 
-// Agrega el capítulo siguiente al libro activo (el chip "+ Nuevo" del modal de
-// progreso). Los capítulos se definen sobre la marcha, como en el brief.
+// Agrega un capítulo al libro activo. Solo administradores (lo impone RLS).
+// Sin volumen ni número explícitos (el chip "+ Nuevo" del modal de progreso),
+// sigue la numeración simple de siempre. Con volumen y/o número (la pantalla
+// de Gestionar capítulos), permite armar capítulos agrupados con numeración
+// propia — por ejemplo, un segundo libro que arranca de nuevo en el 1.
 export async function addChapter(formData) {
   const supabase = await createClient();
   await requireUser(supabase);
 
-  const clubBookId = formData.get('clubBookId');
+  const clubBookId = formData.get('clubBookId')?.toString();
   if (!clubBookId) return { error: 'Falta el libro del club.' };
 
-  const { data: last } = await supabase
-    .from('chapters')
-    .select('number')
-    .eq('club_book_id', clubBookId)
-    .order('number', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const volumeId = formData.get('volumeId')?.toString() || null;
+  const title = formData.get('title')?.toString().trim() || null;
+  const explicitNumber = formData.get('number')?.toString().trim();
 
-  const nextNumber = (last?.number ?? 0) + 1;
-  if (nextNumber > MAX_CHAPTERS) {
-    return { error: `El máximo es ${MAX_CHAPTERS} capítulos.` };
+  let number;
+  if (explicitNumber) {
+    number = parseInt(explicitNumber, 10);
+    if (!Number.isFinite(number) || number < 1) return { error: 'El número de capítulo no es válido.' };
+  } else {
+    const { data: last } = await supabase
+      .from('chapters')
+      .select('number')
+      .eq('club_book_id', clubBookId)
+      .order('number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    number = (last?.number ?? 0) + 1;
   }
+  if (number > MAX_CHAPTERS) return { error: `El máximo es ${MAX_CHAPTERS} capítulos.` };
 
   const { data: chapter, error } = await supabase
     .from('chapters')
-    .insert({ club_book_id: clubBookId, number: nextNumber, label: `Cap. ${nextNumber}` })
-    .select('id, number, label')
+    .insert({ club_book_id: clubBookId, number, title, volume_id: volumeId, label: `Cap. ${number}` })
+    .select('id, number, title, label, volume_id')
     .single();
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.code === '23505') return { error: `Ya existe el capítulo ${number} en este libro.` };
+    return { error: friendlyDbError(error) };
+  }
 
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return { error: null, chapter };
+}
+
+// Cambia el nombre, el número y/o el volumen de un capítulo ya creado.
+// Solo administradores.
+export async function renameChapter(formData) {
+  const supabase = await createClient();
+  await requireUser(supabase);
+
+  const chapterId = formData.get('chapterId')?.toString();
+  if (!chapterId) return { error: 'Falta el capítulo.' };
+
+  const title = formData.get('title')?.toString().trim() || null;
+  const volumeId = formData.get('volumeId')?.toString() || null;
+  const numberRaw = formData.get('number')?.toString().trim();
+
+  const changes = { title, volume_id: volumeId };
+  if (numberRaw) {
+    const number = parseInt(numberRaw, 10);
+    if (!Number.isFinite(number) || number < 1) return { error: 'El número de capítulo no es válido.' };
+    changes.number = number;
+  }
+
+  const { error } = await supabase.from('chapters').update(changes).eq('id', chapterId);
+  if (error) {
+    if (error.code === '23505') return { error: 'Ya existe otro capítulo con ese número en este libro.' };
+    return { error: friendlyDbError(error) };
+  }
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
+// Crea un volumen nuevo (p. ej. "Libro 2" o "2027") al final de la lista.
+// Solo administradores.
+export async function createVolume(formData) {
+  const supabase = await createClient();
+  await requireUser(supabase);
+
+  const clubBookId = formData.get('clubBookId')?.toString();
+  const name = formData.get('name')?.toString().trim();
+  if (!clubBookId || !name) return { error: 'Ponele un nombre al volumen.' };
+
+  const { data: last } = await supabase
+    .from('volumes')
+    .select('position')
+    .eq('club_book_id', clubBookId)
+    .order('position', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const position = (last?.position ?? 0) + 1;
+
+  const { data: volume, error } = await supabase
+    .from('volumes')
+    .insert({ club_book_id: clubBookId, name, position })
+    .select('id, name, position')
+    .single();
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null, volume };
+}
+
+// Cambia el nombre de un volumen. Solo administradores.
+export async function renameVolume(formData) {
+  const supabase = await createClient();
+  await requireUser(supabase);
+
+  const volumeId = formData.get('volumeId')?.toString();
+  const name = formData.get('name')?.toString().trim();
+  if (!volumeId || !name) return { error: 'Ponele un nombre al volumen.' };
+
+  const { error } = await supabase.from('volumes').update({ name }).eq('id', volumeId);
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
+// Nombra administrador a otro miembro del club (máximo 3 en total, lo impone
+// un trigger en la base). Solo administradores pueden hacerlo.
+export async function promoteAdmin(formData) {
+  const supabase = await createClient();
+  await requireUser(supabase);
+
+  const clubId = formData.get('clubId')?.toString();
+  const profileId = formData.get('profileId')?.toString();
+  if (!clubId || !profileId) return { error: 'Faltan datos.' };
+
+  const { error } = await supabase
+    .from('club_members')
+    .update({ role: 'admin' })
+    .eq('club_id', clubId)
+    .eq('profile_id', profileId);
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
+// Le saca el rol de administrador a alguien (no puede dejar al club sin
+// ninguno, lo impone un trigger en la base). Solo administradores.
+export async function demoteAdmin(formData) {
+  const supabase = await createClient();
+  await requireUser(supabase);
+
+  const clubId = formData.get('clubId')?.toString();
+  const profileId = formData.get('profileId')?.toString();
+  if (!clubId || !profileId) return { error: 'Faltan datos.' };
+
+  const { error } = await supabase
+    .from('club_members')
+    .update({ role: 'member' })
+    .eq('club_id', clubId)
+    .eq('profile_id', profileId);
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
 }
 
 // Unirse pegando un link de invitación o el ID del club (acepta las dos cosas).
@@ -173,7 +306,7 @@ export async function leaveClub(formData) {
     .delete()
     .eq('club_id', clubId)
     .eq('profile_id', user.id);
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyDbError(error) };
 
   revalidatePath('/', 'layout');
   redirect('/');
@@ -203,7 +336,7 @@ async function joinClubId(clubId) {
 }
 
 // Preferencias del club: nombre, visibilidad y datos del libro en curso.
-// Solo quien creó el club puede guardar (lo impone la política de RLS).
+// Solo los administradores pueden guardar (lo impone la política de RLS).
 export async function updateClubPreferences(prevState, formData) {
   const supabase = await createClient();
   await requireUser(supabase);
@@ -225,14 +358,14 @@ export async function updateClubPreferences(prevState, formData) {
   }
 
   const { error: clubError } = await supabase.from('clubs').update(clubChanges).eq('id', clubId);
-  if (clubError) return { error: clubError.message };
+  if (clubError) return { error: friendlyDbError(clubError) };
 
   if (bookId && bookTitle && bookAuthor) {
     const { error: bookError } = await supabase
       .from('books')
       .update({ title: bookTitle, author: bookAuthor })
       .eq('id', bookId);
-    if (bookError) return { error: bookError.message };
+    if (bookError) return { error: friendlyDbError(bookError) };
   }
 
   revalidatePath('/', 'layout');
@@ -261,12 +394,14 @@ export async function updateProgress(formData) {
   return { error: null };
 }
 
-// Publica un comentario (texto o cita destacada) en el libro activo de un club.
+// Publica un comentario (texto o cita destacada) en el libro activo de un
+// club, o en un capítulo puntual si se manda chapterId.
 export async function postComment(formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
   const clubBookId = formData.get('clubBookId');
+  const chapterId = formData.get('chapterId')?.toString() || null;
   const kind = formData.get('kind') || 'text';
   const body = formData.get('body')?.toString().trim();
   const isSpoiler = formData.get('isSpoiler') === 'on';
@@ -274,13 +409,14 @@ export async function postComment(formData) {
 
   const { error } = await supabase.from('comments').insert({
     club_book_id: clubBookId,
+    chapter_id: chapterId,
     profile_id: user.id,
     kind,
     body,
     is_spoiler: isSpoiler,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyDbError(error) };
 
-  revalidatePath('/club/comentarios');
+  revalidatePath('/', 'layout');
   return { error: null };
 }

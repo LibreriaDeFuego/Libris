@@ -25,7 +25,7 @@ function pickMimeType() {
   return null;
 }
 
-export function VoiceRecorder({ clubBookId, onDone }) {
+export function VoiceRecorder({ clubBookId, chapterId, onDone }) {
   const [status, setStatus] = useState('idle'); // idle | recording | ready
   const [seconds, setSeconds] = useState(0);
   const [audio, setAudio] = useState(null); // { blob, url }
@@ -105,6 +105,7 @@ export function VoiceRecorder({ clubBookId, onDone }) {
     if (!audio) return;
     const formData = new FormData();
     formData.set('clubBookId', clubBookId);
+    if (chapterId) formData.set('chapterId', chapterId);
     formData.set('audio', audio.blob, `nota.${audio.blob.type.includes('mp4') ? 'm4a' : 'webm'}`);
     formData.set('duration', String(seconds));
     if (transcript.trim()) formData.set('transcript', transcript.trim());

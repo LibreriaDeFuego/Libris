@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/requireUser';
+import { friendlyDbError } from '@/lib/friendlyError';
 
 const MAX_COVER_BYTES = 5 * 1024 * 1024;   // 5 MB
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024;  // 10 MB (~10 min de voz comprimida)
@@ -57,6 +58,7 @@ export async function postVoiceComment(formData) {
   const user = await requireUser(supabase);
 
   const clubBookId = formData.get('clubBookId')?.toString();
+  const chapterId = formData.get('chapterId')?.toString() || null;
   const audio = formData.get('audio');
   const duration = Number(formData.get('duration'));
   const transcript = formData.get('transcript')?.toString().trim() || null;
@@ -78,6 +80,7 @@ export async function postVoiceComment(formData) {
 
   const { error } = await supabase.from('comments').insert({
     club_book_id: clubBookId,
+    chapter_id: chapterId,
     profile_id: user.id,
     kind: 'voice',
     voice_url: path,
@@ -85,9 +88,8 @@ export async function postVoiceComment(formData) {
     voice_duration_seconds: Number.isFinite(duration) ? Math.round(duration) : null,
     is_spoiler: isSpoiler,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyDbError(error) };
 
-  revalidatePath('/club/comentarios');
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return { error: null };
 }

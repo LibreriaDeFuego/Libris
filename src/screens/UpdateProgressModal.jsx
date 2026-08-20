@@ -7,8 +7,9 @@ import { Slider } from '@/design-system/components/forms/Slider.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { updateProgress, addChapter } from '@/app/actions/clubs';
+import { chapterDisplayLabel } from '@/lib/orderChapters';
 
-export function UpdateProgressModal({ clubBookId, chapters, initialChapterId, initialPercent, initialReaction, onClose }) {
+export function UpdateProgressModal({ clubBookId, chapters, isAdmin, initialChapterId, initialPercent, initialReaction, onClose }) {
   const [chapterId, setChapterId] = useState(initialChapterId ?? chapters[0]?.id);
   const [progress, setProgress] = useState(initialPercent ?? 0);
   const [reaction, setReaction] = useState(initialReaction ?? null);
@@ -58,11 +59,13 @@ export function UpdateProgressModal({ clubBookId, chapters, initialChapterId, in
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>Capítulo</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', maxHeight: 132, overflowY: 'auto' }}>
             {chapters.map((c) => (
-              <Chip key={c.id} selected={c.id === chapterId} onClick={() => setChapterId(c.id)}>{c.label}</Chip>
+              <Chip key={c.id} selected={c.id === chapterId} onClick={() => setChapterId(c.id)}>{chapterDisplayLabel(c)}</Chip>
             ))}
-            <Chip onClick={chapterPending ? undefined : handleAddChapter}>
-              <Icon name="plus" size={12} /> {chapterPending ? 'Agregando...' : 'Nuevo'}
-            </Chip>
+            {isAdmin && (
+              <Chip onClick={chapterPending ? undefined : handleAddChapter}>
+                <Icon name="plus" size={12} /> {chapterPending ? 'Agregando...' : 'Nuevo'}
+              </Chip>
+            )}
           </div>
         </div>
 
