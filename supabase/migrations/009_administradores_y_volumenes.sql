@@ -10,6 +10,13 @@
 -- "owner" pasa a llamarse "admin": el creador del club ya es su primer
 -- administrador, y puede nombrar hasta 2 más (3 en total), todos con las
 -- mismas facultades — no hay jerarquía entre ellos.
+-- (Primero hay que permitir 'admin' en la restricción de la columna, y
+-- recién después actualizar los datos — si no, el update de abajo choca
+-- con la restricción vieja, que todavía no conoce 'admin'.)
+alter table public.club_members drop constraint if exists club_members_role_check;
+alter table public.club_members add constraint club_members_role_check
+  check (role in ('owner', 'admin', 'member'));
+
 update public.club_members set role = 'admin' where role = 'owner';
 
 alter table public.club_members drop constraint if exists club_members_role_check;
