@@ -69,7 +69,11 @@ supabase/
                            007_descubrir_clubes.sql (directorio de clubes públicos),
                            008_recursos_sin_autores.sql (Descubrir → Recursos, se saca la categoría Autor),
                            009_administradores_y_volumenes.sql (administradores del club,
-                             capítulos con nombre propio agrupados en volúmenes)
+                             capítulos con nombre propio agrupados en volúmenes),
+                           010_numeracion_por_volumen.sql (el número de capítulo es único
+                             por volumen, no por todo el libro),
+                           011_progreso_por_pagina.sql (progreso por capítulo o por página,
+                             porque cada quien puede tener una edición distinta)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -129,6 +133,15 @@ Ser administrador da acceso a **Gestionar capítulos** (ícono de lista en el de
 
 Además del hilo general del libro, ahora se puede comentar (texto, cita o nota de voz) un capítulo puntual — la pantalla de Comentarios tiene chips arriba para elegir "General del libro" o un capítulo específico, y solo muestra los comentarios de lo que está seleccionado.
 
+### Progreso de lectura: por capítulo o por página
+
+Como no todos los miembros de un club leen la misma edición (cambia la paginación, no los capítulos), el modal de "Actualizar progreso" deja elegir cómo registrarlo:
+
+- **Por capítulo** — elegís un capítulo de la lista (igual para todos, sea cual sea la edición). El % de la barra sale de en qué lugar de la lista de capítulos está ese capítulo (contando volúmenes en el orden en que fueron creados).
+- **Por página** — página actual y total de páginas **de tu propia edición**. El % sale de esa proporción, y queda guardado por persona (`current_page`/`total_pages` en `reading_progress`, migración 011).
+
+El servidor es el que calcula el % siempre (antes lo elegía un slider que en realidad medía el avance dentro del capítulo, no el del libro entero — quedaba inconsistente con la barra).
+
 ### Contenido editorial
 
 `editorial_items` alimenta tanto **Novedades** (feed cronológico) como las solapas Guías/Cursos de **Recursos** (mismos datos, agrupados por categoría). No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.
@@ -142,6 +155,7 @@ El SQL Editor de Supabase corre cada script en **una sola transacción**: si una
 - **Las notas de voz no se transcriben solas.** Quien graba puede escribir la transcripción a mano (opcional). La transcripción automática necesitaría un servicio externo pago.
 - **"Mis clubes de lectura" no tiene notificaciones de no leído**, solo muestra la última novedad de cada club (comentario o progreso más reciente). Hace falta una tabla de "último visto" por usuario/club para un contador real.
 - El modal de progreso no guarda "cita destacada" ni "nota" (esos campos del mock no tienen columna en `reading_progress`).
+- Los registros de progreso guardados antes de la migración 011 conservan su `percent` viejo (medía avance dentro del capítulo) hasta la próxima vez que esa persona actualice su progreso — no se recalculan retroactivamente.
 
 ## Sistema de diseño
 

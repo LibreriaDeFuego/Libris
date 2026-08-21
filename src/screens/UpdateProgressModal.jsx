@@ -3,15 +3,23 @@
 import { useState, useTransition } from 'react';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { Chip } from '@/design-system/components/core/Chip.jsx';
-import { Slider } from '@/design-system/components/forms/Slider.jsx';
+import { Input } from '@/design-system/components/forms/Input.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { updateProgress, addChapter } from '@/app/actions/clubs';
 import { chapterDisplayLabel } from '@/lib/orderChapters';
 
-export function UpdateProgressModal({ clubBookId, chapters, isAdmin, initialChapterId, initialPercent, initialReaction, onClose }) {
-  const [chapterId, setChapterId] = useState(initialChapterId ?? chapters[0]?.id);
-  const [progress, setProgress] = useState(initialPercent ?? 0);
+// Dos formas de contar en qué vas, porque no todos leen la misma edición:
+// por capítulo (igual para todos) o por página (propia de cada edición).
+export function UpdateProgressModal({
+  clubBookId, chapters, isAdmin,
+  initialChapterId, initialCurrentPage, initialTotalPages, initialReaction,
+  onClose,
+}) {
+  const [mode, setMode] = useState(initialChapterId ? 'chapter' : (initialTotalPages ? 'page' : (chapters.length > 0 ? 'chapter' : 'page')));
+  const [chapterId, setChapterId] = useState(initialChapterId ?? chapters[0]?.id ?? null);
+  const [currentPage, setCurrentPage] = useState(initialCurrentPage != null ? String(initialCurrentPage) : '');
+  const [totalPages, setTotalPages] = useState(initialTotalPages != null ? String(initialTotalPages) : '');
   const [reaction, setReaction] = useState(initialReaction ?? null);
   const [error, setError] = useState(null);
   const [savePending, startSave] = useTransition();
@@ -20,8 +28,13 @@ export function UpdateProgressModal({ clubBookId, chapters, isAdmin, initialChap
   function handleSave() {
     const formData = new FormData();
     formData.set('clubBookId', clubBookId);
-    formData.set('chapterId', chapterId);
-    formData.set('percent', String(progress));
+    formData.set('mode', mode);
+    if (mode === 'page') {
+      formData.set('currentPage', currentPage);
+      formData.set('totalPages', totalPages);
+    } else {
+      formData.set('chapterId', chapterId);
+    }
     if (reaction) formData.set('reaction', reaction);
 
     startSave(async () => {
@@ -47,34 +60,60 @@ export function UpdateProgressModal({ clubBookId, chapters, isAdmin, initialChap
       } else if (result?.chapter) {
         setError(null);
         setChapterId(result.chapter.id);
-        setProgress(0);
       }
     });
   }
+
+  const canSave = mode === 'page'
+    ? currentPage.trim() !== '' && totalPages.trim() !== ''
+    : Boolean(chapterId);
 
   return (
     <Modal title="Actualizar progreso" onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>Capítulo</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', maxHeight: 132, overflowY: 'auto' }}>
-            {chapters.map((c) => (
-              <Chip key={c.id} selected={c.id === chapterId} onClick={() => setChapterId(c.id)}>{chapterDisplayLabel(c)}</Chip>
-            ))}
-            {isAdmin && (
-              <Chip onClick={chapterPending ? undefined : handleAddChapter}>
-                <Icon name="plus" size={12} /> {chapterPending ? 'Agregando...' : 'Nuevo'}
-              </Chip>
-            )}
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>
+            ¿Cómo querés registrarlo?
+          </div>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 8, lineHeight: 'var(--lh-snug)' }}>
+            Como cada quien puede tener una edición distinta, elegí lo que te resulte más fácil de decir.
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Chip selected={mode === 'chapter'} onClick={() => setMode('chapter')}>Por capítulo</Chip>
+            <Chip selected={mode === 'page'} onClick={() => setMode('page')}>Por página</Chip>
           </div>
         </div>
 
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>
-            <span>Avance en el capítulo</span><span>{progress}%</span>
+        {mode === 'chapter' ? (
+          <div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>Capítulo</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', maxHeight: 132, overflowY: 'auto' }}>
+              {chapters.map((c) => (
+                <Chip key={c.id} selected={c.id === chapterId} onClick={() => setChapterId(c.id)}>{chapterDisplayLabel(c)}</Chip>
+              ))}
+              {isAdmin && (
+                <Chip onClick={chapterPending ? undefined : handleAddChapter}>
+                  <Icon name="plus" size={12} /> {chapterPending ? 'Agregando...' : 'Nuevo'}
+                </Chip>
+              )}
+            </div>
           </div>
-          <Slider value={progress} onChange={setProgress} />
-        </div>
+        ) : (
+          <div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>
+              Página de tu edición
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <Input type="number" min="0" placeholder="Voy en la" value={currentPage} onChange={(e) => setCurrentPage(e.target.value)} />
+              </div>
+              <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-tertiary)' }}>de</span>
+              <div style={{ flex: 1 }}>
+                <Input type="number" min="1" placeholder="Total de páginas" value={totalPages} onChange={(e) => setTotalPages(e.target.value)} />
+              </div>
+            </div>
+          </div>
+        )}
 
         <div>
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>¿Cómo estuvo?</div>
@@ -90,7 +129,7 @@ export function UpdateProgressModal({ clubBookId, chapters, isAdmin, initialChap
           </div>
         )}
 
-        <Button variant="primary" size="lg" onClick={handleSave} disabled={savePending || !chapterId}>
+        <Button variant="primary" size="lg" onClick={handleSave} disabled={savePending || !canSave}>
           {savePending ? 'Guardando...' : 'Guardar progreso'}
         </Button>
       </div>

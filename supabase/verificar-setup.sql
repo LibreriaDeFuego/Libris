@@ -14,7 +14,6 @@ select 'Migración 002 — política: crear libro activo del club',
        case when exists (select 1 from pg_policies where tablename = 'club_books' and policyname = 'members create club_books in their clubs')
             then 'OK' else 'FALTA' end
 union all
-union all
 select 'Migración 002 — política: guardar progreso',
        case when exists (select 1 from pg_policies where tablename = 'reading_progress' and policyname = 'users create progress in clubs they belong to')
             then 'OK' else 'FALTA' end
@@ -72,4 +71,14 @@ select 'Migración 009 — política: administradores crean capítulos',
 union all
 select 'Migración 009 — ya no quedan roles "owner"',
        case when not exists (select 1 from public.club_members where role = 'owner')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 010 — número de capítulo único por volumen',
+       case when exists (select 1 from pg_indexes where tablename = 'chapters' and indexname = 'chapters_number_por_volumen')
+        and exists (select 1 from pg_indexes where tablename = 'chapters' and indexname = 'chapters_number_sin_volumen')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 011 — progreso por página',
+       case when exists (select 1 from information_schema.columns where table_name = 'reading_progress' and column_name = 'current_page')
+        and exists (select 1 from information_schema.columns where table_name = 'reading_progress' and column_name = 'total_pages')
             then 'OK' else 'FALTA' end;

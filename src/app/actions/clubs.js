@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/requireUser';
 import { friendlyDbError } from '@/lib/friendlyError';
+import { orderChapters } from '@/lib/orderChapters';
 import { cookies } from 'next/headers';
 import { ACTIVE_CLUB_COOKIE } from '@/lib/activeClub';
 
@@ -372,25 +373,58 @@ export async function updateClubPreferences(prevState, formData) {
   return { error: null, saved: true };
 }
 
-// Actualiza el progreso del usuario en el libro activo de un club.
+// Actualiza el progreso del usuario en el libro activo de un club. Dos
+// formas de registrarlo, porque cada quien puede tener una edición distinta
+// del mismo libro:
+//   - "chapter": elige un capítulo de la lista. El % de la barra sale de en
+//     qué lugar de la lista está ese capítulo (los capítulos son iguales
+//     para todos, aunque cambie la paginación de cada edición).
+//   - "page": página actual y total de páginas de SU edición. El % sale de
+//     esa proporción, propia de cada persona.
 export async function updateProgress(formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
-  const clubBookId = formData.get('clubBookId');
-  const chapterId = formData.get('chapterId');
-  const percent = Number(formData.get('percent'));
+  const clubBookId = formData.get('clubBookId')?.toString();
+  const mode = formData.get('mode')?.toString();
   const reaction = formData.get('reaction') || null;
+  if (!clubBookId) return { error: 'Falta el libro del club.' };
+
+  let chapterId = null;
+  let currentPage = null;
+  let totalPages = null;
+  let percent;
+
+  if (mode === 'page') {
+    currentPage = parseInt(formData.get('currentPage')?.toString() ?? '', 10);
+    totalPages = parseInt(formData.get('totalPages')?.toString() ?? '', 10);
+    if (!Number.isFinite(totalPages) || totalPages < 1) return { error: 'Poné el total de páginas de tu edición.' };
+    if (!Number.isFinite(currentPage) || currentPage < 0) return { error: 'Poné en qué página vas.' };
+    if (currentPage > totalPages) return { error: 'La página no puede ser mayor que el total.' };
+    percent = Math.round((currentPage / totalPages) * 100);
+  } else {
+    chapterId = formData.get('chapterId')?.toString();
+    if (!chapterId) return { error: 'Elegí un capítulo.' };
+
+    const [{ data: chapters }, { data: volumes }] = await Promise.all([
+      supabase.from('chapters').select('id, number, volume_id').eq('club_book_id', clubBookId),
+      supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBookId),
+    ]);
+    const ordered = orderChapters(chapters ?? [], volumes ?? []);
+    const index = ordered.findIndex((c) => c.id === chapterId);
+    if (index === -1 || ordered.length === 0) return { error: 'Ese capítulo no existe.' };
+    percent = Math.round(((index + 1) / ordered.length) * 100);
+  }
 
   const { error } = await supabase
     .from('reading_progress')
     .upsert(
-      { club_book_id: clubBookId, profile_id: user.id, chapter_id: chapterId, percent, reaction },
+      { club_book_id: clubBookId, profile_id: user.id, chapter_id: chapterId, current_page: currentPage, total_pages: totalPages, percent, reaction },
       { onConflict: 'club_book_id,profile_id' }
     );
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyDbError(error) };
 
-  revalidatePath('/');
+  revalidatePath('/', 'layout');
   return { error: null };
 }
 

@@ -21,8 +21,19 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
 
   const orderedChapters = orderChapters(chapters, volumes ?? []);
   const totalChapters = chapters.length;
-  const currentChapter = chapters.find((c) => c.id === myProgress?.chapter_id) ?? orderedChapters[0] ?? null;
+  const currentChapter = myProgress?.chapter_id ? chapters.find((c) => c.id === myProgress.chapter_id) ?? null : null;
   const percent = myProgress?.percent ?? 0;
+
+  let bookStatusLabel;
+  if (currentChapter) {
+    bookStatusLabel = `${chapterDisplayLabel(currentChapter)} · ${totalChapters} en total`;
+  } else if (myProgress?.current_page != null && myProgress?.total_pages) {
+    bookStatusLabel = `Pág. ${myProgress.current_page} de ${myProgress.total_pages}`;
+  } else if (totalChapters > 0) {
+    bookStatusLabel = `${totalChapters} ${totalChapters === 1 ? 'capítulo' : 'capítulos'}`;
+  } else {
+    bookStatusLabel = 'Sin capítulos todavía';
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '20px 18px 24px' }}>
@@ -57,18 +68,14 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
           <BookCard
             title={book.title}
             club={book.author}
-            chapterLabel={
-              currentChapter
-                ? `${chapterDisplayLabel(currentChapter)} · ${totalChapters} en total`
-                : 'Sin capítulos todavía'
-            }
+            chapterLabel={bookStatusLabel}
             progress={percent}
             cover={book.cover_url}
           />
 
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
-              <Button variant="primary" size="md" onClick={() => setShowModal(true)} disabled={totalChapters === 0}>
+              <Button variant="primary" size="md" onClick={() => setShowModal(true)}>
                 <Icon name="book-open" size={16} />
                 Actualizar progreso
               </Button>
@@ -133,7 +140,8 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
               chapters={orderedChapters}
               isAdmin={isAdmin}
               initialChapterId={currentChapter?.id}
-              initialPercent={percent}
+              initialCurrentPage={myProgress?.current_page ?? null}
+              initialTotalPages={myProgress?.total_pages ?? null}
               initialReaction={myProgress?.reaction ?? null}
               onClose={() => setShowModal(false)}
             />

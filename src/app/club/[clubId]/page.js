@@ -33,7 +33,7 @@ export default async function Page({ params }) {
     supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
     supabase
       .from('reading_progress')
-      .select('chapter_id, percent, reaction')
+      .select('chapter_id, percent, reaction, current_page, total_pages')
       .eq('club_book_id', clubBook.id)
       .eq('profile_id', user.id)
       .maybeSingle(),
