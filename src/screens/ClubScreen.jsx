@@ -10,7 +10,6 @@ import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { SignOutButton } from '@/components/SignOutButton';
 import { InviteButton } from '@/components/InviteButton';
-import { CoverUploader } from '@/components/CoverUploader';
 import { ClubSwitcher } from '@/components/ClubSwitcher';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
@@ -55,22 +54,17 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
 
       {book ? (
         <>
-          <div style={{ position: 'relative' }}>
-            <BookCard
-              title={book.title}
-              club={book.author}
-              chapterLabel={
-                currentChapter
-                  ? `${chapterDisplayLabel(currentChapter)} · ${totalChapters} en total`
-                  : 'Sin capítulos todavía'
-              }
-              progress={percent}
-              cover={book.cover_url}
-            />
-            <div style={{ position: 'absolute', right: 12, bottom: 12 }}>
-              <CoverUploader bookId={book.id} hasCover={Boolean(book.cover_url)} />
-            </div>
-          </div>
+          <BookCard
+            title={book.title}
+            club={book.author}
+            chapterLabel={
+              currentChapter
+                ? `${chapterDisplayLabel(currentChapter)} · ${totalChapters} en total`
+                : 'Sin capítulos todavía'
+            }
+            progress={percent}
+            cover={book.cover_url}
+          />
 
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
