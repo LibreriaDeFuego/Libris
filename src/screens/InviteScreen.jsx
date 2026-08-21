@@ -18,7 +18,7 @@ export function InviteScreen({ clubId, club }) {
           Invitación no válida
         </div>
         <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-          Este link no corresponde a ningún club. Pedile a quien te invitó que te lo mande de nuevo.
+          Este link no corresponde a ningún club. Pídele a quien te invitó que te lo vuelva a enviar.
         </div>
         <Link href="/"><Button variant="secondary" size="md">Ir a mi club</Button></Link>
       </div>

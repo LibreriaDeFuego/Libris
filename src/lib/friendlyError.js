@@ -5,7 +5,7 @@
 export function friendlyDbError(error) {
   if (!error) return null;
   if (error.message?.includes('row-level security')) {
-    return 'No tenés permiso para hacer esto — hablá con un administrador del club.';
+    return 'No tienes permiso para hacer esto — habla con un administrador del club.';
   }
   return error.message;
 }

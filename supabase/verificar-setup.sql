@@ -81,4 +81,9 @@ union all
 select 'Migración 011 — progreso por página',
        case when exists (select 1 from information_schema.columns where table_name = 'reading_progress' and column_name = 'current_page')
         and exists (select 1 from information_schema.columns where table_name = 'reading_progress' and column_name = 'total_pages')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 012 — mensajes en español neutro',
+       case when exists (select 1 from pg_proc where proname = 'prevent_last_admin_leaving' and prosrc not like '%Nombrá%')
+        and not exists (select 1 from public.editorial_items where body like '%che, esto me voló%')
             then 'OK' else 'FALTA' end;

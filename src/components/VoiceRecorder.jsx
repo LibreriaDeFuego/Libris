@@ -47,7 +47,7 @@ export function VoiceRecorder({ clubBookId, chapterId, onDone }) {
     setError(null);
     const mimeType = pickMimeType();
     if (!mimeType) {
-      setError('Tu navegador no permite grabar audio. Probá con Chrome.');
+      setError('Tu navegador no permite grabar audio. Prueba con Chrome.');
       return;
     }
 
@@ -55,7 +55,7 @@ export function VoiceRecorder({ clubBookId, chapterId, onDone }) {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      setError('No pudimos acceder al micrófono. Revisá los permisos del navegador.');
+      setError('No pudimos acceder al micrófono. Revisa los permisos del navegador.');
       return;
     }
 

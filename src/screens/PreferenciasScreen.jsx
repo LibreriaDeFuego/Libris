@@ -95,7 +95,7 @@ function MemberRow({ member, canManage, adminCount, currentUserId }) {
         <Avatar name={name} size={32} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
-            {name} {isSelf && <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(vos)</span>}
+            {name} {isSelf && <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(tú)</span>}
           </div>
           {isAdminRow && (
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-600)', fontWeight: 600 }}>Administrador</div>
@@ -108,7 +108,7 @@ function MemberRow({ member, canManage, adminCount, currentUserId }) {
         )}
       </div>
       {blockedByLimit && (
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Ya hay 3 administradores — sacá a uno antes de agregar otro.</div>
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Ya hay 3 administradores — saca a uno antes de agregar otro.</div>
       )}
       {error && (
         <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 8 }}>
@@ -263,7 +263,7 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
           Salir del club
         </div>
         <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-snug)' }}>
-          Dejás de ver el club y su actividad. Tus comentarios y tu progreso quedan guardados por si volvés a entrar con el link de invitación.
+          Dejas de ver el club y su actividad. Tus comentarios y tu progreso quedan guardados por si vuelves a entrar con el link de invitación.
         </div>
         {confirmLeave ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

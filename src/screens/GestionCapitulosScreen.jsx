@@ -221,7 +221,7 @@ function NewChapterForm({ clubBookId, volumes, nextNumber }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--surface-card)', border: '1px solid var(--accent-500)', borderRadius: 'var(--radius-md)', padding: 12 }}>
       <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-        El número decide el orden. Si este volumen sigue la numeración anterior, dejá el número sugerido; si empieza de nuevo, poné 1.
+        El número decide el orden. Si este volumen sigue la numeración anterior, deja el número sugerido; si empieza de nuevo, pon 1.
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <div style={{ width: 76, flexShrink: 0 }}>

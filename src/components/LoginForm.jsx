@@ -24,7 +24,7 @@ export function LoginForm({ next = '/', googleEnabled = false }) {
           Libris
         </div>
         <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>
-          {mode === 'signIn' ? 'Entrá a tu cuenta' : 'Creá tu cuenta'}
+          {mode === 'signIn' ? 'Inicia sesión en tu cuenta' : 'Crea tu cuenta'}
         </div>
       </div>
 
@@ -38,7 +38,7 @@ export function LoginForm({ next = '/', googleEnabled = false }) {
         )}
         <div>
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Email</div>
-          <Input name="email" type="email" placeholder="vos@ejemplo.com" required />
+          <Input name="email" type="email" placeholder="tu@ejemplo.com" required />
         </div>
         <div>
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Contraseña</div>
@@ -53,7 +53,7 @@ export function LoginForm({ next = '/', googleEnabled = false }) {
 
         {state?.needsConfirmation && (
           <div style={{ color: 'var(--gold-700)', fontSize: 'var(--fs-xs)', background: 'var(--gold-100)', borderRadius: 'var(--radius-md)', padding: 10, lineHeight: 'var(--lh-snug)' }}>
-            Te mandamos un mail para confirmar tu cuenta. Abrí el link y después entrá con tu email y contraseña.
+            Te enviamos un correo para confirmar tu cuenta. Abre el link y después inicia sesión con tu email y contraseña.
           </div>
         )}
 
@@ -69,7 +69,7 @@ export function LoginForm({ next = '/', googleEnabled = false }) {
         onClick={() => setMode(mode === 'signIn' ? 'signUp' : 'signIn')}
         style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontSize: 'var(--fs-sm)', cursor: 'pointer', padding: 0 }}
       >
-        {mode === 'signIn' ? '¿No tenés cuenta? Creá una' : '¿Ya tenés cuenta? Entrá'}
+        {mode === 'signIn' ? '¿No tienes cuenta? Crea una' : '¿Ya tienes cuenta? Inicia sesión'}
       </button>
     </div>
   );

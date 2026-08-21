@@ -30,7 +30,7 @@ export function OnboardingScreen({ showBack = false }) {
             {showBack ? 'Otro club' : 'Todavía no estás en ningún club'}
           </div>
           <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>
-            Armá uno nuevo o unite con el link que te compartieron.
+            Crea uno nuevo o únete con el link que te compartieron.
           </div>
         </div>
       </div>
@@ -55,7 +55,7 @@ export function OnboardingScreen({ showBack = false }) {
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>¿Cuántos capítulos tiene?</div>
             <Input name="chapterCount" type="number" min={1} max={300} defaultValue={12} />
             <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>
-              Después podés agregar más desde “Actualizar progreso”.
+              Después puedes agregar más desde “Actualizar progreso”.
             </div>
           </div>
           {createState?.error && (
@@ -71,7 +71,7 @@ export function OnboardingScreen({ showBack = false }) {
         <form action={joinAction} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Link de invitación</div>
-            <Input name="clubId" placeholder="Pegá el link que te compartieron" required />
+            <Input name="clubId" placeholder="Pega el link que te compartieron" required />
           </div>
           {joinState?.error && (
             <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 10 }}>

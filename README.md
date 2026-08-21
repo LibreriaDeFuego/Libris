@@ -73,7 +73,9 @@ supabase/
                            010_numeracion_por_volumen.sql (el número de capítulo es único
                              por volumen, no por todo el libro),
                            011_progreso_por_pagina.sql (progreso por capítulo o por página,
-                             porque cada quien puede tener una edición distinta)
+                             porque cada quien puede tener una edición distinta),
+                           012_espanol_neutro.sql (mensajes de los triggers y contenido editorial
+                             a español latinoamericano neutro, sin voseo)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 

@@ -27,7 +27,7 @@ export async function uploadBookCover(prevState, formData) {
   const bookId = formData.get('bookId')?.toString();
   const file = formData.get('file');
   if (!bookId) return { error: 'Falta el libro.' };
-  if (!isFile(file) || file.size === 0) return { error: 'Elegí una imagen.' };
+  if (!isFile(file) || file.size === 0) return { error: 'Elige una imagen.' };
   if (file.size > MAX_COVER_BYTES) return { error: 'La imagen no puede pesar más de 5 MB.' };
 
   const extension = COVER_EXTENSIONS[file.type];

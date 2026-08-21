@@ -73,10 +73,10 @@ export function UpdateProgressModal({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>
-            ¿Cómo querés registrarlo?
+            ¿Cómo quieres registrarlo?
           </div>
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginBottom: 8, lineHeight: 'var(--lh-snug)' }}>
-            Como cada quien puede tener una edición distinta, elegí lo que te resulte más fácil de decir.
+            Como cada quien puede tener una edición distinta, elige lo que te resulte más fácil de decir.
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Chip selected={mode === 'chapter'} onClick={() => setMode('chapter')}>Por capítulo</Chip>

@@ -38,7 +38,7 @@ export function NewCommentForm({ clubBookId, chapterId }) {
         <Chip selected={kind === 'text'} onClick={() => setKind('text')}>Comentario</Chip>
         <Chip selected={kind === 'quote'} onClick={() => setKind('quote')}>Cita destacada</Chip>
       </div>
-      <Textarea name="body" placeholder={kind === 'quote' ? 'Escribí una cita destacada...' : '¿Qué te pareció este tramo del libro?'} rows={3} />
+      <Textarea name="body" placeholder={kind === 'quote' ? 'Escribe una cita destacada...' : '¿Qué te pareció este tramo del libro?'} rows={3} />
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
         <input type="checkbox" checked={isSpoiler} onChange={(e) => setIsSpoiler(e.target.checked)} />
         Contiene spoilers

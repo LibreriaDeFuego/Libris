@@ -53,7 +53,7 @@ export async function createClub(prevState, formData) {
   const bookTitle = formData.get('bookTitle')?.toString().trim();
   const bookAuthor = formData.get('bookAuthor')?.toString().trim();
   if (!clubName || !bookTitle || !bookAuthor) {
-    return { error: 'Completá el nombre del club, el título y el autor.' };
+    return { error: 'Completa el nombre del club, el título y el autor.' };
   }
 
   const parsedChapters = parseInt(formData.get('chapterCount')?.toString() ?? '', 10);
@@ -181,7 +181,7 @@ export async function createVolume(formData) {
 
   const clubBookId = formData.get('clubBookId')?.toString();
   const name = formData.get('name')?.toString().trim();
-  if (!clubBookId || !name) return { error: 'Ponele un nombre al volumen.' };
+  if (!clubBookId || !name) return { error: 'Ponle un nombre al volumen.' };
 
   const { data: last } = await supabase
     .from('volumes')
@@ -210,7 +210,7 @@ export async function renameVolume(formData) {
 
   const volumeId = formData.get('volumeId')?.toString();
   const name = formData.get('name')?.toString().trim();
-  if (!volumeId || !name) return { error: 'Ponele un nombre al volumen.' };
+  if (!volumeId || !name) return { error: 'Ponle un nombre al volumen.' };
 
   const { error } = await supabase.from('volumes').update({ name }).eq('id', volumeId);
   if (error) return { error: friendlyDbError(error) };
@@ -265,7 +265,7 @@ export async function demoteAdmin(formData) {
 export async function joinClub(prevState, formData) {
   const raw = formData.get('clubId')?.toString() ?? '';
   const clubId = raw.match(UUID_RE)?.[0];
-  if (!clubId) return { error: 'Pegá el link de invitación o el ID del club.' };
+  if (!clubId) return { error: 'Pega el link de invitación o el ID del club.' };
   return joinClubId(clubId);
 }
 
@@ -328,7 +328,7 @@ async function joinClubId(clubId) {
     const { error } = await supabase
       .from('club_members')
       .insert({ club_id: clubId, profile_id: user.id, role: 'member' });
-    if (error) return { error: 'No pudimos unirte — revisá que el link o el ID sean correctos.' };
+    if (error) return { error: 'No pudimos unirte — revisa que el link o el ID sean correctos.' };
   }
 
   await setActiveClubCookie(clubId);
@@ -398,13 +398,13 @@ export async function updateProgress(formData) {
   if (mode === 'page') {
     currentPage = parseInt(formData.get('currentPage')?.toString() ?? '', 10);
     totalPages = parseInt(formData.get('totalPages')?.toString() ?? '', 10);
-    if (!Number.isFinite(totalPages) || totalPages < 1) return { error: 'Poné el total de páginas de tu edición.' };
-    if (!Number.isFinite(currentPage) || currentPage < 0) return { error: 'Poné en qué página vas.' };
+    if (!Number.isFinite(totalPages) || totalPages < 1) return { error: 'Indica el total de páginas de tu edición.' };
+    if (!Number.isFinite(currentPage) || currentPage < 0) return { error: 'Indica en qué página vas.' };
     if (currentPage > totalPages) return { error: 'La página no puede ser mayor que el total.' };
     percent = Math.round((currentPage / totalPages) * 100);
   } else {
     chapterId = formData.get('chapterId')?.toString();
-    if (!chapterId) return { error: 'Elegí un capítulo.' };
+    if (!chapterId) return { error: 'Elige un capítulo.' };
 
     const [{ data: chapters }, { data: volumes }] = await Promise.all([
       supabase.from('chapters').select('id, number, volume_id').eq('club_book_id', clubBookId),
@@ -439,7 +439,7 @@ export async function postComment(formData) {
   const kind = formData.get('kind') || 'text';
   const body = formData.get('body')?.toString().trim();
   const isSpoiler = formData.get('isSpoiler') === 'on';
-  if (!body) return { error: 'Escribí algo antes de publicar.' };
+  if (!body) return { error: 'Escribe algo antes de publicar.' };
 
   const { error } = await supabase.from('comments').insert({
     club_book_id: clubBookId,

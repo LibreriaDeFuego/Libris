@@ -14,7 +14,7 @@ export function InviteButton({ clubId }) {
     // usuario lo cancela no hacemos nada más.
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Libris', text: 'Sumate a mi club de lectura', url });
+        await navigator.share({ title: 'Libris', text: 'Únete a mi club de lectura', url });
         return;
       } catch {
         return;
@@ -26,7 +26,7 @@ export function InviteButton({ clubId }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      window.prompt('Copiá este link y compartilo:', url);
+      window.prompt('Copia este link y compártelo:', url);
     }
   }
 

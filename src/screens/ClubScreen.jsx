@@ -117,9 +117,9 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
                         }}
                       >
                         {p.is_spoiler
-                          ? 'Comentario con spoiler — abrilo en Comentarios'
+                          ? 'Comentario con spoiler — ábrelo en Comentarios'
                           : p.kind === 'voice'
-                            ? 'Nota de voz — escuchala en Comentarios'
+                            ? 'Nota de voz — escúchala en Comentarios'
                             : p.body}
                       </div>
                     </div>

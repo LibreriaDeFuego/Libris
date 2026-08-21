@@ -67,7 +67,7 @@ export function MisClubesScreen({ clubs, publicClubsPreview }) {
           Mis clubes de lectura
         </div>
         <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>
-          Los clubes en los que participás, los hayas creado vos o no.
+          Los clubes en los que participas, los hayas creado o no.
         </div>
       </div>
 
