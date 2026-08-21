@@ -209,12 +209,22 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
                 />
                 <CoverUploader bookId={book.id} hasCover={Boolean(book.cover_url)} tone="light" />
               </div>
-              <Link href={`/club/${club.id}/capitulos`}>
-                <Button variant="secondary" size="md" type="button">
-                  <Icon name="list" size={15} />
-                  Gestionar capítulos
-                </Button>
-              </Link>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {book.cover_url && (
+                  <Link href={`/club/${club.id}/portada`}>
+                    <Button variant="secondary" size="md" type="button">
+                      <Icon name="crop" size={15} />
+                      Encuadrar portada
+                    </Button>
+                  </Link>
+                )}
+                <Link href={`/club/${club.id}/capitulos`}>
+                  <Button variant="secondary" size="md" type="button">
+                    <Icon name="list" size={15} />
+                    Gestionar capítulos
+                  </Button>
+                </Link>
+              </div>
             </Section>
           )}
 

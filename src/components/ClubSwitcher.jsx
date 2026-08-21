@@ -8,7 +8,9 @@ import { Icon } from '@/design-system/components/core/Icon.jsx';
 
 // Con multi-club el nombre del club pasa a ser un menú: cambia de club, o
 // lleva a crear/unirse a otro.
-export function ClubSwitcher({ clubs, activeClub }) {
+// tone='chip' es el chip de vidrio sobre el héroe de portada (fondo de
+// foto): pastilla translúcida con blur y el punto de actividad.
+export function ClubSwitcher({ clubs, activeClub, tone = 'plain', hasActivity = false }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -28,21 +30,31 @@ export function ClubSwitcher({ clubs, activeClub }) {
     });
   }
 
+  const chipStyle = tone === 'chip' ? {
+    display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', textAlign: 'left',
+    background: 'rgba(255,248,236,0.14)', backdropFilter: 'blur(14px)',
+    border: '1px solid rgba(255,248,236,0.2)', borderRadius: 'var(--radius-pill)',
+    padding: '7px 13px 7px 10px', color: 'var(--hero-cream)',
+    fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap',
+    opacity: pending ? 0.6 : 1,
+  } : {
+    display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
+    padding: 0, cursor: 'pointer', textAlign: 'left', color: 'var(--text-primary)',
+    fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600,
+    opacity: pending ? 0.5 : 1,
+  };
+
   return (
     <div style={{ position: 'relative' }}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        disabled={pending}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
-          padding: 0, cursor: 'pointer', textAlign: 'left', color: 'var(--text-primary)',
-          fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600,
-          opacity: pending ? 0.5 : 1,
-        }}
-      >
+      <button type="button" onClick={() => setOpen(!open)} disabled={pending} style={chipStyle}>
+        {tone === 'chip' && hasActivity && (
+          <span
+            aria-hidden
+            style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 0 3px rgba(27,170,107,.28)', flexShrink: 0 }}
+          />
+        )}
         {activeClub.name}
-        <Icon name={open ? 'chevron-up' : 'chevron-down'} size={18} />
+        <Icon name={open ? 'chevron-up' : 'chevron-down'} size={tone === 'chip' ? 13 : 18} />
       </button>
 
       {open && (

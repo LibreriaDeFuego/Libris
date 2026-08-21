@@ -86,4 +86,10 @@ union all
 select 'Migración 012 — mensajes en español neutro',
        case when exists (select 1 from pg_proc where proname = 'prevent_last_admin_leaving' and prosrc not like '%Nombrá%')
         and not exists (select 1 from public.editorial_items where body like '%che, esto me voló%')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 013 — encuadre de portada',
+       case when exists (select 1 from information_schema.columns where table_name = 'books' and column_name = 'cover_crop')
+        and exists (select 1 from information_schema.columns where table_name = 'books' and column_name = 'cover_has_title')
+        and exists (select 1 from pg_policies where tablename = 'books' and policyname = 'administradores actualizan los libros de su club')
             then 'OK' else 'FALTA' end;

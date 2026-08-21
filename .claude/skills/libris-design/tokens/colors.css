@@ -14,6 +14,7 @@
 --accent-50:#FFEAE4;
 --accent-100:#FFD2C4;
 --accent-300:#FF8A6C;
+--accent-400:#FF6B4A; /* coral claro: pips y acentos sobre el héroe oscuro */
 --accent-500:#FF4F32;
 --accent-600:#E63E22;
 --accent-700:#B8321A;
@@ -26,11 +27,19 @@
 
 /* semantic — green doubles as "social activity" (other clubs, feed events) */
 --success:#1BAA6B;
+--success-700:#0F7A4B; /* verde texto, sobre --success-bg */
 --success-bg:#EAF7EE;
 --warning:#FFC93F;
 --warning-bg:#FFF3D2;
 --danger:#E63E22;
 --danger-bg:#FFEAE4;
+
+/* héroe de portada (A2) — la portada ocupa toda la pantalla, con texto
+   crema encima; tokens propios porque el fondo no es una superficie normal */
+--hero-bg:#16150F;
+--hero-cream:#FFF8EC;
+--surface-stage:#E7E4DA; /* fondo del "escenario" del editor de encuadre */
+--border-panel:#DAD6CA; /* bordes del panel de encuadre (admin) */
 
 /* surfaces */
 --surface-page:var(--neutral-0);

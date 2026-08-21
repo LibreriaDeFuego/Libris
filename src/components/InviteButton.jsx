@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 
-export function InviteButton({ clubId }) {
+export function InviteButton({ clubId, tone = 'light' }) {
   const [copied, setCopied] = useState(false);
 
   async function handleClick() {
@@ -32,7 +32,7 @@ export function InviteButton({ clubId }) {
 
   return (
     <div style={{ position: 'relative' }}>
-      <IconButton aria-label="Invitar gente al club" onClick={handleClick}>
+      <IconButton aria-label="Invitar gente al club" onClick={handleClick} tone={tone}>
         <Icon name="user-plus" size={18} />
       </IconButton>
       {copied && (

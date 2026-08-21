@@ -1,0 +1,138 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Libris — Encuadre de portada</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#2E2D29;min-height:100vh;font-family:'Plus Jakarta Sans',sans-serif;padding:32px;display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:34px}
+
+a{color:#E63E22}a:hover{color:#B8321A}
+[data-lucide]{display:inline-flex;line-height:0}
+.panel{flex:1 1 400px;min-width:340px;max-width:520px;background:#FFF8EC;border-radius:22px;padding:26px}
+.eyebrow{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:#B5B2A7;font-weight:800}
+h1{font-family:'Bricolage Grotesque',sans-serif;font-size:25px;font-weight:800;color:#1B1B1F;letter-spacing:-.02em;margin-top:7px}
+.sub{font-size:13px;color:#5A5952;margin-top:8px;line-height:1.5}
+.stagewrap{position:relative;margin-top:20px;background:#E7E4DA;border-radius:14px;overflow:hidden;height:420px;display:grid;place-items:center;cursor:grab;touch-action:none}
+.stagewrap.drag{cursor:grabbing}
+.canv{position:absolute;inset:0;overflow:hidden}
+.canv img{position:absolute;transform-origin:0 0;user-select:none;-webkit-user-drag:none}
+.mask{position:absolute;inset:0;pointer-events:none;background:rgba(22,21,15,.6);-webkit-mask-image:linear-gradient(#000,#000),linear-gradient(#000,#000);mask-image:linear-gradient(#000,#000),linear-gradient(#000,#000);-webkit-mask-composite:xor;mask-composite:exclude;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.crop{position:absolute;pointer-events:none;box-shadow:0 0 0 1.5px #FFF8EC;border-radius:2px}
+.crop .thirds{position:absolute;inset:0;opacity:.42}
+.crop .thirds i{position:absolute;background:#FFF8EC}
+.safe{position:absolute;left:0;right:0;bottom:0;height:46%;background:linear-gradient(180deg,transparent,rgba(22,21,15,.42));border-top:1px dashed rgba(255,248,236,.45)}
+.safelbl{position:absolute;left:8px;bottom:6px;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:rgba(255,248,236,.72)}
+.risk{position:absolute;left:0;right:0;top:12%;height:42%;border-top:1px dashed rgba(255,201,63,.85);border-bottom:1px dashed rgba(255,201,63,.85);background:rgba(255,201,63,.1)}
+.risklbl{position:absolute;left:8px;top:6px;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:#FFC93F}
+.hint{position:absolute;left:12px;top:12px;background:rgba(22,21,15,.62);backdrop-filter:blur(10px);color:#FFF8EC;font-size:11.5px;font-weight:600;padding:6px 10px;border-radius:8px;pointer-events:none}
+.ctl{margin-top:18px}
+.ctlrow{display:flex;align-items:center;gap:13px}
+.ctllbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:#8B8B85;width:58px;flex:none}
+input[type=range]{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;background:#DAD6CA;outline:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#FF4F32;border:3px solid #FFF8EC;box-shadow:0 2px 8px rgba(255,79,50,.4);cursor:pointer}
+.val{font-family:'Bricolage Grotesque',sans-serif;font-size:14px;font-weight:700;color:#1B1B1F;width:52px;text-align:right;flex:none}
+.chips{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.pchip{border:1px solid #DAD6CA;background:transparent;border-radius:999px;padding:8px 14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:12.5px;font-weight:700;color:#5A5952;cursor:pointer;display:flex;align-items:center;gap:6px}
+.pchip:hover{border-color:#1B1B1F;color:#1B1B1F}
+.pchip.on{background:#1B1B1F;border-color:#1B1B1F;color:#FFF8EC}
+.warn{display:flex;gap:9px;align-items:flex-start;margin-top:18px;padding:12px 13px;border-radius:12px;background:#FFF3D2;color:#8A6706}
+.warn b{font-size:12.5px;font-weight:700;line-height:1.4;display:block}
+.warn span{font-size:12px;font-weight:500;line-height:1.45;display:block;margin-top:3px;color:#A57C05}
+.warn.ok{background:#EAF7EE;color:#0F7A4B}
+.warn.ok span{color:#1B8A5A}
+.toggle{display:flex;gap:12px;align-items:flex-start;margin-top:18px;padding:14px;border-radius:12px;border:1.5px solid #DAD6CA;cursor:pointer}
+.toggle.on{border-color:#1BAA6B;background:#EAF7EE}
+.toggle input{position:absolute;opacity:0;pointer-events:none}
+.sw{width:40px;height:23px;border-radius:999px;background:#DAD6CA;flex:none;position:relative;transition:background .16s;margin-top:1px}
+.sw:after{content:"";position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:50%;background:#FFF8EC;transition:transform .16s}
+.toggle.on .sw{background:#1BAA6B}
+.toggle.on .sw:after{transform:translateX(17px)}
+.tt b{font-size:12.5px;font-weight:700;color:#1B1B1F;display:block;line-height:1.35}
+.tt>span{font-size:12px;color:#5A5952;display:block;margin-top:3px;line-height:1.45}
+.phone.notitle h1{display:none}
+.phone.notitle .kicker{font-size:12px;letter-spacing:.1em}
+.phone.notitle .author{margin-top:10px}
+.phone.notitle #bookauthor{font-family:'Bricolage Grotesque',sans-serif;font-size:19px;color:#FFF8EC;font-weight:700;letter-spacing:-.01em}
+.foot{display:flex;gap:10px;margin-top:20px}
+.btn{height:48px;border:0;border-radius:14px;font-family:'Plus Jakarta Sans',sans-serif;font-size:14.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn.p{flex:1;background:#FF4F32;color:#FFF8EC;box-shadow:0 8px 20px rgba(255,79,50,.3)}
+.btn.g{flex:0 0 auto;padding:0 18px;background:transparent;border:1.5px solid #DAD6CA;color:#5A5952}
+.btn.g:hover{border-color:#1B1B1F;color:#1B1B1F}
+.side{flex:none}
+.sidelbl{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,248,236,.55);font-weight:800;margin-bottom:12px}
+.phone{width:390px;height:844px;background:#16150F;border-radius:38px;overflow:hidden;position:relative;box-shadow:0 30px 70px rgba(0,0,0,.5)}
+.bgfallback{position:absolute;inset:0;background:linear-gradient(155deg,#B8321A,#7A1D0E 55%,#3A0E06)}
+.bgclip{position:absolute;inset:0;overflow:hidden}
+.bg{position:absolute;inset:-40px;filter:blur(26px) saturate(1.25);opacity:.9}
+.bg img{width:100%;height:100%;object-fit:cover}
+.cover{position:absolute;inset:0;overflow:hidden}
+.cover img{position:absolute;transform-origin:0 0}
+.topfade{position:absolute;left:0;right:0;top:0;height:150px;z-index:2;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);-webkit-mask-image:linear-gradient(180deg,#000 0%,#000 42%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,#000 42%,transparent 100%)}
+.topdim{position:absolute;left:0;right:0;top:0;height:170px;z-index:3;background:linear-gradient(180deg,rgba(22,21,15,.5) 0%,rgba(22,21,15,.22) 60%,transparent)}
+.scrim{position:absolute;inset:0;z-index:3;background:linear-gradient(180deg,rgba(22,21,15,0) 0%,rgba(22,21,15,0) 34%,rgba(22,21,15,.9) 62%,#16150F 78%)}
+.topbar{position:relative;z-index:4;display:flex;justify-content:space-between;align-items:center;padding:50px 18px 0}
+.chip{display:flex;align-items:center;gap:8px;background:rgba(255,248,236,.14);backdrop-filter:blur(14px);border:1px solid rgba(255,248,236,.2);border-radius:999px;padding:7px 13px 7px 10px;color:#FFF8EC;font-size:12.5px;font-weight:600;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:#1BAA6B;box-shadow:0 0 0 3px rgba(27,170,107,.28);flex:none}
+.iconbtn{width:36px;height:36px;border-radius:50%;background:rgba(255,248,236,.12);backdrop-filter:blur(14px);border:1px solid rgba(255,248,236,.18);display:grid;place-items:center;color:#FFF8EC}
+.stack{position:absolute;left:0;right:0;bottom:80px;z-index:5;padding:0 22px 22px}
+.grab{width:38px;height:4px;border-radius:2px;background:rgba(255,248,236,.32);margin:0 auto 18px}
+.kicker{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:#FFC93F;font-weight:800}
+.phone h1{font-family:'Bricolage Grotesque',sans-serif;font-size:36px;line-height:1.02;letter-spacing:-.025em;color:#FFF8EC;font-weight:800;margin-top:9px}
+.author{color:rgba(255,248,236,.62);font-size:13.5px;margin-top:7px}
+.row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:18px}
+.pct{font-family:'Bricolage Grotesque',sans-serif;font-size:38px;font-weight:800;color:#FFF8EC;letter-spacing:-.03em;line-height:.9}
+.progmeta{font-size:12.5px;color:rgba(255,248,236,.58)}
+.pips{display:flex;gap:4px;margin-top:13px}
+.pip{flex:1;height:4px;border-radius:2px;background:rgba(255,248,236,.16)}
+.pip.on{background:#FF6B4A}
+.pip.now{background:#FF6B4A;opacity:.5}
+.acts{display:flex;gap:10px;margin-top:20px}
+.btn.hero{flex:1;height:52px;border-radius:16px;background:#FF4F32;color:#FFF8EC;box-shadow:0 10px 26px rgba(255,79,50,.36);font-size:15px}
+.btn.heros{flex:0 0 52px;height:52px;border-radius:16px;background:rgba(255,248,236,.10);border:1px solid rgba(255,248,236,.18);color:#FFF8EC}
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:80px;background:rgba(255,248,236,.9);backdrop-filter:blur(20px);border-top:1px solid #E4E3DE;display:flex;align-items:flex-start;padding-top:11px;z-index:6}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#8B8B85}
+.tab.on{color:#FF4F32}
+</style></head><body>
+<div class="panel">
+<div class="eyebrow">Panel del club · portada</div>
+<h1>Encuadrá la portada</h1>
+<div class="sub">Arrastrá la imagen y ajustá el zoom. El recuadro es lo que se ve en la app. La franja marcada arriba queda expuesta; lo que caiga en la zona gris de abajo lo tapa el chrome. Las tres portadas de muestra traen el título impreso — apagá el control de abajo para ver el caso contrario.</div>
+<div class="chips" style="margin-top:16px">
+<button class="cchip pchip on" data-hastitle="1" data-src="./cover-retrato.jpg" data-title="El retrato de casada" data-author="Maggie O’Farrell" data-unit="24 capítulos" data-pos="Cap. 16 · pág. 268 de 416" data-pct="64" data-n="24" data-on="15">El retrato de casada</button>
+<button class="cchip pchip" data-hastitle="1" data-src="./cover-el-ano.jpg" data-title="El año en que hablamos con el mar" data-author="Andrés Montero" data-unit="14 capítulos" data-pos="Cap. 3 · pág. 52 de 232" data-pct="22" data-n="14" data-on="2">El año…</button>
+<button class="cchip pchip" data-hastitle="1" data-src="./cover-tan-poca-vida.png" data-title="Tan poca vida" data-author="Hanya Yanagihara" data-unit="7 partes" data-pos="Parte 3 · pág. 412 de 1008" data-pct="41" data-n="7" data-on="2">Tan poca vida</button>
+</div>
+<div class="stagewrap" id="stage">
+<div class="canv" id="canv"><img id="img" alt=""></div>
+<div class="mask" id="mask"></div>
+<div class="crop" id="crop"><div class="thirds"><i style="left:33.33%;top:0;bottom:0;width:1px"></i><i style="left:66.66%;top:0;bottom:0;width:1px"></i><i style="top:33.33%;left:0;right:0;height:1px"></i><i style="top:66.66%;left:0;right:0;height:1px"></i></div><div class="risk"><span class="risklbl">Franja expuesta</span></div><div class="safe"><span class="safelbl">Lo tapa el chrome</span></div></div>
+<div class="hint">Arrastrá para mover</div>
+</div>
+<div class="ctl"><div class="ctlrow"><span class="ctllbl">Zoom</span><input type="range" id="zoom" min="100" max="320" value="100"><span class="val" id="zoomval">100%</span></div></div>
+<div class="chips">
+<button class="pchip preset" id="p-fit"><i data-lucide="minimize-2" style="width:14px;height:14px"></i>Ajustar entera</button>
+<button class="pchip preset on" id="p-fill"><i data-lucide="maximize-2" style="width:14px;height:14px"></i>Llenar</button>
+<button class="pchip preset" id="p-top"><i data-lucide="arrow-up-to-line" style="width:14px;height:14px"></i>Alinear arriba</button>
+<button class="pchip preset" id="p-face"><i data-lucide="scan-face" style="width:14px;height:14px"></i>Centrar tercio superior</button>
+</div>
+<label class="toggle" id="duplbl"><input type="checkbox" id="dup"><span class="sw"></span><span class="tt"><b>La tapa ya muestra el título</b><span>La app deja de escribirlo encima: en el héroe queda solo el autor y el progreso.</span></span></label>
+<div class="foot"><button class="btn p"><i data-lucide="check" style="width:17px;height:17px"></i>Guardar encuadre</button><button class="btn g" id="reset">Restablecer</button></div>
+</div>
+<div class="side">
+<div class="sidelbl">Vista previa en vivo</div>
+<div class="phone">
+<div class="bgfallback"></div>
+<div class="bgclip"><div class="bg"><img id="bimg" alt=""></div></div>
+<div class="cover"><img id="himg" alt=""></div>
+<div class="topfade"></div><div class="topdim"></div><div class="scrim"></div>
+<div class="topbar"><div class="chip"><span class="dot"></span>Círculo de los martes <i data-lucide="chevron-down" style="width:13px;height:13px"></i></div><div class="iconbtn"><i data-lucide="settings" style="width:16px;height:16px"></i></div></div>
+<div class="stack"><div class="grab"></div><div class="kicker">Leyendo ahora</div><h1 id="booktitle">El retrato de casada</h1><div class="author"><span id="bookauthor">Maggie O’Farrell</span> · <span class="unit" id="bookunit">24 capítulos</span></div>
+<div class="row"><div class="pct" id="bookpct">64%</div><div class="progmeta" id="bookpos">Cap. 16 · pág. 268 de 416</div></div>
+<div class="pips" id="bookpips"></div>
+
+<div class="acts"><button class="btn hero"><i data-lucide="book-open" style="width:17px;height:17px"></i>Actualizar progreso</button><button class="btn heros"><i data-lucide="message-circle" style="width:19px;height:19px"></i></button></div>
+</div>
+<div class="tabbar"><div class="tab on"><i data-lucide="book-open" style="width:21px;height:21px"></i>Club</div><div class="tab"><i data-lucide="bell" style="width:21px;height:21px"></i>Novedades</div><div class="tab"><i data-lucide="compass" style="width:21px;height:21px"></i>Recursos</div></div>
+</div>
+</div>
+<script src="./cover-framer.js"></script>
+</body></html>

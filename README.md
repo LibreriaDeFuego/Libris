@@ -23,6 +23,7 @@ src/
     club/[clubId]/comentarios/    # comentarios de ESE club, generales o por capítulo
     club/[clubId]/preferencias/   # nombre, visibilidad, libro, administradores y salir de ESE club
     club/[clubId]/capitulos/      # gestión de capítulos y volúmenes (solo administradores)
+    club/[clubId]/portada/        # editor de encuadre de la portada (solo administradores)
     club/otros/            # directorio de clubes públicos para unirse
     club/nuevo/            # crear o unirse a otro club (multi-club)
     unirse/[clubId]/       # pantalla de invitación (link para compartir)
@@ -32,19 +33,25 @@ src/
                            #   promoteAdmin, demoteAdmin, joinClubFromInvite,
                            #   selectClub, leaveClub, updateClubPreferences,
                            #   updateProgress, postComment
-    actions/media.js       # Server Actions: uploadBookCover, postVoiceComment
+    actions/media.js       # Server Actions: uploadBookCover, updateCoverFrame, postVoiceComment
     manifest.js            # genera /manifest.webmanifest (PWA)
   components/
     AppShell.jsx           # shell con tab bar inferior (Club / Novedades / Recursos)
     LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx, InviteButton.jsx,
     GoogleSignInButton.jsx, VoiceRecorder.jsx, CoverUploader.jsx,
-    ClubSwitcher.jsx (menú para cambiar de club dentro del detalle)
+    ClubSwitcher.jsx (menú para cambiar de club; tone="chip" para el héroe),
+    CoverHero.jsx (héroe de portada a sangre — lo usan ClubScreen y la vista
+      previa en vivo del editor de encuadre, una sola función para los dos),
+    CoverImage.jsx (posiciona la portada según cover_crop, mide el tamaño natural)
     ServiceWorkerRegistration.jsx
   screens/                # pantallas de producto (usan el design system + props con datos reales)
   lib/
     supabase/               client.js, server.js, middleware.js (@supabase/ssr)
     activeClub.js (multi-club: clubes del usuario + club activo por cookie),
     orderChapters.js (orden y nombre de capítulos, agrupados por volumen),
+    heroProgress.js (% / etiqueta / pips del héroe, a partir de capítulos o página),
+    coverFrame.js (matemática del encuadre de portada — escala, clamp, presets,
+      persistencia como 4 números normalizados; portada de cover-framer.js),
     friendlyError.js (traduce errores de Postgres/RLS a mensajes en español),
     formatRelativeTime.js, safeNext.js, authProviders.js, requireUser.js
   design-system/           # sistema de diseño Libris (tokens + 18 componentes reutilizables)
@@ -75,7 +82,9 @@ supabase/
                            011_progreso_por_pagina.sql (progreso por capítulo o por página,
                              porque cada quien puede tener una edición distinta),
                            012_espanol_neutro.sql (mensajes de los triggers y contenido editorial
-                             a español latinoamericano neutro, sin voseo)
+                             a español latinoamericano neutro, sin voseo),
+                           013_encuadre_portada.sql (cover_crop + cover_has_title en books,
+                             y books pasa a editarse solo por administradores)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -143,6 +152,21 @@ Como no todos los miembros de un club leen la misma edición (cambia la paginaci
 - **Por página** — página actual y total de páginas **de tu propia edición**. El % sale de esa proporción, y queda guardado por persona (`current_page`/`total_pages` en `reading_progress`, migración 011).
 
 El servidor es el que calcula el % siempre (antes lo elegía un slider que en realidad medía el avance dentro del capítulo, no el del libro entero — quedaba inconsistente con la barra).
+
+### Héroe de portada y encuadre
+
+El detalle del club (`ClubScreen`) muestra la portada a pantalla completa ("a sangre"): título, autor, progreso y acciones se apoyan abajo sobre un scrim, en vez del layout viejo de una tarjeta chica de 46×66 px. Viene de un handoff de diseño (`design_handoff_hero_portada/`, hecho en Claude Design) — ver ese README para el detalle visual completo.
+
+Dos piezas nuevas:
+
+- **`CoverHero`** (`src/components/CoverHero.jsx`) — el héroe en sí. Lo usan tanto `ClubScreen` (variant `screen`, llena el alto disponible) como la vista previa en vivo del editor de encuadre (variant `preview`, marco de teléfono fijo 390×844) — una sola función para los dos, así nunca pueden mostrar datos distintos.
+- **Editor de encuadre** (`/club/[clubId]/portada`, solo administradores) — arrastrar y hacer zoom sobre la portada para decidir qué parte se ve en el héroe, con vista previa en vivo. La matemática (escala "cubrir", clamp para no dejar huecos, los 4 presets, y la persistencia como 4 números normalizados 0–1 en vez de un transform en px) está en `src/lib/coverFrame.js`, portada casi literal del prototipo del handoff.
+
+**Título duplicado**: casi todas las portadas ya traen el título impreso, así que por defecto (`cover_has_title = true`) el héroe no lo repite — muestra el autor más grande y el kicker "Leyendo ahora" en su lugar. El admin lo puede desactivar desde el editor de encuadre si la tapa que subió no trae título. Se decidió *no* intentar detectar esto automáticamente analizando la imagen (se probó y da falsos positivos/negativos con portadas ilustradas o de mucho grano) — es un switch explícito.
+
+`cover_crop` (jsonb: `{x, y, w, h}` normalizados 0–1 respecto del tamaño natural de la imagen) y `cover_has_title` viven en `books`, no en `club_books` — igual que `cover_url`, se comparten entre todos los clubes que están leyendo ese mismo libro.
+
+**Pendiente, tal como lo dejó el handoff**: libros sin portada no tienen todavía un fallback tipográfico (por ahora solo se ve el degradé de fondo); y hoy un solo encuadre sirve para el héroe y para cualquier miniatura futura — si una miniatura cuadrada quedara mal recortada, va a hacer falta un segundo encuadre.
 
 ### Contenido editorial
 

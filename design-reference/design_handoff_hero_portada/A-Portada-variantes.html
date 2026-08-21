@@ -1,0 +1,185 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Libris — Variantes de portada</title>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font-family:'Plus Jakarta Sans',sans-serif;width:2200px;height:1400px;position:relative}
+a{color:#E63E22}a:hover{color:#B8321A}
+[data-lucide]{display:inline-flex;line-height:0}
+.frame{position:absolute;width:390px}
+.lbl{font-family:'Bricolage Grotesque',sans-serif;font-size:17px;font-weight:700;color:#1B1B1F;letter-spacing:-.01em}
+.desc{font-size:12.5px;color:#5A5952;line-height:1.45;margin-top:5px;max-width:370px}
+.phone{width:390px;height:844px;background:#16150F;border-radius:38px;overflow:hidden;position:relative;box-shadow:0 24px 60px rgba(0,0,0,.35);margin-top:14px}
+.bgclip{position:absolute;inset:0;overflow:hidden}
+.bg{position:absolute;inset:-40px;filter:blur(26px) saturate(1.25);opacity:.9}
+.bgfallback{position:absolute;inset:0;background:linear-gradient(155deg,#B8321A,#7A1D0E 55%,#3A0E06)}
+.topbar{position:relative;z-index:4;display:flex;justify-content:space-between;align-items:center;padding:50px 18px 0}
+.chip{display:flex;align-items:center;gap:8px;background:rgba(255,248,236,.14);backdrop-filter:blur(14px);border:1px solid rgba(255,248,236,.2);border-radius:999px;padding:7px 13px 7px 10px;color:#FFF8EC;font-size:12.5px;font-weight:600;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:#1BAA6B;box-shadow:0 0 0 3px rgba(27,170,107,.28);flex:none}
+.ibs{display:flex;gap:8px}
+.iconbtn{width:36px;height:36px;border-radius:50%;background:rgba(255,248,236,.12);backdrop-filter:blur(14px);border:1px solid rgba(255,248,236,.18);display:grid;place-items:center;color:#FFF8EC}
+.kicker{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:#FFC93F;font-weight:800}
+h1{font-family:'Bricolage Grotesque',sans-serif;line-height:1.02;letter-spacing:-.025em;color:#FFF8EC;font-weight:800}
+.author{color:rgba(255,248,236,.62);font-size:13.5px;margin-top:7px}
+.btn{height:52px;border-radius:16px;border:0;font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer}
+.btn.p{flex:1;background:#FF4F32;color:#FFF8EC;box-shadow:0 10px 26px rgba(255,79,50,.36)}
+.btn.s{flex:0 0 52px;background:rgba(255,248,236,.10);border:1px solid rgba(255,248,236,.18);color:#FFF8EC}
+.sheet{position:relative;background:#FFF8EC;border-radius:28px 28px 0 0;padding:20px 22px 0}
+.social{display:flex;align-items:center;gap:10px;background:#EAF7EE;border-radius:14px;padding:11px 13px;color:#0F7A4B}
+.social b{font-size:12.5px;font-weight:700;line-height:1.35}
+.sheethead{display:flex;justify-content:space-between;align-items:baseline;margin-top:18px}
+h2{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;color:#1B1B1F;font-weight:700;letter-spacing:-.015em}
+.all{font-size:12.5px;font-weight:700;color:#E63E22}
+.imp{display:flex;gap:11px;padding:13px 0;border-bottom:1px solid #E4E3DE}
+.av{width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;font-weight:800;color:#7A1D0E;background:linear-gradient(140deg,#FFDD7A,#FF8A6C)}
+.nm{font-size:12.5px;font-weight:700;color:#1B1B1F}
+.nm span{font-weight:500;color:#B5B2A7}
+.bd{font-size:13.5px;color:#5A5952;margin-top:3px;line-height:1.45}
+.quote{border-left:2px solid #FFC93F;padding-left:10px;font-style:italic;color:#A57C05}
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:80px;background:rgba(255,248,236,.9);backdrop-filter:blur(20px);border-top:1px solid #E4E3DE;display:flex;align-items:flex-start;padding-top:11px;z-index:6}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#8B8B85}
+.tab.on{color:#FF4F32}
+.progmeta{font-size:12.5px;color:rgba(255,248,236,.58)}
+.pips{display:flex;gap:4px}
+.pip{flex:1;height:4px;border-radius:2px;background:rgba(255,248,236,.16)}
+.pip.on{background:#FF6B4A}
+.pip.now{background:#FF6B4A;opacity:.5}
+
+/* A2 — full bleed */
+.fb .cover{position:absolute;inset:0}
+.fb .topfade{position:absolute;left:0;right:0;top:0;height:300px;z-index:2;backdrop-filter:blur(16px) saturate(.9);-webkit-backdrop-filter:blur(16px) saturate(.9);mask-image:linear-gradient(180deg,#000 0%,#000 46%,transparent 100%);-webkit-mask-image:linear-gradient(180deg,#000 0%,#000 46%,transparent 100%)}
+.fb .topdim{position:absolute;left:0;right:0;top:0;height:300px;z-index:3;background:linear-gradient(180deg,rgba(22,21,15,.6),rgba(22,21,15,.28) 55%,transparent)}
+.fb .scrim{position:absolute;inset:0;z-index:3;background:linear-gradient(180deg,rgba(22,21,15,0) 0%,rgba(22,21,15,0) 22%,rgba(22,21,15,0) 34%,rgba(22,21,15,.9) 62%,#16150F 78%)}
+.fb .stack{position:absolute;left:0;right:0;bottom:80px;z-index:5;padding:0 22px 22px}
+.fb h1{font-size:44px}
+.fb .grab{width:38px;height:4px;border-radius:2px;background:rgba(255,248,236,.32);margin:0 auto 18px}
+.fb .row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:18px}
+.fb .pct{font-family:'Bricolage Grotesque',sans-serif;font-size:38px;font-weight:800;color:#FFF8EC;letter-spacing:-.03em;line-height:.9}
+.fb .acts{display:flex;gap:10px;margin-top:20px}
+.fb .peek{display:flex;align-items:center;gap:9px;margin-top:22px;padding-top:16px;border-top:1px solid rgba(255,248,236,.15)}
+.fb .peek .bd{color:rgba(255,248,236,.72);margin:0;font-size:13px}
+.fb .peek .nmw{color:#FFF8EC;font-weight:700}
+
+/* A3 — anillo */
+.ring .top2{position:relative;z-index:4;display:flex;flex-direction:column;align-items:center;padding:34px 22px 0}
+.ring .dial{position:relative;width:206px;height:206px;display:grid;place-items:center}
+.ring .covwrap{width:120px;height:172px;border-radius:5px;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,.55),0 0 0 1px rgba(255,248,236,.16)}
+.ring .num{font-family:'Bricolage Grotesque',sans-serif;font-size:15px;font-weight:800;color:#FFC93F;letter-spacing:.02em;margin-top:16px}
+.ring h1{font-size:29px;text-align:center;margin-top:8px}
+.ring .author{text-align:center}
+.ring .acts{display:flex;gap:10px;padding:22px 22px 0;position:relative;z-index:4}
+
+/* A4 — estantería */
+.shelf .stage{position:relative;z-index:4;display:flex;gap:16px;align-items:flex-end;padding:24px 22px 0}
+.shelf .covwrap{width:104px;height:156px;flex:none;border-radius:4px;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,.55),0 0 0 1px rgba(255,248,236,.14)}
+.shelf h1{font-size:27px}
+.shelf .prog{position:relative;z-index:4;padding:20px 22px 0}
+.shelf .acts{display:flex;gap:10px;padding:18px 22px 0;position:relative;z-index:4}
+.shelf .rail{padding:18px 0 0 22px;position:relative;z-index:4}
+.shelf .raillbl{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,248,236,.5);font-weight:800}
+.shelf .strip{display:flex;gap:9px;margin-top:11px}
+.shelf .spine{width:44px;height:66px;border-radius:3px;flex:none;box-shadow:0 6px 14px rgba(0,0,0,.4)}
+.shelf .spine.add{border:1px dashed rgba(255,248,236,.3);display:grid;place-items:center;color:rgba(255,248,236,.5)}
+</style></head><body>
+
+<!-- A2 full bleed -->
+<div class="frame" style="left:80px;top:60px">
+<div class="lbl">A2 · Portada a sangre</div>
+<div class="desc">La portada ocupa la pantalla entera. Todo el contenido vive sobre ella y las impresiones quedan detrás de una hoja que se sube. Máximo impacto, una sola cosa a la vez.</div>
+<div class="phone fb">
+<div class="bgfallback"></div>
+<div class="cover"><image-slot id="a2-cover" src="./cover-tan-poca-vida.png" shape="rect" fit="cover" placeholder="Portada a sangre"></image-slot></div>
+<div class="topfade"></div>
+<div class="topdim"></div>
+<div class="scrim"></div>
+<div class="topbar"><div class="chip"><span class="dot"></span>Círculo de los martes <i data-lucide="chevron-down" style="width:13px;height:13px"></i></div><div class="ibs"><div class="iconbtn"><i data-lucide="settings" style="width:16px;height:16px"></i></div></div></div>
+<div class="stack">
+<div class="grab"></div>
+<div class="kicker">Leyendo ahora</div>
+<h1>Tan poca vida</h1>
+<div class="author">Hanya Yanagihara · 7 partes</div>
+<div class="row"><div class="pct">41%</div><div class="progmeta">Parte 3 · pág. 412 de 1008</div></div>
+<div class="pips" style="margin-top:13px"><i class="pip on"></i><i class="pip on"></i><i class="pip now"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></div>
+<div class="acts"><button class="btn p"><i data-lucide="book-open" style="width:17px;height:17px"></i>Actualizar progreso</button><button class="btn s"><i data-lucide="message-circle" style="width:19px;height:19px"></i></button></div>
+<div class="peek"><div class="av" style="width:28px;height:28px;font-size:10px">MC</div><div class="bd"><span class="nmw">María C.</span> «Nunca leí una amistad escrita con tanta…»</div></div>
+</div>
+<div class="tabbar"><div class="tab on"><i data-lucide="book-open" style="width:21px;height:21px"></i>Club</div><div class="tab"><i data-lucide="bell" style="width:21px;height:21px"></i>Novedades</div><div class="tab"><i data-lucide="compass" style="width:21px;height:21px"></i>Recursos</div></div>
+</div></div>
+
+<!-- A3 anillo -->
+<div class="frame" style="left:560px;top:60px">
+<div class="lbl">A3 · Anillo de progreso</div>
+<div class="desc">El libro va centrado dentro de un anillo que marca el avance. Convierte el progreso en un objeto, no en una barra. Bueno si el ritmo de lectura es el corazón del producto.</div>
+<div class="phone ring">
+<div class="bgfallback"></div>
+<div class="bgclip"><div class="bg"><image-slot id="a3-bg" src="./cover-tan-poca-vida.png" shape="rect" fit="cover" placeholder=""></image-slot></div></div>
+<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(22,21,15,.6),rgba(22,21,15,.35) 30%,rgba(22,21,15,.85) 70%,#16150F)"></div>
+<div class="topbar"><div class="chip"><span class="dot"></span>Círculo de los martes <i data-lucide="chevron-down" style="width:13px;height:13px"></i></div><div class="ibs"><div class="iconbtn"><i data-lucide="user-plus" style="width:16px;height:16px"></i></div><div class="iconbtn"><i data-lucide="settings" style="width:16px;height:16px"></i></div></div></div>
+<div class="top2">
+<div class="dial">
+<svg width="206" height="206" viewBox="0 0 206 206" style="position:absolute;inset:0;transform:rotate(-90deg)"><circle cx="103" cy="103" r="97" fill="none" stroke="rgba(255,248,236,.16)" stroke-width="6"></circle><circle cx="103" cy="103" r="97" fill="none" stroke="#FF4F32" stroke-width="6" stroke-linecap="round" stroke-dasharray="609.5" stroke-dashoffset="359.6"></circle></svg>
+<div class="covwrap"><image-slot id="a3-cover" src="./cover-tan-poca-vida.png" shape="rect" fit="cover" placeholder="Portada"></image-slot></div>
+</div>
+<div class="num">41% · PARTE 3 DE 7</div>
+<h1>Tan poca vida</h1><div class="author">Hanya Yanagihara · pág. 412 de 1008</div>
+</div>
+<div class="acts"><button class="btn p"><i data-lucide="book-open" style="width:17px;height:17px"></i>Actualizar progreso</button><button class="btn s"><i data-lucide="message-circle" style="width:19px;height:19px"></i></button></div>
+<div class="sheet" style="margin-top:24px;height:262px">
+<div class="social"><i data-lucide="users" style="width:19px;height:19px;flex:none"></i><b>3 clubes más están leyendo Tan poca vida esta semana</b></div>
+<div class="sheethead"><h2>Impresiones</h2><span class="all">Ver todas</span></div>
+<div class="imp" style="border:0"><div class="av">MC</div><div><div class="nm">María C. <span>· parte 3 · 2 h</span></div><div class="bd quote">Nunca leí una amistad escrita con tanta paciencia.</div></div></div>
+</div>
+<div class="tabbar"><div class="tab on"><i data-lucide="book-open" style="width:21px;height:21px"></i>Club</div><div class="tab"><i data-lucide="bell" style="width:21px;height:21px"></i>Novedades</div><div class="tab"><i data-lucide="compass" style="width:21px;height:21px"></i>Recursos</div></div>
+</div></div>
+
+<!-- A4 estantería -->
+<div class="frame" style="left:1040px;top:60px">
+<div class="lbl">A4 · Portada + estantería</div>
+<div class="desc">Igual que la base, pero abajo del héroe aparece la estantería del club: los libros ya leídos como lomos. Da historia y sensación de colección compartida.</div>
+<div class="phone shelf">
+<div class="bgfallback"></div>
+<div class="bgclip"><div class="bg"><image-slot id="a4-bg" src="./cover-tan-poca-vida.png" shape="rect" fit="cover" placeholder=""></image-slot></div></div>
+<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(22,21,15,.62),rgba(22,21,15,.15) 26%,rgba(22,21,15,.75) 66%,#16150F)"></div>
+<div class="topbar"><div class="chip"><span class="dot"></span>Círculo de los martes <i data-lucide="chevron-down" style="width:13px;height:13px"></i></div><div class="ibs"><div class="iconbtn"><i data-lucide="user-plus" style="width:16px;height:16px"></i></div><div class="iconbtn"><i data-lucide="settings" style="width:16px;height:16px"></i></div></div></div>
+<div class="stage"><div class="covwrap"><image-slot id="a4-cover" src="./cover-tan-poca-vida.png" shape="rect" fit="cover" placeholder="Portada"></image-slot></div><div style="flex:1;min-width:0;padding-bottom:4px"><div class="kicker">Leyendo ahora</div><h1 style="margin-top:9px">Tan poca vida</h1><div class="author">Hanya Yanagihara</div></div></div>
+<div class="prog"><div style="display:flex;justify-content:space-between;align-items:baseline;color:#FFF8EC"><div style="font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:800;letter-spacing:-.025em;line-height:1">41%</div><div class="progmeta">Parte 3 · pág. 412 de 1008</div></div><div class="pips" style="margin-top:12px"><i class="pip on"></i><i class="pip on"></i><i class="pip now"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></div></div>
+<div class="acts"><button class="btn p"><i data-lucide="book-open" style="width:17px;height:17px"></i>Actualizar progreso</button><button class="btn s"><i data-lucide="message-circle" style="width:19px;height:19px"></i></button></div>
+<div class="rail"><div class="raillbl">La estantería del club · 7 libros</div><div class="strip"><div class="spine" style="background:linear-gradient(150deg,#7A5B3A,#3E2B18)"></div><div class="spine" style="background:linear-gradient(150deg,#2F5B4C,#14322A)"></div><div class="spine" style="background:linear-gradient(150deg,#6B2740,#33101E)"></div><div class="spine" style="background:linear-gradient(150deg,#3B4A72,#1A2440)"></div><div class="spine" style="background:linear-gradient(150deg,#8A6706,#4A3703)"></div><div class="spine add"><i data-lucide="plus" style="width:16px;height:16px"></i></div></div></div>
+<div class="sheet" style="margin-top:22px;height:300px">
+<div class="sheethead" style="margin-top:0"><h2>Impresiones recientes</h2><span class="all">Ver todas</span></div>
+<div class="imp" style="border:0"><div class="av">MC</div><div><div class="nm">María C. <span>· parte 3 · 2 h</span></div><div class="bd quote">Nunca leí una amistad escrita con tanta paciencia.</div></div></div>
+</div>
+<div class="tabbar"><div class="tab on"><i data-lucide="book-open" style="width:21px;height:21px"></i>Club</div><div class="tab"><i data-lucide="bell" style="width:21px;height:21px"></i>Novedades</div><div class="tab"><i data-lucide="compass" style="width:21px;height:21px"></i>Recursos</div></div>
+</div></div>
+
+<!-- A5 sin portada -->
+<div class="frame" style="left:1520px;top:60px">
+<div class="lbl">A5 · Sin portada (fallback)</div>
+<div class="desc">La variante obligatoria: cuando el libro no tiene imagen, la portada se compone con tipografía sobre un color derivado del título. Mismo esqueleto que la base, cero huecos grises.</div>
+<div class="phone">
+<div style="position:absolute;inset:0;background:linear-gradient(155deg,#3A4E6B,#1C2839 60%,#131A26)"></div>
+<div style="position:absolute;inset:0;background:radial-gradient(120% 80% at 74% 8%,rgba(255,201,63,.2),transparent 62%)"></div>
+<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(19,26,38,.5),rgba(19,26,38,0) 26%,rgba(19,26,38,.8) 66%,#16150F)"></div>
+<div class="topbar"><div class="chip"><span class="dot"></span>Círculo de los martes <i data-lucide="chevron-down" style="width:13px;height:13px"></i></div><div class="ibs"><div class="iconbtn"><i data-lucide="user-plus" style="width:16px;height:16px"></i></div><div class="iconbtn"><i data-lucide="settings" style="width:16px;height:16px"></i></div></div></div>
+<div style="position:relative;z-index:4;display:flex;gap:16px;align-items:flex-end;padding:26px 22px 0">
+<div style="width:112px;height:168px;flex:none;border-radius:4px;background:linear-gradient(150deg,#4A6284,#22314A);box-shadow:0 22px 44px rgba(0,0,0,.55),0 0 0 1px rgba(255,248,236,.14);padding:15px 13px;display:flex;flex-direction:column;justify-content:space-between">
+<div style="font-family:'Bricolage Grotesque',sans-serif;font-size:16px;line-height:1.06;color:#FFF8EC;font-weight:700">Tan poca vida</div>
+<div style="font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:rgba(255,248,236,.6);font-weight:800">Yanagihara</div>
+</div>
+<div style="flex:1;min-width:0;padding-bottom:4px"><div class="kicker">Leyendo ahora</div><h1 style="font-size:28px;margin-top:9px">Tan poca vida</h1><div class="author">Hanya Yanagihara · 7 partes</div></div>
+</div>
+<div style="position:relative;z-index:4;padding:24px 22px 0"><div style="display:flex;justify-content:space-between;align-items:baseline;color:#FFF8EC"><div style="font-family:'Bricolage Grotesque',sans-serif;font-size:30px;font-weight:800;letter-spacing:-.025em;line-height:1">41%</div><div class="progmeta">Parte 3 · pág. 412 de 1008</div></div><div class="pips" style="margin-top:13px"><i class="pip on"></i><i class="pip on"></i><i class="pip now"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></div></div>
+<div style="display:flex;gap:10px;padding:20px 22px 0;position:relative;z-index:4"><button class="btn p"><i data-lucide="book-open" style="width:17px;height:17px"></i>Actualizar progreso</button><button class="btn s"><i data-lucide="message-circle" style="width:19px;height:19px"></i></button></div>
+<div class="sheet" style="margin-top:22px;height:418px">
+<div class="social"><i data-lucide="users" style="width:19px;height:19px;flex:none"></i><b>3 clubes más están leyendo este libro esta semana</b></div>
+<div class="sheethead"><h2>Impresiones recientes</h2><span class="all">Ver todas</span></div>
+<div class="imp"><div class="av">MC</div><div><div class="nm">María C. <span>· parte 3 · 2 h</span></div><div class="bd quote">Nunca leí una amistad escrita con tanta paciencia.</div></div></div>
+<div class="imp" style="border:0"><div class="av" style="background:linear-gradient(140deg,#B5D9C4,#1BAA6B);color:#0B4A2E">JT</div><div><div class="nm">Julián T. <span>· ayer</span></div><div class="bd">Necesito parar cada tanto. Avanzo de a treinta páginas.</div></div></div>
+</div>
+<div class="tabbar"><div class="tab on"><i data-lucide="book-open" style="width:21px;height:21px"></i>Club</div><div class="tab"><i data-lucide="bell" style="width:21px;height:21px"></i>Novedades</div><div class="tab"><i data-lucide="compass" style="width:21px;height:21px"></i>Recursos</div></div>
+</div></div>
+
+<script>lucide.createIcons({nameAttr:"data-lucide",attrs:{"stroke-width":1.75}});</script>
+</body></html>
