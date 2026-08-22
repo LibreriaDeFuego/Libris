@@ -10,6 +10,7 @@ import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Input } from '@/design-system/components/forms/Input.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { CoverUploader } from '@/components/CoverUploader';
+import { VisibilityPicker } from '@/components/VisibilityOption';
 
 const initialState = { error: null };
 
@@ -28,40 +29,6 @@ function Section({ title, description, children }) {
       </div>
       {children}
     </div>
-  );
-}
-
-// Opción de visibilidad con su explicación, para que no haya que adivinar qué
-// hace: cada tarjeta dice exactamente qué ven los demás.
-function VisibilityOption({ value, current, onChange, icon, title, description }) {
-  const selected = current === value;
-  return (
-    <label
-      style={{
-        display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer',
-        background: selected ? 'var(--accent-50)' : 'var(--surface-card)',
-        border: `1px solid ${selected ? 'var(--accent-500)' : 'var(--border-default)'}`,
-        borderRadius: 'var(--radius-md)', padding: 12,
-      }}
-    >
-      <input
-        type="radio"
-        name="visibility"
-        value={value}
-        checked={selected}
-        onChange={() => onChange(value)}
-        style={{ marginTop: 3 }}
-      />
-      <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
-          <Icon name={icon} size={14} />
-          {title}
-        </div>
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 3, lineHeight: 'var(--lh-snug)' }}>
-          {description}
-        </div>
-      </div>
-    </label>
   );
 }
 
@@ -224,32 +191,7 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
             title="Quién ve este club"
             description="Otros clubes que leen el mismo libro ven que hay un club leyéndolo. Esto decide si además ven cómo se llama."
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <VisibilityOption
-                value="publico"
-                current={visibility}
-                onChange={setVisibility}
-                icon="eye"
-                title="Público"
-                description="Los otros clubes ven el nombre del club y cuántos miembros tiene. Cualquiera se puede unir directo, sin pedir permiso. Los comentarios y el progreso siguen siendo privados."
-              />
-              <VisibilityOption
-                value="solicitud"
-                current={visibility}
-                onChange={setVisibility}
-                icon="user-check"
-                title="Con solicitud"
-                description="Aparece en Descubrir con su nombre, como uno público, pero para sumarse hay que mandar una solicitud — vos (o cualquier administrador) decidís quién entra. Los comentarios y el progreso siguen siendo privados."
-              />
-              <VisibilityOption
-                value="privado"
-                current={visibility}
-                onChange={setVisibility}
-                icon="eye-off"
-                title="Privado"
-                description="Los otros clubes ven “Un club también está leyendo este libro”, sin el nombre. No aparece en Descubrir — solo se entra con el link de invitación."
-              />
-            </div>
+            <VisibilityPicker current={visibility} onChange={setVisibility} />
           </Section>
 
           {book && (

@@ -7,12 +7,14 @@ import { Input } from '@/design-system/components/forms/Input.jsx';
 import { Tabs } from '@/design-system/components/navigation/Tabs.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
+import { VisibilityPicker } from '@/components/VisibilityOption';
 import { useRouter } from 'next/navigation';
 
 const initialState = { error: null };
 
 export function OnboardingScreen({ showBack = false }) {
   const [mode, setMode] = useState('Crear club');
+  const [visibility, setVisibility] = useState('publico');
   const router = useRouter();
   const [createState, createAction, createPending] = useActionState(createClub, initialState);
   const [joinState, joinAction, joinPending] = useActionState(joinClub, initialState);
@@ -56,6 +58,13 @@ export function OnboardingScreen({ showBack = false }) {
             <Input name="chapterCount" type="number" min={1} max={300} defaultValue={12} />
             <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>
               Después puedes agregar más desde “Actualizar progreso”.
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Quién ve este club</div>
+            <VisibilityPicker current={visibility} onChange={setVisibility} />
+            <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 6 }}>
+              Lo puedes cambiar después desde Preferencias.
             </div>
           </div>
           {createState?.error && (

@@ -12,6 +12,9 @@ import { ACTIVE_CLUB_COOKIE } from '@/lib/activeClub';
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const MAX_CHAPTERS = 300;
 
+// El formulario manda "publico", "solicitud" o "privado".
+const VISIBILITY_TO_JOIN_MODE = { publico: 'open', solicitud: 'request', privado: 'invite' };
+
 // Busca un libro por título y autor sin distinguir mayúsculas ni espacios de
 // más; si no existe, lo crea. Devuelve { id } o { error }.
 async function findOrCreateBook(supabase, title, author) {
@@ -61,9 +64,14 @@ export async function createClub(prevState, formData) {
     ? Math.min(Math.max(parsedChapters, 1), MAX_CHAPTERS)
     : 1;
 
+  // Sin elección explícita, el club queda privado — más seguro que exponerlo
+  // por accidente.
+  const visibility = formData.get('visibility')?.toString();
+  const joinMode = VISIBILITY_TO_JOIN_MODE[visibility] ?? 'invite';
+
   const { data: club, error: clubError } = await supabase
     .from('clubs')
-    .insert({ name: clubName, created_by: user.id })
+    .insert({ name: clubName, created_by: user.id, join_mode: joinMode, is_private: joinMode !== 'open' })
     .select('id')
     .single();
   if (clubError) return { error: clubError.message };
@@ -402,13 +410,12 @@ export async function updateClubPreferences(prevState, formData) {
   const clubName = formData.get('clubName')?.toString().trim();
   const bookTitle = formData.get('bookTitle')?.toString().trim();
   const bookAuthor = formData.get('bookAuthor')?.toString().trim();
-  // El formulario manda "publico", "solicitud" o "privado"; ausente = sin cambios.
+  // Ausente = sin cambios de visibilidad.
   const visibility = formData.get('visibility')?.toString();
 
   if (!clubId) return { error: 'Falta el club.' };
   if (!clubName) return { error: 'El club necesita un nombre.' };
 
-  const VISIBILITY_TO_JOIN_MODE = { publico: 'open', solicitud: 'request', privado: 'invite' };
   const clubChanges = { name: clubName };
   if (VISIBILITY_TO_JOIN_MODE[visibility]) {
     clubChanges.join_mode = VISIBILITY_TO_JOIN_MODE[visibility];
