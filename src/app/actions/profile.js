@@ -49,7 +49,7 @@ export async function updateProfile(prevState, formData) {
 
   const displayName = formData.get('displayName')?.toString().trim();
   const bio = formData.get('bio')?.toString().trim() || null;
-  if (!displayName) return { error: 'Necesitás un nombre.' };
+  if (!displayName) return { error: 'Necesitas un nombre.' };
 
   const { error } = await supabase
     .from('profiles')
