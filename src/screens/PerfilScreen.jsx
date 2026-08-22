@@ -67,6 +67,84 @@ function EditProfileFields({ profile, onClose }) {
   );
 }
 
+// El menú de los tres puntos: Editar perfil / Compartir perfil. Compartir
+// sigue el mismo patrón que InviteButton — menú nativo del celular si existe,
+// si no copia el link (con aviso) o, como último recurso, un prompt.
+function ProfileMenu({ profileId, onEdit }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function handleShare() {
+    setOpen(false);
+    const url = `${window.location.origin}/perfil/${profileId}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Libris', text: 'Seguime en Libris', url });
+        return;
+      } catch {
+        return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt('Copia este link y compártelo:', url);
+    }
+  }
+
+  const itemStyle = {
+    display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px',
+    fontSize: 'var(--fs-sm)', fontWeight: 500, color: 'var(--text-primary)',
+    background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)',
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <IconButton aria-label="Más opciones" onClick={() => setOpen((o) => !o)}>
+        <Icon name="more-horizontal" size={18} />
+      </IconButton>
+
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 4 }} />
+          <div
+            style={{
+              position: 'absolute', top: '110%', right: 0, zIndex: 5, minWidth: 190,
+              background: 'var(--surface-card)', border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-md)', overflow: 'hidden',
+            }}
+          >
+            <button type="button" style={itemStyle} onClick={() => { setOpen(false); onEdit(); }}>
+              <Icon name="pencil" size={14} /> Editar perfil
+            </button>
+            <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+            <button type="button" style={itemStyle} onClick={handleShare}>
+              <Icon name="share-2" size={14} /> Compartir perfil
+            </button>
+          </div>
+        </>
+      )}
+
+      {copied && (
+        <div
+          role="status"
+          style={{
+            position: 'absolute', top: '110%', right: 0, marginTop: 8, whiteSpace: 'nowrap', zIndex: 5,
+            background: 'var(--neutral-900)', color: 'var(--text-on-accent)',
+            fontSize: 'var(--fs-2xs)', fontWeight: 600, padding: '6px 10px', borderRadius: 'var(--radius-md)',
+          }}
+        >
+          ¡Link copiado!
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Una tarjeta de actividad: la portada del libro grande, con lo que esa
 // persona comentó anclado abajo. Tocarla despliega el comentario completo.
 function ActivityCard({ activity, canOpenClub }) {
@@ -147,11 +225,7 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
             <Icon name="arrow-left" size={18} />
           </IconButton>
         )}
-        {isOwn && (
-          <IconButton aria-label="Editar perfil" onClick={() => setEditing((e) => !e)}>
-            <Icon name="more-horizontal" size={18} />
-          </IconButton>
-        )}
+        {isOwn && <ProfileMenu profileId={profile.id} onEdit={() => setEditing(true)} />}
       </div>
 
       <div>
