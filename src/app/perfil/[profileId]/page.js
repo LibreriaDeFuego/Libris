@@ -10,7 +10,9 @@ export default async function Page({ params }) {
   const { profileId } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  // Este link se comparte hacia afuera (menú "Compartir perfil") — igual que
+  // /unirse/[clubId], volvemos acá después de loguearse/registrarse.
+  if (!user) redirect(`/login?next=/perfil/${profileId}`);
 
   const [clubs, data] = await Promise.all([
     getMyClubs(supabase, user.id),
