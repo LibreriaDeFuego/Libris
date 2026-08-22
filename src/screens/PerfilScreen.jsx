@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useActionState } from 'react';
+import { useState, useEffect, useTransition, useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { followProfile, unfollowProfile, updateProfile } from '@/app/actions/profile';
@@ -43,10 +43,15 @@ function FollowButton({ profileId, initialFollowing }) {
   );
 }
 
-// El formulario del propio perfil: nombre, bio y foto. Se abre/cierra desde
-// el lápiz de arriba (PerfilScreen controla el estado "editing").
+// El formulario del propio perfil: nombre, bio y foto. Se abre desde el menú
+// de los tres puntos (PerfilScreen controla el estado "editing") y se cierra
+// solo al guardar con éxito — sin botón de cerrar aparte.
 function EditProfileFields({ profile, onClose }) {
   const [state, action, pending] = useActionState(updateProfile, initialState);
+
+  useEffect(() => {
+    if (state?.saved) onClose();
+  }, [state, onClose]);
 
   return (
     <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
@@ -58,11 +63,9 @@ function EditProfileFields({ profile, onClose }) {
           {state.error}
         </div>
       )}
-      {state?.saved && <div style={{ color: 'var(--success-700)', fontSize: 'var(--fs-2xs)' }}>Guardado.</div>}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Button variant="secondary" size="sm" type="button" onClick={onClose}>Cerrar</Button>
-        <Button variant="primary" size="sm" type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
-      </div>
+      <Button variant="primary" size="sm" type="submit" disabled={pending} style={{ width: '100%' }}>
+        {pending ? 'Guardando…' : 'Guardar'}
+      </Button>
     </form>
   );
 }
