@@ -57,7 +57,7 @@ export function VisibilityPicker({ current, onChange }) {
         onChange={onChange}
         icon="user-check"
         title="Con solicitud"
-        description="Aparece en Descubrir con su nombre, como uno público, pero para sumarse hay que mandar una solicitud — vos (o cualquier administrador) decidís quién entra. Los comentarios y el progreso siguen siendo privados."
+        description="Aparece en Descubrir con su nombre, como uno público, pero para sumarse hay que mandar una solicitud que un administrador aprueba o rechaza. Los comentarios y el progreso siguen siendo privados."
       />
       <VisibilityOption
         value="privado"
