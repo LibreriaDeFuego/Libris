@@ -83,7 +83,7 @@ function ProfileMenu({ profileId, onEdit }) {
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Libris', text: 'Seguime en Libris', url });
+        await navigator.share({ title: 'Libris', text: 'Sígueme en Libris', url });
         return;
       } catch {
         return;
