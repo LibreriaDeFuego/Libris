@@ -1,6 +1,6 @@
 # Libris
 
-App social para clubes de lectura: progreso de lectura compartido, comentarios (texto, citas destacadas, notas de voz), spoilers colapsables, feed de novedades y una sección editorial ("Recursos").
+App social para clubes de lectura: progreso de lectura compartido, comentarios (texto, citas destacadas, notas de voz), spoilers colapsables y una sección editorial ("Recursos").
 
 **En producción:** https://libris-relea.vercel.app — se despliega solo en cada push a `main` (proyecto `libris` en Vercel, equipo RELEA). Instalable como PWA desde Chrome en Android.
 
@@ -17,7 +17,6 @@ src/
   app/                    # rutas de Next.js (App Router)
     page.js               # / → "Mis clubes de lectura" (lista + preview de Descubrir otros clubes)
     login/                 page.js + actions.js (signIn/signUp/signOut, Server Actions)
-    novedades/page.js      # feed editorial (artículos), ordenado por fecha
     recursos/page.js       # Guías/Cursos (contenido editorial curado)
     club/[clubId]/page.js         # detalle de un club puntual
     club/[clubId]/comentarios/    # comentarios de ESE club, generales o por capítulo
@@ -36,7 +35,7 @@ src/
     actions/media.js       # Server Actions: uploadBookCover, updateCoverFrame, postVoiceComment
     manifest.js            # genera /manifest.webmanifest (PWA)
   components/
-    AppShell.jsx           # shell con tab bar inferior (Club / Novedades / Recursos)
+    AppShell.jsx           # shell con tab bar inferior (Club / Recursos)
     LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx, InviteButton.jsx,
     GoogleSignInButton.jsx, VoiceRecorder.jsx, CoverUploader.jsx,
     ClubSwitcher.jsx (menú para cambiar de club; tone="chip" para el héroe),
@@ -108,7 +107,7 @@ npm run dev
 
 ### Estado actual
 
-Verificado funcionando de punta a punta contra Supabase real: registro/login, crear club con su primer libro, actualizar progreso (persiste), publicar comentarios (texto, cita, spoiler), feed de Novedades, y persistencia entre sesiones.
+Verificado funcionando de punta a punta contra Supabase real: registro/login, crear club con su primer libro, actualizar progreso (persiste), publicar comentarios (texto, cita, spoiler), y persistencia entre sesiones.
 
 **Setup de la base:** correr en orden `supabase/schema.sql` y después cada archivo de `supabase/migrations/` por número. `supabase/verificar-setup.sql` chequea que estén todas aplicadas (todas las filas deben decir OK). Para probar sin esperar mails, desactivar **Confirm email** en Authentication → Sign In / Providers; antes de abrir al público conviene reactivarlo (la ruta `/auth/callback` ya está lista para recibir esos links).
 
@@ -120,11 +119,12 @@ Para activarlo en otro entorno: crear credenciales OAuth en Google Cloud Console
 
 **Pendiente de marca:** la pantalla de consentimiento de Google muestra el dominio de Supabase en vez de "Libris". Para que diga Libris hace falta un dominio propio + el add-on Custom Domain de Supabase (pago) + verificación de la app en Google.
 
-### Estructura de navegación (Club / Novedades / Recursos)
+### Estructura de navegación (Club / Recursos)
 
 - **Club** (`/`) — ya no es el detalle de un club: es **"Mis clubes de lectura"**, la lista completa de los clubes en los que participás (los hayas creado o no), cada uno con su actividad más reciente. Tocar uno lleva a `/club/[clubId]`, el detalle real (libro, progreso, comentarios). Abajo, una vista previa de **"Descubrir otros clubes"** con link a `/club/otros`, el directorio completo de clubes públicos para unirse.
-- **Novedades** (`/novedades`) — el feed editorial: los artículos que se van publicando (guías, recomendaciones, cursos), del más nuevo al más viejo. La actividad de los clubes (comentarios, progreso, otros clubes leyendo lo mismo) vive ahora en cada club individual, no acá.
 - **Recursos** (`/recursos`, antes `/descubrir`) — contenido curado en dos secciones: **Guías** y **Cursos**. Se sacó la categoría "Autor" (migración 008) para no pisarse con "Descubrir otros clubes" del tab Club.
+
+**Novedades se sacó de la app** (pestaña y ruta `/novedades` eliminadas) — mostraba el mismo feed editorial que ya está en Recursos, quedaba redundante. Está pendiente de decisión qué va en su lugar: se evaluó convertirla en un feed de actividad de los clubes propios (comentarios/progreso/nuevos miembros de todos mis clubes en un solo lugar, sin tocar la privacidad de clubes ajenos) más contenido como libros populares (`popular_books`, ya escrita en la base y sin usar) — pero se decidió sacarla primero y definir el reemplazo más adelante.
 
 ### Descubrimiento social — cómo está resuelto
 
@@ -170,7 +170,7 @@ Dos piezas nuevas:
 
 ### Contenido editorial
 
-`editorial_items` alimenta tanto **Novedades** (feed cronológico) como las solapas Guías/Cursos de **Recursos** (mismos datos, agrupados por categoría). No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.
+`editorial_items` alimenta las solapas Guías/Cursos de **Recursos**. No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.
 
 ### Si Storage da "Bucket not found"
 

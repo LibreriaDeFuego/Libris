@@ -6,7 +6,6 @@ import { Icon } from '@/design-system/components/core/Icon.jsx';
 
 const TABS = [
   { href: '/', match: (path) => path === '/' || path.startsWith('/club'), icon: 'book-open', label: 'Club' },
-  { href: '/novedades', match: (path) => path.startsWith('/novedades'), icon: 'bell', label: 'Novedades' },
   { href: '/recursos', match: (path) => path.startsWith('/recursos'), icon: 'compass', label: 'Recursos' },
 ];
 

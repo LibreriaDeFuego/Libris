@@ -5,7 +5,7 @@ import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistratio
 
 export const metadata = {
   title: 'Libris',
-  description: 'Clubes de lectura: progreso compartido, comentarios, novedades y descubrimiento editorial.',
+  description: 'Clubes de lectura: progreso compartido, comentarios y contenido editorial.',
   manifest: '/manifest.webmanifest',
 };
 

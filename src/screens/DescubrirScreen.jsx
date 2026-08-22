@@ -5,8 +5,7 @@ import { Tabs } from '@/design-system/components/navigation/Tabs.jsx';
 import { EditorialCard } from '@/design-system/components/content/EditorialCard.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 
-// "Qué se está leyendo" vive en Novedades → Otros clubes: acá queda solo el
-// contenido editorial, que es de lo que hablaba el brief original.
+// Contenido editorial curado: Guías y Cursos.
 const TABS = ['Guías', 'Cursos'];
 const CATEGORY_BY_TAB = { 'Guías': 'Guía', 'Cursos': 'Curso' };
 

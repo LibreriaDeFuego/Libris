@@ -189,7 +189,7 @@ export function CoverHero({
             display: 'flex', alignItems: 'flex-start', paddingTop: 11,
           }}
         >
-          {[{ icon: 'book-open', label: 'Club', on: true }, { icon: 'bell', label: 'Novedades' }, { icon: 'compass', label: 'Recursos' }].map((tab) => (
+          {[{ icon: 'book-open', label: 'Club', on: true }, { icon: 'compass', label: 'Recursos' }].map((tab) => (
             <div key={tab.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: tab.on ? 'var(--accent-500)' : 'var(--text-tertiary)' }}>
               <Icon name={tab.icon} size={21} color={tab.on ? 'var(--accent-500)' : 'var(--text-tertiary)'} />
               {tab.label}

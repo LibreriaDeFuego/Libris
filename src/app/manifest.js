@@ -7,7 +7,7 @@ export default function manifest() {
   return {
     name: 'Libris — Clubes de lectura',
     short_name: 'Libris',
-    description: 'Clubes de lectura: progreso compartido, comentarios, novedades y descubrimiento editorial.',
+    description: 'Clubes de lectura: progreso compartido, comentarios y contenido editorial.',
     start_url: '/',
     scope: '/',
     display: 'standalone',
