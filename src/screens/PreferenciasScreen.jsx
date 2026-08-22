@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { updateClubPreferences, leaveClub, promoteAdmin, demoteAdmin } from '@/app/actions/clubs';
+import { updateClubPreferences, leaveClub, promoteAdmin, demoteAdmin, respondToJoinRequest } from '@/app/actions/clubs';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
@@ -119,10 +119,64 @@ function MemberRow({ member, canManage, adminCount, currentUserId }) {
   );
 }
 
-export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members }) {
+const JOIN_MODE_TO_VISIBILITY = { open: 'publico', request: 'solicitud', invite: 'privado' };
+
+// Una solicitud pendiente: quién la mandó, su mensaje si escribió uno, y
+// los botones para aprobar o rechazar.
+function JoinRequestRow({ request }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState(null);
+  const [resolved, setResolved] = useState(null); // 'approve' | 'reject' | null
+  const name = request.profiles?.display_name ?? 'Alguien';
+
+  function respond(decision) {
+    const formData = new FormData();
+    formData.set('requestId', request.id);
+    formData.set('decision', decision);
+    setError(null);
+    startTransition(async () => {
+      const result = await respondToJoinRequest(formData);
+      if (result?.error) setError(result.error);
+      else setResolved(decision);
+    });
+  }
+
+  if (resolved) {
+    return (
+      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', padding: '4px 0' }}>
+        {resolved === 'approve' ? `Sumaste a ${name} al club.` : `Rechazaste la solicitud de ${name}.`}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Avatar name={name} size={32} />
+        <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>{name}</div>
+      </div>
+      {request.message && (
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-snug)', fontStyle: 'italic' }}>
+          “{request.message}”
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button variant="secondary" size="sm" type="button" onClick={() => respond('reject')} disabled={pending}>Rechazar</Button>
+        <Button variant="primary" size="sm" type="button" onClick={() => respond('approve')} disabled={pending}>Aceptar</Button>
+      </div>
+      {error && (
+        <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 8 }}>
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members, pendingRequests = [] }) {
   const router = useRouter();
   const [state, action, pending] = useActionState(updateClubPreferences, initialState);
-  const [visibility, setVisibility] = useState(club.is_private ? 'privado' : 'publico');
+  const [visibility, setVisibility] = useState(JOIN_MODE_TO_VISIBILITY[club.join_mode] ?? (club.is_private ? 'privado' : 'publico'));
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaveError, setLeaveError] = useState(null);
   const [leavePending, startLeave] = useTransition();
@@ -172,20 +226,28 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <VisibilityOption
-                value="privado"
-                current={visibility}
-                onChange={setVisibility}
-                icon="eye-off"
-                title="Privado"
-                description="Los otros clubes ven “Un club también está leyendo este libro”, sin el nombre. Nadie de afuera sabe que este club existe."
-              />
-              <VisibilityOption
                 value="publico"
                 current={visibility}
                 onChange={setVisibility}
                 icon="eye"
                 title="Público"
-                description="Los otros clubes ven el nombre del club y cuántos miembros tiene. Los comentarios y el progreso siguen siendo privados."
+                description="Los otros clubes ven el nombre del club y cuántos miembros tiene. Cualquiera se puede unir directo, sin pedir permiso. Los comentarios y el progreso siguen siendo privados."
+              />
+              <VisibilityOption
+                value="solicitud"
+                current={visibility}
+                onChange={setVisibility}
+                icon="user-check"
+                title="Con solicitud"
+                description="Aparece en Descubrir con su nombre, como uno público, pero para sumarse hay que mandar una solicitud — vos (o cualquier administrador) decidís quién entra. Los comentarios y el progreso siguen siendo privados."
+              />
+              <VisibilityOption
+                value="privado"
+                current={visibility}
+                onChange={setVisibility}
+                icon="eye-off"
+                title="Privado"
+                description="Los otros clubes ven “Un club también está leyendo este libro”, sin el nombre. No aparece en Descubrir — solo se entra con el link de invitación."
               />
             </div>
           </Section>
@@ -246,6 +308,27 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
       ) : (
         <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>
           Solo los administradores de <strong>{club.name}</strong> pueden cambiar el nombre, la visibilidad, el libro en curso y los capítulos.
+        </div>
+      )}
+
+      {isAdmin && (
+        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Section
+            title={`Solicitudes pendientes${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ''}`}
+            description="Gente que pidió sumarse a este club porque lo pusiste en modo 'Con solicitud'."
+          >
+            {pendingRequests.length === 0 ? (
+              <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '4px 0' }}>
+                No hay solicitudes esperando respuesta.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {pendingRequests.map((request) => (
+                  <JoinRequestRow key={request.id} request={request} />
+                ))}
+              </div>
+            )}
+          </Section>
         </div>
       )}
 

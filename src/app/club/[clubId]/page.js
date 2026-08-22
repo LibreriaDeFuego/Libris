@@ -13,15 +13,21 @@ export default async function Page({ params }) {
   const club = clubs.find((c) => c.id === clubId);
   if (!club) notFound(); // no es miembro (o el club no existe): no mostramos nada de RLS de todos modos
 
-  const [{ count: memberCount }, clubBook] = await Promise.all([
+  const isAdmin = club.role === 'admin';
+
+  const [{ count: memberCount }, clubBook, { count: pendingRequestCount }] = await Promise.all([
     supabase.from('club_members').select('*', { count: 'exact', head: true }).eq('club_id', clubId),
     getActiveClubBook(supabase, clubId),
+    isAdmin
+      ? supabase.from('club_join_requests').select('*', { count: 'exact', head: true }).eq('club_id', clubId).eq('status', 'pending')
+      : Promise.resolve({ count: 0 }),
   ]);
 
   const baseProps = {
     club: { ...club, memberCount: memberCount ?? 0 },
     clubs,
-    isAdmin: club.role === 'admin',
+    isAdmin,
+    pendingRequestCount: pendingRequestCount ?? 0,
   };
 
   if (!clubBook) {

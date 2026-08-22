@@ -92,4 +92,25 @@ select 'Migración 013 — encuadre de portada',
        case when exists (select 1 from information_schema.columns where table_name = 'books' and column_name = 'cover_crop')
         and exists (select 1 from information_schema.columns where table_name = 'books' and column_name = 'cover_has_title')
         and exists (select 1 from pg_policies where tablename = 'books' and policyname = 'administradores actualizan los libros de su club')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 014 — join_mode en clubs',
+       case when exists (select 1 from information_schema.columns where table_name = 'clubs' and column_name = 'join_mode')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 014 — tabla de solicitudes',
+       case when exists (select 1 from information_schema.tables where table_name = 'club_join_requests')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 014 — política: administradores suman con solicitud aprobada',
+       case when exists (select 1 from pg_policies where tablename = 'club_members' and policyname = 'administradores suman gente con solicitud aprobada')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 014 — discover_public_clubs incluye join_mode',
+       case when exists (
+              select 1 from information_schema.routines
+              where routine_name = 'discover_public_clubs' and data_type = 'record'
+            ) and exists (
+              select 1 from pg_proc where proname = 'discover_public_clubs' and prosrc like '%join_mode%'
+            )
             then 'OK' else 'FALTA' end;

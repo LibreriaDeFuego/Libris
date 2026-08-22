@@ -14,7 +14,28 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 import { orderChapters } from '@/lib/orderChapters';
 import { computeHeroProgress } from '@/lib/heroProgress';
 
-export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, previews, otherClubsCount, isAdmin }) {
+function PreferenciasIconButton({ clubId, pendingRequestCount, tone }) {
+  return (
+    <Link href={`/club/${clubId}/preferencias`} style={{ position: 'relative' }}>
+      <IconButton aria-label="Preferencias del club" tone={tone} size={36}><Icon name="settings" size={16} /></IconButton>
+      {pendingRequestCount > 0 && (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute', top: -2, right: -2, minWidth: 16, height: 16, borderRadius: 999,
+            background: 'var(--accent-500)', color: '#fff', fontSize: 10, fontWeight: 800,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
+            border: `2px solid ${tone === 'glass' ? 'var(--hero-bg)' : 'var(--surface-page)'}`,
+          }}
+        >
+          {pendingRequestCount}
+        </span>
+      )}
+    </Link>
+  );
+}
+
+export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, previews, otherClubsCount, isAdmin, pendingRequestCount = 0 }) {
   const [showModal, setShowModal] = useState(false);
   const router = useRouter();
 
@@ -30,9 +51,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
           <IconButton aria-label="Gestionar capítulos" tone="glass" size={36}><Icon name="list" size={16} /></IconButton>
         </Link>
       )}
-      <Link href={`/club/${club.id}/preferencias`}>
-        <IconButton aria-label="Preferencias del club" tone="glass" size={36}><Icon name="settings" size={16} /></IconButton>
-      </Link>
+      <PreferenciasIconButton clubId={club.id} pendingRequestCount={isAdmin ? pendingRequestCount : 0} tone="glass" />
       <SignOutButton tone="glass" />
     </>
   );
@@ -130,9 +149,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
             </IconButton>
             <div style={{ display: 'flex', gap: 8 }}>
               <InviteButton clubId={club.id} />
-              <Link href={`/club/${club.id}/preferencias`}>
-                <IconButton aria-label="Preferencias del club"><Icon name="settings" size={18} /></IconButton>
-              </Link>
+              <PreferenciasIconButton clubId={club.id} pendingRequestCount={isAdmin ? pendingRequestCount : 0} tone="light" />
               <SignOutButton />
             </div>
           </div>

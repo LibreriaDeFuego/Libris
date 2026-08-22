@@ -17,13 +17,21 @@ export default async function Page({ params }) {
 
   const isAdmin = club.role === 'admin';
 
-  const [{ data: members }, clubBook] = await Promise.all([
+  const [{ data: members }, clubBook, { data: pendingRequests }] = await Promise.all([
     supabase
       .from('club_members')
       .select('profile_id, role, joined_at, profiles(display_name)')
       .eq('club_id', clubId)
       .order('joined_at'),
     getActiveClubBook(supabase, clubId),
+    isAdmin
+      ? supabase
+          .from('club_join_requests')
+          .select('id, message, created_at, profiles(display_name)')
+          .eq('club_id', clubId)
+          .eq('status', 'pending')
+          .order('created_at')
+      : Promise.resolve({ data: [] }),
   ]);
 
   return (
@@ -33,6 +41,7 @@ export default async function Page({ params }) {
       isAdmin={isAdmin}
       currentUserId={user.id}
       members={members ?? []}
+      pendingRequests={pendingRequests ?? []}
     />
   );
 }

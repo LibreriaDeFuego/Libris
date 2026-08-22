@@ -83,7 +83,10 @@ supabase/
                            012_espanol_neutro.sql (mensajes de los triggers y contenido editorial
                              a español latinoamericano neutro, sin voseo),
                            013_encuadre_portada.sql (cover_crop + cover_has_title en books,
-                             y books pasa a editarse solo por administradores)
+                             y books pasa a editarse solo por administradores),
+                           014_postulaciones.sql (join_mode además de público/privado,
+                             tabla club_join_requests, discover_public_clubs con clubes
+                             "con solicitud")
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -129,9 +132,17 @@ Para activarlo en otro entorno: crear credenciales OAuth en Google Cloud Console
 
 ### Descubrimiento social — cómo está resuelto
 
-RLS solo deja ver los clubes propios, y eso no se toca. Lo que otros clubes leen se expone por funciones `security definer`: `other_clubs_reading_count` y `other_clubs_activity` (migración 005) para "otros clubes leyendo el mismo libro", y `discover_public_clubs` (migración 007) para el directorio de `/descubrir`. Los clubes **privados aparecen anonimizados** ("Un club") y no aparecen en el directorio; solo los que se marcan como públicos muestran su nombre y son unibles desde ahí, desde **Preferencias del club** (ícono de engranaje), donde cada opción explica exactamente qué ven los demás.
+RLS solo deja ver los clubes propios, y eso no se toca. Lo que otros clubes leen se expone por funciones `security definer`: `other_clubs_reading_count` y `other_clubs_activity` (migración 005) para "otros clubes leyendo el mismo libro", y `discover_public_clubs` (migración 007, extendida en la 014) para el directorio de `/descubrir`. Los clubes con invitación (antes "privados") aparecen anonimizados ("Un club") y no aparecen en el directorio; los abiertos y los "con solicitud" muestran su nombre y son unibles desde ahí, desde **Preferencias del club** (ícono de engranaje), donde cada opción explica exactamente qué ven los demás.
 
-**Postulaciones a clubes privados — en evaluación, todavía no implementado.** Se planteó un tercer modo además de público/privado: un club privado puede optar por aparecer en `/descubrir` (con su nombre, como los públicos) pero sin unión directa — el interesado manda una solicitud y un administrador la aprueba o rechaza, igual que una cuenta privada de Instagram. Implica una tabla `club_join_requests` (pendiente/aprobada/rechazada), extender `discover_public_clubs` para incluir estos clubes marcados como "con solicitud", y una sección de solicitudes pendientes en Preferencias para que el admin las revise. Se armaron 3 mockups de cómo se vería `/descubrir` con esto — pendiente que el usuario elija una dirección antes de construirlo.
+**Postulaciones a clubes privados (migración 014).** Cada club tiene un `join_mode`, tres valores en vez del viejo booleano `is_private`:
+
+- **Público** (`open`) — listado en Descubrir, cualquiera se une con un toque.
+- **Con solicitud** (`request`) — listado en Descubrir con su nombre y un chip dorado, pero unirse requiere mandar una solicitud (con un mensaje opcional) que un administrador aprueba o rechaza. Igual que pedir seguir una cuenta privada de Instagram.
+- **Privado** (`invite`) — el modo de antes: no aparece en Descubrir, solo se entra con el link de invitación.
+
+Las solicitudes viven en `club_join_requests` (pendiente/aprobada/rechazada), con RLS que separa dos roles: quien postula solo puede crear su propia solicitud o volver a postular si lo rechazaron, y el administrador del club es quien aprueba o rechaza. Aprobar es un segundo paso — una política aparte en `club_members` solo deja al administrador sumar a alguien que ya tenga una solicitud en estado `approved`; no puede sumar a cualquiera. Si te rechazan podés volver a postular en cualquier momento (no queda un estado "rechazada" visible, se comporta como si nunca hubieras postulado — igual que Instagram).
+
+En **Preferencias del club** los administradores ven una sección "Solicitudes pendientes" con el mensaje de cada postulante y botones para aceptar/rechazar; el ícono de engranaje (en el club y en el header) muestra un número en rojo cuando hay solicitudes sin responder, para que no queden ignoradas en la cola.
 
 ### Multi-club
 

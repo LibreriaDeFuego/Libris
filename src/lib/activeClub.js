@@ -7,7 +7,7 @@ export const ACTIVE_CLUB_COOKIE = 'libris_club';
 export async function getMyClubs(supabase, userId) {
   const { data } = await supabase
     .from('club_members')
-    .select('role, joined_at, clubs(id, name, is_private, created_by)')
+    .select('role, joined_at, clubs(id, name, is_private, join_mode, created_by)')
     .eq('profile_id', userId)
     .order('joined_at');
 

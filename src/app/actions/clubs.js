@@ -336,6 +336,61 @@ async function joinClubId(clubId) {
   redirect('/');
 }
 
+// Postularse a un club "con solicitud" (privado, pero listado en
+// Descubrir). Si ya te habían rechazado, volver a postular reactiva la
+// solicitud como pendiente — lo impone la política de RLS.
+export async function requestToJoin(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const clubId = formData.get('clubId')?.toString();
+  const message = formData.get('message')?.toString().trim() || null;
+  if (!clubId) return { error: 'Falta el club.' };
+
+  const { error } = await supabase
+    .from('club_join_requests')
+    .upsert(
+      { club_id: clubId, profile_id: user.id, message, status: 'pending', responded_at: null },
+      { onConflict: 'club_id,profile_id' }
+    );
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/descubrir');
+  return { error: null };
+}
+
+// El administrador aprueba o rechaza una solicitud. Aprobar suma a la
+// persona al club en un segundo paso — la política de club_members solo
+// deja sumar a alguien con una solicitud ya aprobada.
+export async function respondToJoinRequest(formData) {
+  const supabase = await createClient();
+  await requireUser(supabase);
+
+  const requestId = formData.get('requestId')?.toString();
+  const decision = formData.get('decision')?.toString();
+  if (!requestId) return { error: 'Falta la solicitud.' };
+  if (decision !== 'approve' && decision !== 'reject') return { error: 'Decisión inválida.' };
+
+  const status = decision === 'approve' ? 'approved' : 'rejected';
+  const { data: request, error: updateError } = await supabase
+    .from('club_join_requests')
+    .update({ status, responded_at: new Date().toISOString() })
+    .eq('id', requestId)
+    .select('club_id, profile_id')
+    .single();
+  if (updateError) return { error: friendlyDbError(updateError) };
+
+  if (decision === 'approve') {
+    const { error: memberError } = await supabase
+      .from('club_members')
+      .insert({ club_id: request.club_id, profile_id: request.profile_id, role: 'member' });
+    if (memberError) return { error: friendlyDbError(memberError) };
+  }
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
 // Preferencias del club: nombre, visibilidad y datos del libro en curso.
 // Solo los administradores pueden guardar (lo impone la política de RLS).
 export async function updateClubPreferences(prevState, formData) {
@@ -347,15 +402,17 @@ export async function updateClubPreferences(prevState, formData) {
   const clubName = formData.get('clubName')?.toString().trim();
   const bookTitle = formData.get('bookTitle')?.toString().trim();
   const bookAuthor = formData.get('bookAuthor')?.toString().trim();
-  // El formulario manda "publico" o "privado"; ausente = sin cambios.
+  // El formulario manda "publico", "solicitud" o "privado"; ausente = sin cambios.
   const visibility = formData.get('visibility')?.toString();
 
   if (!clubId) return { error: 'Falta el club.' };
   if (!clubName) return { error: 'El club necesita un nombre.' };
 
+  const VISIBILITY_TO_JOIN_MODE = { publico: 'open', solicitud: 'request', privado: 'invite' };
   const clubChanges = { name: clubName };
-  if (visibility === 'publico' || visibility === 'privado') {
-    clubChanges.is_private = visibility === 'privado';
+  if (VISIBILITY_TO_JOIN_MODE[visibility]) {
+    clubChanges.join_mode = VISIBILITY_TO_JOIN_MODE[visibility];
+    clubChanges.is_private = visibility !== 'publico';
   }
 
   const { error: clubError } = await supabase.from('clubs').update(clubChanges).eq('id', clubId);
