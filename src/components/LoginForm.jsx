@@ -20,10 +20,9 @@ export function LoginForm({ next = '/', googleEnabled = false }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '48px 24px' }}>
       <div>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-2xl)', fontWeight: 700, color: 'var(--text-primary)' }}>
-          Libris
-        </div>
-        <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
+        <img src="/logo-libris.png" alt="Libris" style={{ height: 40, width: 'auto', display: 'block' }} />
+        <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: 10 }}>
           {mode === 'signIn' ? 'Inicia sesión en tu cuenta' : 'Crea tu cuenta'}
         </div>
       </div>

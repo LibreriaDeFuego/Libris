@@ -220,6 +220,6 @@ Paleta **Electric Coral** sobre fondo blanco (page y cards — el crema del brie
 
 Ver `design-reference/readme.md` para el detalle completo de fundamentos visuales y contenido, y las notas de **sustitución** — este sistema de diseño se armó desde un brief sin logo, fuentes propias ni set de íconos, así que ningún wordmark/tipografía/ícono actual debe tratarse como marca final:
 
-- **Logo**: no hay. El nombre se renderiza en texto plano donde iría un isotipo.
-- **Íconos PWA** (`public/icons/*.png`): placeholders generados (círculo crema sobre fondo coral), no un logo real.
+- **Logo**: ya hay uno (`public/logo-libris.png`, wordmark "LiBRiS" en negro sobre transparente) — se usa en la pantalla de Login reemplazando el texto plano que había antes. Es un wordmark ancho, no encaja como ícono cuadrado — ver el punto siguiente.
+- **Íconos PWA** (`public/icons/*.png`): siguen siendo placeholders generados (círculo crema sobre fondo coral) — el logo que hay es un wordmark horizontal, no un isotipo cuadrado, así que todavía hace falta una versión cuadrada (o un ícono aparte) para reemplazar estos.
 - **Fuentes**: Bricolage Grotesque / Plus Jakarta Sans cargadas desde Google Fonts (`design-system/tokens/typography.css`) — swap directo si hay tipografías con licencia propia.
