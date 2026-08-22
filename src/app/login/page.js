@@ -4,7 +4,14 @@ import { LoginForm } from '@/components/LoginForm';
 import { safeNext } from '@/lib/safeNext';
 import { getEnabledProviders } from '@/lib/authProviders';
 
-export const metadata = { title: 'Entrar · Libris' };
+// Cualquier link que apunte a una página que requiere sesión (perfil, club,
+// invitación) redirige acá si quien lo abre no está logueado — y esta es la
+// metadata que terminan mostrando WhatsApp/etc. como vista previa del link
+// que se compartió, así que el texto está pensado para eso.
+export const metadata = {
+  title: 'Únete a Libris',
+  description: 'Entra o crea una cuenta para ver el perfil que te compartieron.',
+};
 
 export default async function LoginPage({ searchParams }) {
   const { next } = await searchParams;
