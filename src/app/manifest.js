@@ -1,8 +1,7 @@
 // Next.js serves this as /manifest.webmanifest. It's what lets Chrome on
 // Android offer "Agregar a pantalla de inicio" / install the PWA.
-// NOTE: icons are flat placeholders (no logo was provided — see
-// design-reference/readme.md). Swap public/icons/*.png when real brand
-// assets exist; no other change is needed here.
+// Íconos: el signo "punto + S" del logo real de Libris, blanco sobre coral
+// (public/icons/*.png, generados desde el logo — ver README).
 export default function manifest() {
   return {
     name: 'Libris — Clubes de lectura',
