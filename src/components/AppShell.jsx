@@ -5,13 +5,14 @@ import { usePathname } from 'next/navigation';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 
 const TABS = [
-  { href: '/', match: (path) => path === '/' || path.startsWith('/club'), icon: 'book-open', label: 'Club' },
   { href: '/recursos', match: (path) => path.startsWith('/recursos'), icon: 'compass', label: 'Recursos' },
+  { href: '/', match: (path) => path === '/' || path.startsWith('/club'), icon: 'book-open', label: 'Club' },
+  { href: '/descubrir', match: (path) => path.startsWith('/descubrir'), icon: 'search', label: 'Descubrir' },
 ];
 
 export function AppShell({ children }) {
   const pathname = usePathname();
-  const isFullScreenClubRoute = pathname === '/club/nuevo' || pathname === '/club/otros' || pathname.endsWith('/preferencias') || pathname.endsWith('/capitulos') || pathname.endsWith('/portada');
+  const isFullScreenClubRoute = pathname === '/club/nuevo' || pathname.endsWith('/preferencias') || pathname.endsWith('/capitulos') || pathname.endsWith('/portada');
   const showTabBar = pathname !== '/login' && !pathname.startsWith('/unirse') && !isFullScreenClubRoute;
 
   return (

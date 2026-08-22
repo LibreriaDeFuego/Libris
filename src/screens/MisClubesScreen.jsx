@@ -5,7 +5,6 @@ import { useTransition } from 'react';
 import { selectClub } from '@/app/actions/clubs';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
-import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
 function ClubCard({ club }) {
@@ -59,7 +58,7 @@ function ClubCard({ club }) {
   );
 }
 
-export function MisClubesScreen({ clubs, publicClubsPreview }) {
+export function MisClubesScreen({ clubs }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 18px 24px' }}>
       <div>
@@ -87,38 +86,6 @@ export function MisClubesScreen({ clubs, publicClubsPreview }) {
           Crear o unirme con un link
         </Button>
       </Link>
-
-      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 600, color: 'var(--text-primary)' }}>
-            Descubrir otros clubes
-          </div>
-          <Link href="/club/otros" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-link)', fontWeight: 600 }}>
-            Ver todos
-          </Link>
-        </div>
-
-        {publicClubsPreview.length === 0 ? (
-          <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)' }}>
-            Todavía no hay clubes públicos para mostrar.
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {publicClubsPreview.map((club) => (
-              <div key={club.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 10 }}>
-                <Avatar name={club.name} size={30} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>{club.name}</div>
-                  <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>
-                    {club.member_count} {Number(club.member_count) === 1 ? 'miembro' : 'miembros'}
-                    {club.book_title ? ` · ${club.book_title}` : ''}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

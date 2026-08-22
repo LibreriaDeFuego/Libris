@@ -15,15 +15,15 @@ App social para clubes de lectura: progreso de lectura compartido, comentarios (
 ```
 src/
   app/                    # rutas de Next.js (App Router)
-    page.js               # / → "Mis clubes de lectura" (lista + preview de Descubrir otros clubes)
+    page.js               # / → "Mis clubes de lectura"
     login/                 page.js + actions.js (signIn/signUp/signOut, Server Actions)
     recursos/page.js       # Guías/Cursos (contenido editorial curado)
+    descubrir/page.js      # directorio de clubes públicos para unirse (antes club/otros)
     club/[clubId]/page.js         # detalle de un club puntual
     club/[clubId]/comentarios/    # comentarios de ESE club, generales o por capítulo
     club/[clubId]/preferencias/   # nombre, visibilidad, libro, administradores y salir de ESE club
     club/[clubId]/capitulos/      # gestión de capítulos y volúmenes (solo administradores)
     club/[clubId]/portada/        # editor de encuadre de la portada (solo administradores)
-    club/otros/            # directorio de clubes públicos para unirse
     club/nuevo/            # crear o unirse a otro club (multi-club)
     unirse/[clubId]/       # pantalla de invitación (link para compartir)
     auth/callback/         # aterrizaje de los links que manda Supabase por mail
@@ -35,7 +35,7 @@ src/
     actions/media.js       # Server Actions: uploadBookCover, updateCoverFrame, postVoiceComment
     manifest.js            # genera /manifest.webmanifest (PWA)
   components/
-    AppShell.jsx           # shell con tab bar inferior (Club / Recursos)
+    AppShell.jsx           # shell con tab bar inferior (Recursos / Club / Descubrir)
     LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx, InviteButton.jsx,
     GoogleSignInButton.jsx, VoiceRecorder.jsx, CoverUploader.jsx,
     ClubSwitcher.jsx (menú para cambiar de club; tone="chip" para el héroe),
@@ -119,16 +119,19 @@ Para activarlo en otro entorno: crear credenciales OAuth en Google Cloud Console
 
 **Pendiente de marca:** la pantalla de consentimiento de Google muestra el dominio de Supabase en vez de "Libris". Para que diga Libris hace falta un dominio propio + el add-on Custom Domain de Supabase (pago) + verificación de la app en Google.
 
-### Estructura de navegación (Club / Recursos)
+### Estructura de navegación (Recursos / Club / Descubrir)
 
-- **Club** (`/`) — ya no es el detalle de un club: es **"Mis clubes de lectura"**, la lista completa de los clubes en los que participás (los hayas creado o no), cada uno con su actividad más reciente. Tocar uno lleva a `/club/[clubId]`, el detalle real (libro, progreso, comentarios). Abajo, una vista previa de **"Descubrir otros clubes"** con link a `/club/otros`, el directorio completo de clubes públicos para unirse.
-- **Recursos** (`/recursos`, antes `/descubrir`) — contenido curado en dos secciones: **Guías** y **Cursos**. Se sacó la categoría "Autor" (migración 008) para no pisarse con "Descubrir otros clubes" del tab Club.
+- **Recursos** (`/recursos`) — contenido curado en dos secciones: **Guías** y **Cursos**. Se sacó la categoría "Autor" (migración 008).
+- **Club** (`/`) — ya no es el detalle de un club: es **"Mis clubes de lectura"**, la lista completa de los clubes en los que participás (los hayas creado o no), cada uno con su actividad más reciente. Tocar uno lleva a `/club/[clubId]`, el detalle real (libro, progreso, comentarios).
+- **Descubrir** (`/descubrir`, antes `club/otros`) — pasó a ser pestaña propia (antes era un link dentro de Club). El directorio de clubes públicos para unirse.
 
 **Novedades se sacó de la app** (pestaña y ruta `/novedades` eliminadas) — mostraba el mismo feed editorial que ya está en Recursos, quedaba redundante. Está pendiente de decisión qué va en su lugar: se evaluó convertirla en un feed de actividad de los clubes propios (comentarios/progreso/nuevos miembros de todos mis clubes en un solo lugar, sin tocar la privacidad de clubes ajenos) más contenido como libros populares (`popular_books`, ya escrita en la base y sin usar) — pero se decidió sacarla primero y definir el reemplazo más adelante.
 
 ### Descubrimiento social — cómo está resuelto
 
-RLS solo deja ver los clubes propios, y eso no se toca. Lo que otros clubes leen se expone por funciones `security definer`: `other_clubs_reading_count` y `other_clubs_activity` (migración 005) para "otros clubes leyendo el mismo libro", y `discover_public_clubs` (migración 007) para el directorio de `/club/otros`. Los clubes **privados aparecen anonimizados** ("Un club") y no aparecen en el directorio; solo los que se marcan como públicos muestran su nombre y son unibles desde ahí, desde **Preferencias del club** (ícono de engranaje), donde cada opción explica exactamente qué ven los demás.
+RLS solo deja ver los clubes propios, y eso no se toca. Lo que otros clubes leen se expone por funciones `security definer`: `other_clubs_reading_count` y `other_clubs_activity` (migración 005) para "otros clubes leyendo el mismo libro", y `discover_public_clubs` (migración 007) para el directorio de `/descubrir`. Los clubes **privados aparecen anonimizados** ("Un club") y no aparecen en el directorio; solo los que se marcan como públicos muestran su nombre y son unibles desde ahí, desde **Preferencias del club** (ícono de engranaje), donde cada opción explica exactamente qué ven los demás.
+
+**Postulaciones a clubes privados — en evaluación, todavía no implementado.** Se planteó un tercer modo además de público/privado: un club privado puede optar por aparecer en `/descubrir` (con su nombre, como los públicos) pero sin unión directa — el interesado manda una solicitud y un administrador la aprueba o rechaza, igual que una cuenta privada de Instagram. Implica una tabla `club_join_requests` (pendiente/aprobada/rechazada), extender `discover_public_clubs` para incluir estos clubes marcados como "con solicitud", y una sección de solicitudes pendientes en Preferencias para que el admin las revise. Se armaron 3 mockups de cómo se vería `/descubrir` con esto — pendiente que el usuario elija una dirección antes de construirlo.
 
 ### Multi-club
 

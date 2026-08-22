@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMyClubs } from '@/lib/activeClub';
 import { OtrosClubesScreen } from '@/screens/OtrosClubesScreen.jsx';
 
-export const metadata = { title: 'Descubrir clubes · Libris' };
+export const metadata = { title: 'Descubrir · Libris' };
 
 export default async function Page() {
   const supabase = await createClient();
