@@ -149,7 +149,7 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
         )}
         {isOwn && (
           <IconButton aria-label="Editar perfil" onClick={() => setEditing((e) => !e)}>
-            <Icon name="pencil" size={16} />
+            <Icon name="more-horizontal" size={18} />
           </IconButton>
         )}
       </div>
