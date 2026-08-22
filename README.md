@@ -35,7 +35,8 @@ src/
     actions/media.js       # Server Actions: uploadBookCover, updateCoverFrame, postVoiceComment
     manifest.js            # genera /manifest.webmanifest (PWA)
   components/
-    AppShell.jsx           # shell con tab bar inferior (Recursos / Club / Descubrir)
+    AppShell.jsx           # shell con tab bar inferior (Recursos / Club / Descubrir / Perfil)
+    AvatarUploader.jsx     # subir/cambiar la foto de perfil (mismo patrón que CoverUploader)
     LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx, InviteButton.jsx,
     GoogleSignInButton.jsx, VoiceRecorder.jsx, CoverUploader.jsx,
     ClubSwitcher.jsx (menú para cambiar de club; tone="chip" para el héroe),
@@ -52,6 +53,8 @@ src/
     coverFrame.js (matemática del encuadre de portada — escala, clamp, presets,
       persistencia como 4 números normalizados; portada de cover-framer.js),
     friendlyError.js (traduce errores de Postgres/RLS a mensajes en español),
+    profileData.js (las 4 consultas del Perfil — profile/stats/actividad/sigo,
+      compartidas entre /perfil y /perfil/[profileId]),
     formatRelativeTime.js, safeNext.js, authProviders.js, requireUser.js
   design-system/           # sistema de diseño Libris (tokens + 18 componentes reutilizables)
     tokens/                 colors.css, typography.css, spacing.css, effects.css
@@ -86,7 +89,9 @@ supabase/
                              y books pasa a editarse solo por administradores),
                            014_postulaciones.sql (join_mode además de público/privado,
                              tabla club_join_requests, discover_public_clubs con clubes
-                             "con solicitud")
+                             "con solicitud"),
+                           015_perfil_de_usuario.sql (bio + bucket de avatares, tabla
+                             follows, funciones profile_activity y profile_stats)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -122,11 +127,21 @@ Para activarlo en otro entorno: crear credenciales OAuth en Google Cloud Console
 
 **Pendiente de marca:** la pantalla de consentimiento de Google muestra el dominio de Supabase en vez de "Libris". Para que diga Libris hace falta un dominio propio + el add-on Custom Domain de Supabase (pago) + verificación de la app en Google.
 
-### Estructura de navegación (Recursos / Club / Descubrir)
+### Estructura de navegación (Recursos / Club / Descubrir / Perfil)
 
 - **Recursos** (`/recursos`) — contenido curado en dos secciones: **Guías** y **Cursos**. Se sacó la categoría "Autor" (migración 008).
 - **Club** (`/`) — ya no es el detalle de un club: es **"Mis clubes de lectura"**, la lista completa de los clubes en los que participás (los hayas creado o no), cada uno con su actividad más reciente. Tocar uno lleva a `/club/[clubId]`, el detalle real (libro, progreso, comentarios).
 - **Descubrir** (`/descubrir`, antes `club/otros`) — pasó a ser pestaña propia (antes era un link dentro de Club). El directorio de clubes públicos para unirse.
+- **Perfil** (`/perfil`) — el propio perfil, que se puede seguir. La pestaña muestra la foto real de la persona en vez de un ícono (viene de `layout.js`, que busca el perfil propio server-side y se lo pasa a `AppShell`).
+
+### Perfil de usuario (migración 015)
+
+Cada perfil tiene foto (bucket `avatars`, igual de público que las portadas de libro), una bio corta, tres números (libros / seguidores / siguiendo) y un feed de "actividad": cada comentario que esa persona escribió, con la portada del libro grande de fondo y el texto anclado abajo — se toca la tarjeta para desplegar el comentario completo.
+
+- **`/perfil`** es el propio (con "Editar perfil": nombre, bio, foto). **`/perfil/[profileId]`** es el de cualquier otra persona — se llega tocando un nombre en la lista de miembros de **Preferencias**. Las dos rutas comparten las mismas cuatro consultas (`src/lib/profileData.js`).
+- **Seguir** es la tabla `follows` (quién sigue a quién), pública igual que en cualquier red social — no requiere aprobación, a diferencia de las postulaciones a clubes.
+- **La actividad respeta la privacidad de los clubes**, ya armada en las migraciones 007/014: la función `profile_activity` (`security definer`) solo muestra lo que comentaste en un club abierto o "con solicitud" a cualquiera; lo de un club privado (`invite`) solo se lo muestra a quien ya es miembro de ese club — o a vos mismo, mirando tu propio perfil, sin excepción. Los comentarios marcados spoiler no aparecen nunca acá. `profile_stats` (libros/seguidores/siguiendo) sigue el mismo criterio para el conteo de libros.
+- Las notas de voz aparecen en el feed como texto (la transcripción, si existe) — reproducir el audio real sigue restringido a los miembros del club por la política de Storage ya existente, así que no se intentó sortear eso acá.
 
 **Novedades se sacó de la app** (pestaña y ruta `/novedades` eliminadas) — mostraba el mismo feed editorial que ya está en Recursos, quedaba redundante. Está pendiente de decisión qué va en su lugar: se evaluó convertirla en un feed de actividad de los clubes propios (comentarios/progreso/nuevos miembros de todos mis clubes en un solo lugar, sin tocar la privacidad de clubes ajenos) más contenido como libros populares (`popular_books`, ya escrita en la base y sin usar) — pero se decidió sacarla primero y definir el reemplazo más adelante.
 

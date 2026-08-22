@@ -113,4 +113,24 @@ select 'Migración 014 — discover_public_clubs incluye join_mode',
             ) and exists (
               select 1 from pg_proc where proname = 'discover_public_clubs' and prosrc like '%join_mode%'
             )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 015 — bio en profiles',
+       case when exists (select 1 from information_schema.columns where table_name = 'profiles' and column_name = 'bio')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 015 — bucket de avatares',
+       case when exists (select 1 from storage.buckets where id = 'avatars')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 015 — tabla de seguidores',
+       case when exists (select 1 from information_schema.tables where table_name = 'follows')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 015 — función profile_activity',
+       case when exists (select 1 from pg_proc where proname = 'profile_activity')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 015 — función profile_stats',
+       case when exists (select 1 from pg_proc where proname = 'profile_stats')
             then 'OK' else 'FALTA' end;

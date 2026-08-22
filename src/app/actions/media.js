@@ -49,6 +49,35 @@ export async function uploadBookCover(prevState, formData) {
   return { error: null };
 }
 
+// Sube la foto de perfil a la carpeta propia del bucket ("<user_id>/…") y la
+// deja apuntada en profiles.avatar_url. El bucket es público, igual que el
+// de portadas — una foto de perfil no es información sensible.
+export async function uploadAvatar(prevState, formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const file = formData.get('file');
+  if (!isFile(file) || file.size === 0) return { error: 'Elige una imagen.' };
+  if (file.size > MAX_COVER_BYTES) return { error: 'La imagen no puede pesar más de 5 MB.' };
+
+  const extension = COVER_EXTENSIONS[file.type];
+  if (!extension) return { error: 'La foto tiene que ser JPG, PNG o WEBP.' };
+
+  const path = `${user.id}/${crypto.randomUUID()}.${extension}`;
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { contentType: file.type });
+  if (uploadError) return { error: uploadError.message };
+
+  const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+
+  const { error } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
 // Guarda el encuadre de la portada (qué parte se ve en el héroe) y si esa
 // tapa ya trae el título impreso. Solo administradores (lo impone RLS).
 export async function updateCoverFrame(formData) {

@@ -59,15 +59,17 @@ function MemberRow({ member, canManage, adminCount, currentUserId }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <Avatar name={name} size={32} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
-            {name} {isSelf && <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(tú)</span>}
+        <Link href={`/perfil/${member.profile_id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+          <Avatar name={name} src={member.profiles?.avatar_url} size={32} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {name} {isSelf && <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(tú)</span>}
+            </div>
+            {isAdminRow && (
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-600)', fontWeight: 600 }}>Administrador</div>
+            )}
           </div>
-          {isAdminRow && (
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent-600)', fontWeight: 600 }}>Administrador</div>
-          )}
-        </div>
+        </Link>
         {canManage && (
           <Button variant="secondary" size="sm" type="button" onClick={toggle} disabled={pending || blockedByLimit}>
             {pending ? '...' : isAdminRow ? 'Sacar admin' : 'Hacer admin'}

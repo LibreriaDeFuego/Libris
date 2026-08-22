@@ -3,14 +3,16 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
+import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 
 const TABS = [
   { href: '/recursos', match: (path) => path.startsWith('/recursos'), icon: 'compass', label: 'Recursos' },
   { href: '/', match: (path) => path === '/' || path.startsWith('/club'), icon: 'book-open', label: 'Club' },
   { href: '/descubrir', match: (path) => path.startsWith('/descubrir'), icon: 'search', label: 'Descubrir' },
+  { href: '/perfil', match: (path) => path.startsWith('/perfil'), icon: 'user', label: 'Perfil' },
 ];
 
-export function AppShell({ children }) {
+export function AppShell({ children, me }) {
   const pathname = usePathname();
   const isFullScreenClubRoute = pathname === '/club/nuevo' || pathname.endsWith('/preferencias') || pathname.endsWith('/capitulos') || pathname.endsWith('/portada');
   const showTabBar = pathname !== '/login' && !pathname.startsWith('/unirse') && !isFullScreenClubRoute;
@@ -71,7 +73,13 @@ export function AppShell({ children }) {
                   color,
                 }}
               >
-                <Icon name={tab.icon} size={20} color={color} />
+                {tab.href === '/perfil' && me ? (
+                  <div style={{ borderRadius: '50%', border: `1.5px solid ${active ? color : 'transparent'}`, lineHeight: 0 }}>
+                    <Avatar name={me.display_name} src={me.avatar_url} size={20} />
+                  </div>
+                ) : (
+                  <Icon name={tab.icon} size={20} color={color} />
+                )}
                 {tab.label}
               </Link>
             );

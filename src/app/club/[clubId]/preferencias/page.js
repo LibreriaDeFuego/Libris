@@ -20,7 +20,7 @@ export default async function Page({ params }) {
   const [{ data: members }, clubBook, { data: pendingRequests }] = await Promise.all([
     supabase
       .from('club_members')
-      .select('profile_id, role, joined_at, profiles(display_name)')
+      .select('profile_id, role, joined_at, profiles(display_name, avatar_url)')
       .eq('club_id', clubId)
       .order('joined_at'),
     getActiveClubBook(supabase, clubId),
