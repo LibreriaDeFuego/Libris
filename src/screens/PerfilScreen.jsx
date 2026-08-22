@@ -43,18 +43,10 @@ function FollowButton({ profileId, initialFollowing }) {
   );
 }
 
-// El propio perfil: "Editar perfil" despliega nombre, bio y foto.
-function EditProfileForm({ profile }) {
+// El formulario del propio perfil: nombre, bio y foto. Se abre/cierra desde
+// el lápiz de arriba (PerfilScreen controla el estado "editing").
+function EditProfileFields({ profile, onClose }) {
   const [state, action, pending] = useActionState(updateProfile, initialState);
-  const [editing, setEditing] = useState(false);
-
-  if (!editing) {
-    return (
-      <Button variant="secondary" size="md" type="button" onClick={() => setEditing(true)}>
-        Editar perfil
-      </Button>
-    );
-  }
 
   return (
     <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
@@ -68,7 +60,7 @@ function EditProfileForm({ profile }) {
       )}
       {state?.saved && <div style={{ color: 'var(--success-700)', fontSize: 'var(--fs-2xs)' }}>Guardado.</div>}
       <div style={{ display: 'flex', gap: 8 }}>
-        <Button variant="secondary" size="sm" type="button" onClick={() => setEditing(false)}>Cerrar</Button>
+        <Button variant="secondary" size="sm" type="button" onClick={onClose}>Cerrar</Button>
         <Button variant="primary" size="sm" type="submit" disabled={pending}>{pending ? 'Guardando…' : 'Guardar'}</Button>
       </div>
     </form>
@@ -141,14 +133,26 @@ function ActivityCard({ activity, canOpenClub }) {
 
 export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myClubIds }) {
   const router = useRouter();
+  const [editing, setEditing] = useState(false);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: '20px 18px 24px' }}>
-      {!isOwn && (
-        <IconButton aria-label="Volver" onClick={() => router.back()}>
-          <Icon name="arrow-left" size={18} />
-        </IconButton>
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {isOwn ? (
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+            Perfil
+          </div>
+        ) : (
+          <IconButton aria-label="Volver" onClick={() => router.back()}>
+            <Icon name="arrow-left" size={18} />
+          </IconButton>
+        )}
+        {isOwn && (
+          <IconButton aria-label="Editar perfil" onClick={() => setEditing((e) => !e)}>
+            <Icon name="pencil" size={16} />
+          </IconButton>
+        )}
+      </div>
 
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
@@ -186,9 +190,16 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
           )}
         </div>
 
-        <div style={{ marginTop: 14 }}>
-          {isOwn ? <EditProfileForm profile={profile} /> : <FollowButton profileId={profile.id} initialFollowing={isFollowing} />}
-        </div>
+        {isOwn && editing && (
+          <div style={{ marginTop: 14 }}>
+            <EditProfileFields profile={profile} onClose={() => setEditing(false)} />
+          </div>
+        )}
+        {!isOwn && (
+          <div style={{ marginTop: 14 }}>
+            <FollowButton profileId={profile.id} initialFollowing={isFollowing} />
+          </div>
+        )}
       </div>
 
       <div>
