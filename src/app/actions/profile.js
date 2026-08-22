@@ -13,7 +13,7 @@ export async function followProfile(formData) {
 
   const profileId = formData.get('profileId')?.toString();
   if (!profileId) return { error: 'Falta el perfil.' };
-  if (profileId === user.id) return { error: 'No te podés seguir a vos mismo.' };
+  if (profileId === user.id) return { error: 'No puedes seguirte a ti mismo.' };
 
   const { error } = await supabase.from('follows').insert({ follower_id: user.id, followed_id: profileId });
   if (error) return { error: friendlyDbError(error) };

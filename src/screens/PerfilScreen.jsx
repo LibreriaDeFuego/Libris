@@ -57,7 +57,7 @@ function EditProfileFields({ profile, onClose }) {
     <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
       <AvatarUploader hasAvatar={!!profile.avatar_url} />
       <Input name="displayName" defaultValue={profile.display_name} placeholder="Tu nombre" required />
-      <Textarea name="bio" defaultValue={profile.bio ?? ''} placeholder="Una frase corta sobre vos (opcional)" rows={2} />
+      <Textarea name="bio" defaultValue={profile.bio ?? ''} placeholder="Una frase corta sobre ti (opcional)" rows={2} />
       {state?.error && (
         <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 8 }}>
           {state.error}
