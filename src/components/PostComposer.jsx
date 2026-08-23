@@ -1,19 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { createPost } from '@/app/actions/posts';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { PhotoCropModal } from '@/components/PhotoCropModal';
-
-const pillStyle = {
-  flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6,
-  cursor: 'pointer', fontSize: 'var(--fs-2xs)', fontWeight: 600, color: 'var(--text-primary)',
-  background: 'var(--surface-card)', border: '1px solid var(--border-default)',
-  borderRadius: 'var(--radius-pill)', padding: '8px 12px',
-};
 
 // Vista previa local de la foto ya recortada, antes de subirla — libera el
 // object URL anterior cada vez que cambia el blob o al desmontar.
@@ -26,13 +19,15 @@ function PreviewImage({ blob }) {
   );
 }
 
-// Círculo con "+" junto al nombre, del mismo tamaño que el botón de los
-// tres puntos: elegís o sacás una foto de lo que estás leyendo, la ajustás
-// en un recorte vertical (3:4, como un feed de fotos) y la publicás con un
-// texto corto opcional. Aparece mezclada con comentarios y notas de voz en
-// la Actividad del perfil.
+// Círculo chico con "+" junto al nombre: un solo input de archivo, sin
+// "capture" — así el propio celular abre su selector nativo, que ya junta
+// la cámara y la galería en un solo lugar (como en Instagram), en vez de
+// obligar a elegir antes entre dos botones propios. De ahí se pasa directo
+// al recorte vertical (3:4) y a un texto corto opcional antes de publicar.
+// Aparece mezclada con comentarios y notas de voz en la Actividad del perfil.
 export function PostComposer() {
-  const [step, setStep] = useState('closed'); // closed | picking | cropping | composing
+  const inputRef = useRef(null);
+  const [step, setStep] = useState('closed'); // closed | cropping | composing
   const [pendingFile, setPendingFile] = useState(null);
   const [croppedBlob, setCroppedBlob] = useState(null);
   const [caption, setCaption] = useState('');
@@ -77,48 +72,22 @@ export function PostComposer() {
       <button
         type="button"
         aria-label="Agregar una foto"
-        onClick={() => setStep('picking')}
+        onClick={() => inputRef.current?.click()}
         style={{
-          flexShrink: 0, width: 40, height: 40, borderRadius: 'var(--radius-round)',
+          flexShrink: 0, width: 30, height: 30, borderRadius: 'var(--radius-round)',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           background: 'var(--accent-500)', border: 'none', color: '#fff', cursor: 'pointer',
         }}
       >
-        <Icon name="plus" size={18} color="#fff" />
+        <Icon name="plus" size={14} color="#fff" />
       </button>
-
-      {step === 'picking' && (
-        <Modal title="Compartir una foto" onClose={reset}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-              Compartí una foto de lo que estás leyendo. Se va a ver en tu Actividad.
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <label style={pillStyle}>
-                <Icon name="image" size={13} />
-                Elegir foto
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handlePick}
-                  style={{ display: 'none' }}
-                />
-              </label>
-              <label style={pillStyle}>
-                <Icon name="camera" size={13} />
-                Tomar foto
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  capture="environment"
-                  onChange={handlePick}
-                  style={{ display: 'none' }}
-                />
-              </label>
-            </div>
-          </div>
-        </Modal>
-      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={handlePick}
+        style={{ display: 'none' }}
+      />
 
       {step === 'cropping' && pendingFile && (
         <PhotoCropModal
