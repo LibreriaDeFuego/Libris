@@ -155,6 +155,17 @@ Desde el propio perfil (botón "Foto", junto al nombre) se puede compartir una f
 
 **Novedades se sacó de la app** (pestaña y ruta `/novedades` eliminadas) — mostraba el mismo feed editorial que ya está en Recursos, quedaba redundante. Está pendiente de decisión qué va en su lugar: se evaluó convertirla en un feed de actividad de los clubes propios (comentarios/progreso/nuevos miembros de todos mis clubes en un solo lugar, sin tocar la privacidad de clubes ajenos) más contenido como libros populares (`popular_books`, ya escrita en la base y sin usar) — pero se decidió sacarla primero y definir el reemplazo más adelante.
 
+### Buscador en Descubrir (clubes y personas)
+
+Una sola barra de búsqueda arriba del directorio de `/descubrir` busca dos cosas a la vez:
+
+- **Clubes** — filtra por nombre entre los clubes que ya están cargados (el mismo directorio de siempre, hasta 50). No hace falta ninguna consulta nueva ni migración: es un filtro en el navegador.
+- **Personas** — busca por nombre entre *todos* los usuarios de Libris (no solo compañeros de club), con una consulta directa a `profiles` desde el navegador (`src/lib/supabase/client.js`, primer uso del cliente de Supabase del lado del cliente en la app — hasta ahora todo pasaba por Server Actions/Components). Funciona sin ninguna función nueva porque los nombres de perfil ya son legibles para cualquier usuario logueado (política `profiles are readable by authenticated users`, la misma que permite compartir un link de perfil).
+
+Con la búsqueda vacía se ve el directorio de siempre; al escribir, aparecen dos secciones ("Clubes" / "Personas") con lo que haya, cada una oculta si no tiene resultados. Hay un debounce de 300ms para no mandar una consulta por letra.
+
+**Pendiente, a propósito**: hoy cualquier persona puede aparecer en esta búsqueda — no existe (todavía) una opción de perfil privado/público como en Instagram. Cuando se agregue esa opción, va a necesitar su propio flujo de "solicitud para seguir" con notificación (como ya existe para unirse a un club "con solicitud", migración 014) — se dejó pendiente a propósito, decisión explícita del dueño del producto.
+
 ### Descubrimiento social — cómo está resuelto
 
 RLS solo deja ver los clubes propios, y eso no se toca. Lo que otros clubes leen se expone por funciones `security definer`: `other_clubs_reading_count` y `other_clubs_activity` (migración 005) para "otros clubes leyendo el mismo libro", y `discover_public_clubs` (migración 007, extendida en la 014) para el directorio de `/descubrir`. Los clubes con invitación (antes "privados") aparecen anonimizados ("Un club") y no aparecen en el directorio; los abiertos y los "con solicitud" muestran su nombre y son unibles desde ahí, desde **Preferencias del club** (ícono de engranaje), donde cada opción explica exactamente qué ven los demás.

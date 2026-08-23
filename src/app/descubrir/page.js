@@ -18,5 +18,5 @@ export default async function Page() {
   const myClubIds = new Set(myClubs.map((c) => c.id));
   const clubs = (publicClubs ?? []).filter((c) => !myClubIds.has(c.id));
 
-  return <OtrosClubesScreen clubs={clubs} />;
+  return <OtrosClubesScreen clubs={clubs} currentUserId={user.id} />;
 }
