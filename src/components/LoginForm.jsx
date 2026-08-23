@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { signIn, signUp } from '@/app/login/actions';
+import { UsernameField } from '@/components/UsernameField';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Input } from '@/design-system/components/forms/Input.jsx';
 import { GoogleSignInButton } from '@/components/GoogleSignInButton';
@@ -12,6 +13,7 @@ export function LoginForm({ next = '/', googleEnabled = false }) {
   const [mode, setMode] = useState('signIn'); // 'signIn' | 'signUp'
   const [signInState, signInAction, signInPending] = useActionState(signIn, initialState);
   const [signUpState, signUpAction, signUpPending] = useActionState(signUp, initialState);
+  const [username, setUsername] = useState('');
 
   const action = mode === 'signIn' ? signInAction : signUpAction;
   const state = mode === 'signIn' ? signInState : signUpState;
@@ -30,10 +32,16 @@ export function LoginForm({ next = '/', googleEnabled = false }) {
       <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <input type="hidden" name="next" value={next} />
         {mode === 'signUp' && (
-          <div>
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Tu nombre</div>
-            <Input name="displayName" placeholder="¿Cómo te llamamos?" required />
-          </div>
+          <>
+            <div>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Tu nombre</div>
+              <Input name="displayName" placeholder="¿Cómo te llamamos?" required />
+            </div>
+            <div>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Nombre de usuario</div>
+              <UsernameField value={username} onChange={setUsername} />
+            </div>
+          </>
         )}
         <div>
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Email</div>

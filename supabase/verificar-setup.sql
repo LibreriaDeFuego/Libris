@@ -147,4 +147,16 @@ select 'Migración 016 — profile_activity trae fotos',
        case when exists (
               select 1 from pg_proc where proname = 'profile_activity' and prosrc like '%photo_url%'
             )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 017 — username en profiles',
+       case when exists (select 1 from information_schema.columns where table_name = 'profiles' and column_name = 'username')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 017 — username es único',
+       case when exists (select 1 from pg_indexes where tablename = 'profiles' and indexname = 'profiles_username_unique_idx')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 017 — función is_username_available',
+       case when exists (select 1 from pg_proc where proname = 'is_username_available')
             then 'OK' else 'FALTA' end;

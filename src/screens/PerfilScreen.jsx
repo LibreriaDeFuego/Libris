@@ -13,6 +13,7 @@ import { Input } from '@/design-system/components/forms/Input.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { AvatarUploader } from '@/components/AvatarUploader';
 import { PostComposer } from '@/components/PostComposer';
+import { UsernameField } from '@/components/UsernameField';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
 const initialState = { error: null };
@@ -45,11 +46,12 @@ function FollowButton({ profileId, initialFollowing }) {
   );
 }
 
-// El formulario del propio perfil: nombre, bio y foto. Se abre desde el menú
-// de los tres puntos (PerfilScreen controla el estado "editing") y se cierra
-// solo al guardar con éxito — sin botón de cerrar aparte.
+// El formulario del propio perfil: nombre, usuario, bio y foto. Se abre
+// desde el menú de los tres puntos (PerfilScreen controla el estado
+// "editing") y se cierra solo al guardar con éxito — sin botón de cerrar aparte.
 function EditProfileFields({ profile, onClose }) {
   const [state, action, pending] = useActionState(updateProfile, initialState);
+  const [username, setUsernameValue] = useState(profile.username ?? '');
 
   useEffect(() => {
     if (state?.saved) onClose();
@@ -59,6 +61,7 @@ function EditProfileFields({ profile, onClose }) {
     <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
       <AvatarUploader hasAvatar={!!profile.avatar_url} />
       <Input name="displayName" defaultValue={profile.display_name} placeholder="Tu nombre" required />
+      <UsernameField value={username} onChange={setUsernameValue} currentUsername={profile.username ?? null} />
       <Textarea name="bio" defaultValue={profile.bio ?? ''} placeholder="Una frase corta sobre ti (opcional)" rows={2} />
       {state?.error && (
         <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 8 }}>
@@ -278,6 +281,9 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
               {profile.display_name}
             </div>
+            {profile.username && (
+              <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>@{profile.username}</div>
+            )}
             {profile.bio && (
               <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 2, lineHeight: 'var(--lh-snug)' }}>
                 {profile.bio}

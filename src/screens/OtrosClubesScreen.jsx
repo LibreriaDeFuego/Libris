@@ -158,7 +158,12 @@ function PersonRow({ profile }) {
     >
       <Avatar name={profile.display_name} src={profile.avatar_url} size={40} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>{profile.display_name}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>{profile.display_name}</div>
+          {profile.username && (
+            <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>@{profile.username}</div>
+          )}
+        </div>
         {profile.bio && (
           <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {profile.bio}
@@ -192,20 +197,26 @@ export function OtrosClubesScreen({ clubs, currentUserId }) {
   // búsqueda vacía el efecto no hace nada — "people" solo se muestra más
   // abajo cuando hay una búsqueda en curso (isSearching), así que no hace
   // falta limpiarlo acá.
+  //
+  // Se busca por nombre para mostrar Y por nombre de usuario — dos
+  // consultas separadas (en vez de un solo .or()) para no tener que armar a
+  // mano el texto del filtro combinado, que con comas o paréntesis en lo
+  // que alguien escriba podría romper la sintaxis de PostgREST.
   useEffect(() => {
     if (!debouncedQuery) return undefined;
     let cancelled = false;
     const supabase = createClient();
-    supabase
-      .from('profiles')
-      .select('id, display_name, avatar_url, bio')
-      .ilike('display_name', `%${debouncedQuery}%`)
-      .neq('id', currentUserId)
-      .order('display_name')
-      .limit(10)
-      .then(({ data }) => {
-        if (!cancelled) setPeople(data ?? []);
-      });
+    const pattern = `%${debouncedQuery}%`;
+    const columns = 'id, display_name, username, avatar_url, bio';
+    Promise.all([
+      supabase.from('profiles').select(columns).ilike('display_name', pattern).neq('id', currentUserId).order('display_name').limit(10),
+      supabase.from('profiles').select(columns).ilike('username', pattern).neq('id', currentUserId).order('display_name').limit(10),
+    ]).then(([byName, byUsername]) => {
+      if (cancelled) return;
+      const merged = new Map();
+      for (const row of [...(byName.data ?? []), ...(byUsername.data ?? [])]) merged.set(row.id, row);
+      setPeople([...merged.values()].slice(0, 10));
+    });
     return () => {
       cancelled = true;
     };

@@ -1,9 +1,10 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { safeNext } from '@/lib/safeNext';
+import { isValidUsername, normalizeUsername, USERNAME_HELP, USERNAME_COOKIE } from '@/lib/username';
 
 // Origen real de la request: en Vercel llega por x-forwarded-*, en local por host.
 async function requestOrigin() {
@@ -29,21 +30,41 @@ export async function signUp(prevState, formData) {
   const email = formData.get('email');
   const password = formData.get('password');
   const displayName = formData.get('displayName');
+  const username = normalizeUsername(formData.get('username'));
   const next = safeNext(formData.get('next'));
   const supabase = await createClient();
+
+  if (!isValidUsername(username)) return { error: USERNAME_HELP };
+
+  // Chequeo previo para dar un mensaje claro antes de intentar crear la
+  // cuenta — la unicidad real la impone la base (índice único), esto es
+  // solo para no hacerle escribir todo el formulario de nuevo si ya está
+  // tomado.
+  const { data: available } = await supabase.rpc('is_username_available', { check_username: username });
+  if (available === false) return { error: 'Ese nombre de usuario ya está en uso.' };
 
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { display_name: displayName } },
+    options: { data: { display_name: displayName, username } },
   });
-  if (error) return { error: error.message };
+  if (error) {
+    // Si dos personas mandan el mismo username al mismo tiempo, el chequeo
+    // de arriba no alcanza — este es el mensaje para esa carrera rarísima.
+    if (error.message?.includes('duplicate key') || error.message?.includes('username')) {
+      return { error: 'Ese nombre de usuario ya está en uso.' };
+    }
+    return { error: error.message };
+  }
 
   // Con "Confirm email" activado (default de Supabase) signUp no devuelve
   // sesión: la cuenta existe pero recién queda usable al abrir el link del
   // mail. Sin este chequeo redirigíamos a "/" y el usuario rebotaba al login
   // sin ninguna explicación.
   if (!data.session) return { error: null, needsConfirmation: true };
+
+  const cookieStore = await cookies();
+  cookieStore.set(USERNAME_COOKIE, '1', { path: '/', maxAge: 60 * 60 * 24 * 365 });
 
   redirect(next);
 }

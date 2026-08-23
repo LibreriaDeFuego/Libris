@@ -93,7 +93,10 @@ supabase/
                            015_perfil_de_usuario.sql (bio + bucket de avatares, tabla
                              follows, funciones profile_activity y profile_stats),
                            016_fotos_de_lectura.sql (tabla posts + bucket post-photos,
-                             profile_activity ahora también trae las fotos)
+                             profile_activity ahora también trae las fotos),
+                           017_nombre_de_usuario.sql (username único en profiles,
+                             función is_username_available, el trigger de alta
+                             de cuenta lo guarda si vino en el registro)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -155,12 +158,21 @@ Desde el propio perfil (botón "Foto", junto al nombre) se puede compartir una f
 
 **Novedades se sacó de la app** (pestaña y ruta `/novedades` eliminadas) — mostraba el mismo feed editorial que ya está en Recursos, quedaba redundante. Está pendiente de decisión qué va en su lugar: se evaluó convertirla en un feed de actividad de los clubes propios (comentarios/progreso/nuevos miembros de todos mis clubes en un solo lugar, sin tocar la privacidad de clubes ajenos) más contenido como libros populares (`popular_books`, ya escrita en la base y sin usar) — pero se decidió sacarla primero y definir el reemplazo más adelante.
 
+### Nombre de usuario único (migración 017)
+
+Además del nombre para mostrar, cada perfil tiene un `@usuario` propio y único (minúsculas, letras/números/guion bajo, 3 a 20 caracteres — regla compartida en `src/lib/username.js`) — sirve para distinguir a dos personas con el mismo nombre en el buscador y en el perfil.
+
+- **Cuentas nuevas** lo piden en el propio formulario de registro, con disponibilidad chequeada en vivo mientras se escribe.
+- **Cuentas que ya existían** (de antes de esta migración, o creadas con Google, que no pide username) quedan con `username = null` a propósito — nada de asignarles uno sin avisar. La próxima vez que abren la app, el middleware (`src/lib/supabase/middleware.js`) las manda a `/elegir-usuario`, una pantalla obligatoria que no se puede saltear hasta guardar uno. Después de eso se puede cambiar en cualquier momento desde "Editar perfil".
+- **`is_username_available(check_username)`** es una función `security definer` que se puede llamar sin sesión (para el registro, antes de que exista la cuenta) — devuelve solo `true`/`false`, nunca datos de la tabla. La usan las tres pantallas (registro, `/elegir-usuario`, editar perfil) a través del mismo componente, `src/components/UsernameField.jsx`.
+- Para no consultar la base en cada request de cada usuario logueado (una vez que ya tiene username, para siempre), el middleware se apoya en una cookie (`libris_username_set`) que se pone la primera vez que se confirma que la cuenta tiene uno, y evita la consulta en las visitas siguientes.
+
 ### Buscador en Descubrir (clubes y personas)
 
 Una sola barra de búsqueda arriba del directorio de `/descubrir` busca dos cosas a la vez:
 
 - **Clubes** — filtra por nombre entre los clubes que ya están cargados (el mismo directorio de siempre, hasta 50). No hace falta ninguna consulta nueva ni migración: es un filtro en el navegador.
-- **Personas** — busca por nombre entre *todos* los usuarios de Libris (no solo compañeros de club), con una consulta directa a `profiles` desde el navegador (`src/lib/supabase/client.js`, primer uso del cliente de Supabase del lado del cliente en la app — hasta ahora todo pasaba por Server Actions/Components). Funciona sin ninguna función nueva porque los nombres de perfil ya son legibles para cualquier usuario logueado (política `profiles are readable by authenticated users`, la misma que permite compartir un link de perfil).
+- **Personas** — busca por nombre para mostrar Y por `@usuario` entre *todos* los usuarios de Libris (no solo compañeros de club), con dos consultas directas a `profiles` desde el navegador (`src/lib/supabase/client.js`, primer uso del cliente de Supabase del lado del cliente en la app — hasta ahora todo pasaba por Server Actions/Components) — dos consultas separadas en vez de una combinada con `.or()`, para no tener que armar a mano un texto de filtro que con comas o paréntesis en lo que alguien escriba podría romper. Funciona sin ninguna función nueva porque los nombres de perfil ya son legibles para cualquier usuario logueado (política `profiles are readable by authenticated users`, la misma que permite compartir un link de perfil).
 
 Con la búsqueda vacía se ve el directorio de siempre; al escribir, aparecen dos secciones ("Clubes" / "Personas") con lo que haya, cada una oculta si no tiene resultados. Hay un debounce de 300ms para no mandar una consulta por letra.
 

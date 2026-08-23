@@ -5,7 +5,7 @@ export async function getProfileData(supabase, viewerId, targetProfileId) {
   const isOwn = targetProfileId === viewerId;
 
   const [{ data: profile }, { data: stats }, { data: activity }, followRow] = await Promise.all([
-    supabase.from('profiles').select('id, display_name, avatar_url, bio').eq('id', targetProfileId).maybeSingle(),
+    supabase.from('profiles').select('id, display_name, username, avatar_url, bio').eq('id', targetProfileId).maybeSingle(),
     supabase.rpc('profile_stats', { target_profile_id: targetProfileId }).maybeSingle(),
     supabase.rpc('profile_activity', { target_profile_id: targetProfileId, limit_count: 20 }),
     isOwn
