@@ -96,7 +96,9 @@ supabase/
                              profile_activity ahora también trae las fotos),
                            017_nombre_de_usuario.sql (username único en profiles,
                              función is_username_available, el trigger de alta
-                             de cuenta lo guarda si vino en el registro)
+                             de cuenta lo guarda si vino en el registro),
+                           018_usuario_admite_puntos.sql (el username también
+                             permite puntos, sin empezar/terminar/repetirlos)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -160,7 +162,7 @@ Desde el propio perfil (botón "Foto", junto al nombre) se puede compartir una f
 
 ### Nombre de usuario único (migración 017)
 
-Además del nombre para mostrar, cada perfil tiene un `@usuario` propio y único (minúsculas, letras/números/guion bajo, 3 a 20 caracteres — regla compartida en `src/lib/username.js`) — sirve para distinguir a dos personas con el mismo nombre en el buscador y en el perfil.
+Además del nombre para mostrar, cada perfil tiene un `@usuario` propio y único (minúsculas, letras/números/guion bajo/punto, 3 a 20 caracteres, sin empezar/terminar/repetir el punto — regla compartida en `src/lib/username.js`) — sirve para distinguir a dos personas con el mismo nombre en el buscador y en el perfil.
 
 - **Cuentas nuevas** lo piden en el propio formulario de registro, con disponibilidad chequeada en vivo mientras se escribe.
 - **Cuentas que ya existían** (de antes de esta migración, o creadas con Google, que no pide username) quedan con `username = null` a propósito — nada de asignarles uno sin avisar. La próxima vez que abren la app, el middleware (`src/lib/supabase/middleware.js`) las manda a `/elegir-usuario`, una pantalla obligatoria que no se puede saltear hasta guardar uno. Después de eso se puede cambiar en cualquier momento desde "Editar perfil".
