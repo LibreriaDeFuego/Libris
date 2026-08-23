@@ -11,6 +11,7 @@ import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Input } from '@/design-system/components/forms/Input.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { AvatarUploader } from '@/components/AvatarUploader';
+import { PostComposer } from '@/components/PostComposer';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
 const initialState = { error: null };
@@ -148,22 +149,27 @@ function ProfileMenu({ profileId, onEdit }) {
   );
 }
 
-// Una tarjeta de actividad: la portada del libro grande, con lo que esa
-// persona comentó anclado abajo. Tocarla despliega el comentario completo.
+// Una tarjeta de actividad: un bloque alto que domina la pantalla, con la
+// foto de fondo (la del libro, o la que la persona subió si es una foto
+// propia) y lo que dijo anclado abajo. Tocarla despliega el texto completo.
 function ActivityCard({ activity, canOpenClub }) {
   const [expanded, setExpanded] = useState(false);
+  const isPhoto = activity.kind === 'photo';
   const isQuote = activity.kind === 'quote';
-  const text = activity.kind === 'voice'
-    ? (activity.voice_transcript ?? 'Publicó una nota de voz.')
-    : activity.body;
+  const text = isPhoto
+    ? activity.body
+    : activity.kind === 'voice'
+      ? (activity.voice_transcript ?? 'Publicó una nota de voz.')
+      : activity.body;
+  const backgroundUrl = isPhoto ? activity.photo_url : activity.book_cover_url;
 
   return (
     <div
       onClick={() => setExpanded((e) => !e)}
       style={{
-        position: 'relative', height: 380, borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+        position: 'relative', height: 440, borderRadius: 'var(--radius-lg)', overflow: 'hidden',
         boxShadow: 'var(--shadow-lg)', cursor: 'pointer', flexShrink: 0,
-        background: activity.book_cover_url ? `center/cover no-repeat url(${activity.book_cover_url})` : 'var(--accent-500)',
+        background: backgroundUrl ? `center/cover no-repeat url(${backgroundUrl})` : 'var(--accent-500)',
       }}
     >
       <div
@@ -173,19 +179,24 @@ function ActivityCard({ activity, canOpenClub }) {
         }}
       />
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '18px 16px 20px', color: '#fff' }}>
-        <div style={{ fontSize: 'var(--fs-2xs)', color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginBottom: 8 }}>
-          {activity.club_name} · {formatRelativeTime(activity.created_at)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--fs-2xs)', color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginBottom: 8 }}>
+          {isPhoto && <Icon name="camera" size={12} color="rgba(255,255,255,0.75)" />}
+          {isPhoto ? `Compartió una foto · ${formatRelativeTime(activity.created_at)}` : `${activity.club_name} · ${formatRelativeTime(activity.created_at)}`}
         </div>
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-lg)' }}>
-          {activity.book_title}
-        </div>
-        <div style={{ fontSize: 'var(--fs-2xs)', color: 'rgba(255,255,255,0.68)', marginTop: 3 }}>
-          {activity.book_author}
-        </div>
+        {!isPhoto && (
+          <>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-lg)' }}>
+              {activity.book_title}
+            </div>
+            <div style={{ fontSize: 'var(--fs-2xs)', color: 'rgba(255,255,255,0.68)', marginTop: 3 }}>
+              {activity.book_author}
+            </div>
+          </>
+        )}
         {text && (
           <div
             style={{
-              fontSize: 'var(--fs-sm)', marginTop: 12, lineHeight: 'var(--lh-snug)',
+              fontSize: 'var(--fs-sm)', marginTop: isPhoto ? 4 : 12, lineHeight: 'var(--lh-snug)',
               color: isQuote ? 'var(--gold-300)' : 'rgba(255,255,255,0.95)',
               fontStyle: isQuote ? 'italic' : 'normal',
               display: '-webkit-box',
@@ -194,10 +205,10 @@ function ActivityCard({ activity, canOpenClub }) {
               overflow: expanded ? 'visible' : 'hidden',
             }}
           >
-            “{text}”
+            {isPhoto ? text : `“${text}”`}
           </div>
         )}
-        {expanded && canOpenClub && (
+        {expanded && canOpenClub && !isPhoto && (
           <Link
             href={`/club/${activity.club_id}/comentarios`}
             onClick={(e) => e.stopPropagation()}
@@ -260,15 +271,18 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
           </div>
         </div>
 
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
-            {profile.display_name}
-          </div>
-          {profile.bio && (
-            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 2, lineHeight: 'var(--lh-snug)' }}>
-              {profile.bio}
+        <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {profile.display_name}
             </div>
-          )}
+            {profile.bio && (
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 2, lineHeight: 'var(--lh-snug)' }}>
+                {profile.bio}
+              </div>
+            )}
+          </div>
+          {isOwn && <PostComposer />}
         </div>
 
         {isOwn && editing && (
@@ -289,7 +303,7 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
         </div>
         {activity.length === 0 ? (
           <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '24px 0', textAlign: 'center' }}>
-            {isOwn ? 'Todavía no comentaste nada.' : 'Todavía no comentó nada que puedas ver.'}
+            {isOwn ? 'Todavía no comentaste ni compartiste nada.' : 'Todavía no compartió nada que puedas ver.'}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

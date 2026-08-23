@@ -133,4 +133,18 @@ select 'Migración 015 — función profile_activity',
 union all
 select 'Migración 015 — función profile_stats',
        case when exists (select 1 from pg_proc where proname = 'profile_stats')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 016 — tabla posts',
+       case when exists (select 1 from information_schema.tables where table_name = 'posts')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 016 — bucket de fotos del feed',
+       case when exists (select 1 from storage.buckets where id = 'post-photos')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 016 — profile_activity trae fotos',
+       case when exists (
+              select 1 from pg_proc where proname = 'profile_activity' and prosrc like '%photo_url%'
+            )
             then 'OK' else 'FALTA' end;

@@ -91,7 +91,9 @@ supabase/
                              tabla club_join_requests, discover_public_clubs con clubes
                              "con solicitud"),
                            015_perfil_de_usuario.sql (bio + bucket de avatares, tabla
-                             follows, funciones profile_activity y profile_stats)
+                             follows, funciones profile_activity y profile_stats),
+                           016_fotos_de_lectura.sql (tabla posts + bucket post-photos,
+                             profile_activity ahora también trae las fotos)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -136,12 +138,20 @@ Para activarlo en otro entorno: crear credenciales OAuth en Google Cloud Console
 
 ### Perfil de usuario (migración 015)
 
-Cada perfil tiene foto (bucket `avatars`, igual de público que las portadas de libro), una bio corta, tres números (libros / seguidores / siguiendo) y un feed de "actividad": cada comentario que esa persona escribió, con la portada del libro grande de fondo y el texto anclado abajo — se toca la tarjeta para desplegar el comentario completo.
+Cada perfil tiene foto (bucket `avatars`, igual de público que las portadas de libro), una bio corta, tres números (libros / seguidores / siguiendo) y un feed de "actividad": cada comentario que esa persona escribió (y, desde la migración 016, cada foto que compartió), con una imagen grande de fondo y el texto anclado abajo — se toca la tarjeta para desplegar el texto completo.
 
 - **`/perfil`** es el propio (con "Editar perfil": nombre, bio, foto). **`/perfil/[profileId]`** es el de cualquier otra persona — se llega tocando un nombre en la lista de miembros de **Preferencias**. Las dos rutas comparten las mismas cuatro consultas (`src/lib/profileData.js`).
 - **Seguir** es la tabla `follows` (quién sigue a quién), pública igual que en cualquier red social — no requiere aprobación, a diferencia de las postulaciones a clubes.
 - **La actividad respeta la privacidad de los clubes**, ya armada en las migraciones 007/014: la función `profile_activity` (`security definer`) solo muestra lo que comentaste en un club abierto o "con solicitud" a cualquiera; lo de un club privado (`invite`) solo se lo muestra a quien ya es miembro de ese club — o a vos mismo, mirando tu propio perfil, sin excepción. Los comentarios marcados spoiler no aparecen nunca acá. `profile_stats` (libros/seguidores/siguiendo) sigue el mismo criterio para el conteo de libros.
 - Las notas de voz aparecen en el feed como texto (la transcripción, si existe) — reproducir el audio real sigue restringido a los miembros del club por la política de Storage ya existente, así que no se intentó sortear eso acá.
+
+### Fotos de lo que estás leyendo (migración 016)
+
+Desde el propio perfil (botón "Foto", junto al nombre) se puede compartir una foto de lo que se está leyendo — de la galería o sacada en el momento con la cámara. Antes de subirla pasa por el mismo recorte estilo Instagram que la foto de perfil (`PhotoCropModal`, `src/components/PhotoCropModal.jsx`), acá en proporción vertical 3:4 en vez de cuadrada, con un texto corto opcional.
+
+- Tabla `posts` (`profile_id`, `image_url`, `caption`), bucket `post-photos` — igual de público que el resto de las imágenes de la app, no está atada a ningún club.
+- Se mezclan con los comentarios y notas de voz en el mismo feed de "Actividad", ordenadas todas por fecha: `profile_activity` ahora hace un `union all` entre `comments` y `posts`. Como una foto no depende de ningún club, es visible siempre que se puede ver el perfil (mismo criterio que "Seguir").
+- Las tarjetas de "Actividad" pasaron de 380px a 440px de alto — bloques más dominantes, un paso hacia el diseño de scroll por bloques que se probó primero como mockup. Por ahora siguen en el flujo normal de la página (sin un scroll "atrapado" aparte); si hace falta el efecto de encastre tipo TikTok se puede sumar después con `scroll-snap`.
 
 **Novedades se sacó de la app** (pestaña y ruta `/novedades` eliminadas) — mostraba el mismo feed editorial que ya está en Recursos, quedaba redundante. Está pendiente de decisión qué va en su lugar: se evaluó convertirla en un feed de actividad de los clubes propios (comentarios/progreso/nuevos miembros de todos mis clubes en un solo lugar, sin tocar la privacidad de clubes ajenos) más contenido como libros populares (`popular_books`, ya escrita en la base y sin usar) — pero se decidió sacarla primero y definir el reemplazo más adelante.
 
