@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { uploadBookCover } from '@/app/actions/media';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
+import { compressImage } from '@/lib/imageProcessing';
 
 // Sin <form> propio a propósito: este control se usa dentro del formulario de
 // preferencias, y HTML no permite formularios anidados (rompe la hidratación).
@@ -17,15 +18,20 @@ export function CoverUploader({ bookId, hasCover, tone = 'dark' }) {
 
   function handleChange(event) {
     const file = event.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.set('bookId', bookId);
-    formData.set('file', file);
     // Limpiamos el input para poder reintentar con el mismo archivo si falla.
     event.target.value = '';
+    if (!file) return;
 
     startTransition(async () => {
+      // Achicamos la foto antes de subirla (sin recortarla — el encuadre lo
+      // define después EncuadreScreen, con la imagen ya liviana). Si algo
+      // falla en el navegador, subimos el archivo original igual.
+      const toUpload = await compressImage(file).catch(() => file);
+
+      const formData = new FormData();
+      formData.set('bookId', bookId);
+      formData.set('file', toUpload, 'portada.jpg');
+
       const result = await uploadBookCover(null, formData);
       setError(result?.error ?? null);
     });
