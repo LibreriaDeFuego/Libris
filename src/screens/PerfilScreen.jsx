@@ -108,8 +108,8 @@ function ProfileMenu({ profileId, onEdit }) {
 
   return (
     <div style={{ position: 'relative' }}>
-      <IconButton aria-label="Más opciones" onClick={() => setOpen((o) => !o)}>
-        <Icon name="more-horizontal" size={18} />
+      <IconButton aria-label="Más opciones" size={30} onClick={() => setOpen((o) => !o)}>
+        <Icon name="more-horizontal" size={14} />
       </IconButton>
 
       {open && (
@@ -230,12 +230,10 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: '20px 18px 24px' }}>
       {isOwn ? (
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
-          <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block', marginBottom: 14 }} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-            <ProfileMenu profileId={profile.id} onEdit={() => setEditing(true)} />
-          </div>
+          <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block' }} />
+          <ProfileMenu profileId={profile.id} onEdit={() => setEditing(true)} />
         </div>
       ) : (
         <IconButton aria-label="Volver" onClick={() => router.back()}>
