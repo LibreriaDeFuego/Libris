@@ -26,10 +26,11 @@ function PreviewImage({ blob }) {
   );
 }
 
-// Botón "Foto" en el propio perfil: elegís o sacás una foto de lo que estás
-// leyendo, la ajustás en un recorte vertical (3:4, como un feed de fotos) y
-// la publicás con un texto corto opcional. Aparece mezclada con comentarios
-// y notas de voz en la Actividad del perfil.
+// Círculo con "+" junto al nombre, del mismo tamaño que el botón de los
+// tres puntos: elegís o sacás una foto de lo que estás leyendo, la ajustás
+// en un recorte vertical (3:4, como un feed de fotos) y la publicás con un
+// texto corto opcional. Aparece mezclada con comentarios y notas de voz en
+// la Actividad del perfil.
 export function PostComposer() {
   const [step, setStep] = useState('closed'); // closed | picking | cropping | composing
   const [pendingFile, setPendingFile] = useState(null);
@@ -73,9 +74,17 @@ export function PostComposer() {
 
   return (
     <>
-      <button type="button" style={pillStyle} onClick={() => setStep('picking')}>
-        <Icon name="camera" size={13} />
-        Foto
+      <button
+        type="button"
+        aria-label="Agregar una foto"
+        onClick={() => setStep('picking')}
+        style={{
+          flexShrink: 0, width: 40, height: 40, borderRadius: 'var(--radius-round)',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--accent-500)', border: 'none', color: '#fff', cursor: 'pointer',
+        }}
+      >
+        <Icon name="plus" size={18} color="#fff" />
       </button>
 
       {step === 'picking' && (
