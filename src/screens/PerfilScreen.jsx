@@ -218,22 +218,22 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: '20px 18px 24px' }}>
-      {isOwn && (
-        // eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido
-        <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block', marginBottom: -8 }} />
-      )}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        {isOwn ? (
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
-            Perfil
+      {isOwn ? (
+        <div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
+          <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block', marginBottom: 14 }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Perfil
+            </div>
+            <ProfileMenu profileId={profile.id} onEdit={() => setEditing(true)} />
           </div>
-        ) : (
-          <IconButton aria-label="Volver" onClick={() => router.back()}>
-            <Icon name="arrow-left" size={18} />
-          </IconButton>
-        )}
-        {isOwn && <ProfileMenu profileId={profile.id} onEdit={() => setEditing(true)} />}
-      </div>
+        </div>
+      ) : (
+        <IconButton aria-label="Volver" onClick={() => router.back()}>
+          <Icon name="arrow-left" size={18} />
+        </IconButton>
+      )}
 
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>

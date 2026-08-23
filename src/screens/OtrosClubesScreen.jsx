@@ -115,12 +115,14 @@ export function OtrosClubesScreen({ clubs }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '20px 18px 24px' }}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
-      <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block' }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: -8 }}>
-        <IconButton aria-label="Volver" onClick={() => router.push('/')}><Icon name="arrow-left" size={18} /></IconButton>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
-          Descubrir clubes
+      <div>
+        {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
+        <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block', marginBottom: 14 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <IconButton aria-label="Volver" onClick={() => router.push('/')}><Icon name="arrow-left" size={18} /></IconButton>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
+            Descubrir clubes
+          </div>
         </div>
       </div>
       <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: -12 }}>
