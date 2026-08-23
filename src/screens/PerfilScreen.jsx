@@ -4,6 +4,7 @@ import { useState, useEffect, useTransition, useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { followProfile, unfollowProfile, updateProfile } from '@/app/actions/profile';
+import { signOut } from '@/app/login/actions';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
@@ -129,6 +130,12 @@ function ProfileMenu({ profileId, onEdit }) {
             <button type="button" style={itemStyle} onClick={handleShare}>
               <Icon name="share-2" size={14} /> Compartir perfil
             </button>
+            <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+            <form action={signOut}>
+              <button type="submit" style={itemStyle}>
+                <Icon name="log-out" size={14} /> Cerrar sesión
+              </button>
+            </form>
           </div>
         </>
       )}

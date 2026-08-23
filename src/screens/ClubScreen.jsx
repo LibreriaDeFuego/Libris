@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
-import { SignOutButton } from '@/components/SignOutButton';
 import { InviteButton } from '@/components/InviteButton';
 import { CoverHero } from '@/components/CoverHero';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
@@ -52,7 +51,6 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
         </Link>
       )}
       <PreferenciasIconButton clubId={club.id} pendingRequestCount={isAdmin ? pendingRequestCount : 0} tone="glass" />
-      <SignOutButton tone="glass" />
     </>
   );
 
@@ -150,7 +148,6 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
             <div style={{ display: 'flex', gap: 8 }}>
               <InviteButton clubId={club.id} />
               <PreferenciasIconButton clubId={club.id} pendingRequestCount={isAdmin ? pendingRequestCount : 0} tone="light" />
-              <SignOutButton />
             </div>
           </div>
           <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '24px 0', textAlign: 'center' }}>
