@@ -295,9 +295,6 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
       </div>
 
       <div>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10 }}>
-          Actividad
-        </div>
         {activity.length === 0 ? (
           <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '24px 0', textAlign: 'center' }}>
             {isOwn ? 'Todavía no comentaste ni compartiste nada.' : 'Todavía no compartió nada que puedas ver.'}
