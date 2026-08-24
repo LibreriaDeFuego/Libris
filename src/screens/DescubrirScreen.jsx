@@ -26,13 +26,8 @@ export function DescubrirScreen({ items }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '20px 18px 24px' }}>
-      <div>
-        {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
-        <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block', marginBottom: 14 }} />
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
-          Recursos
-        </div>
-      </div>
+      {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
+      <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block' }} />
 
       <Tabs items={TABS} active={tab} onChange={setTab} />
 

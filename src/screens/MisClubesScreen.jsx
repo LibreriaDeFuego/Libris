@@ -67,9 +67,6 @@ export function MisClubesScreen({ clubs }) {
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
           Mis clubes de lectura
         </div>
-        <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: 4 }}>
-          Los clubes en los que participas, los hayas creado o no.
-        </div>
       </div>
 
       {clubs.length === 0 ? (
