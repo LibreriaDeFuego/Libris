@@ -232,8 +232,10 @@ export function OtrosClubesScreen({ clubs, currentUserId }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '20px 18px 24px' }}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
-      <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block' }} />
+      <div>
+        {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
+        <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block' }} />
+      </div>
 
       <Input
         placeholder="Buscar clubes o personas"
