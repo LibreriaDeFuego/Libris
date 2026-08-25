@@ -173,4 +173,24 @@ select 'Migración 019 — profile_activity trae quote_style',
 union all
 select 'Migración 020 — función recent_activity',
        case when exists (select 1 from pg_proc where proname = 'recent_activity')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 021 — bucket quote-cards',
+       case when exists (select 1 from storage.buckets where id = 'quote-cards')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 021 — quote_image_url en comments',
+       case when exists (select 1 from information_schema.columns where table_name = 'comments' and column_name = 'quote_image_url')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 021 — profile_activity trae quote_image_url',
+       case when exists (
+              select 1 from pg_proc where proname = 'profile_activity' and prosrc like '%quote_image_url%'
+            )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 021 — recent_activity trae quote_image_url',
+       case when exists (
+              select 1 from pg_proc where proname = 'recent_activity' and prosrc like '%quote_image_url%'
+            )
             then 'OK' else 'FALTA' end;

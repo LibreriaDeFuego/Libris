@@ -18,12 +18,19 @@ export function ActivityCard({ activity, canOpenClub, personName, author }) {
   const [expanded, setExpanded] = useState(false);
   const isPhoto = activity.kind === 'photo';
   const isQuote = activity.kind === 'quote';
+  // Si la cita se publicó con la tarjeta ya armada (migración 021), esa
+  // imagen ES el contenido — se muestra tal cual, sin repetir el texto
+  // encima (ya está dibujado adentro). Las citas de antes de esa migración
+  // (o donde falló la subida en su momento) siguen con el tratamiento
+  // genérico de siempre: portada del libro + texto superpuesto.
+  const hasQuoteImage = isQuote && Boolean(activity.quote_image_url);
+  const showAsImage = isPhoto || hasQuoteImage;
   const text = isPhoto
     ? activity.body
     : activity.kind === 'voice'
       ? (activity.voice_transcript ?? 'Publicó una nota de voz.')
       : activity.body;
-  const backgroundUrl = isPhoto ? activity.photo_url : activity.book_cover_url;
+  const backgroundUrl = isPhoto ? activity.photo_url : hasQuoteImage ? activity.quote_image_url : activity.book_cover_url;
 
   return (
     <div
@@ -56,9 +63,14 @@ export function ActivityCard({ activity, canOpenClub, personName, author }) {
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '18px 16px 20px', color: '#fff' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--fs-2xs)', color: 'rgba(255,255,255,0.75)', fontWeight: 600, marginBottom: 8 }}>
           {isPhoto && <Icon name="camera" size={12} color="rgba(255,255,255,0.75)" />}
-          {isPhoto ? `Compartió una foto · ${formatRelativeTime(activity.created_at)}` : `${activity.club_name} · ${formatRelativeTime(activity.created_at)}`}
+          {hasQuoteImage && <Icon name="quote" size={12} color="rgba(255,255,255,0.75)" />}
+          {isPhoto
+            ? `Compartió una foto · ${formatRelativeTime(activity.created_at)}`
+            : hasQuoteImage
+              ? `Publicó una cita · ${formatRelativeTime(activity.created_at)}`
+              : `${activity.club_name} · ${formatRelativeTime(activity.created_at)}`}
         </div>
-        {!isPhoto && (
+        {!showAsImage && (
           <>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-lg)' }}>
               {activity.book_title}
@@ -68,7 +80,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author }) {
             </div>
           </>
         )}
-        {text && (
+        {!hasQuoteImage && text && (
           <div
             style={{
               fontSize: 'var(--fs-sm)', marginTop: isPhoto ? 4 : 12, lineHeight: 'var(--lh-snug)',
@@ -92,6 +104,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author }) {
               book={{ title: activity.book_title, author: activity.book_author, cover_url: activity.book_cover_url }}
               clubName={activity.club_name}
               personName={personName}
+              imageUrl={activity.quote_image_url}
             />
           </div>
         )}

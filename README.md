@@ -102,7 +102,10 @@ supabase/
                            019_citas_para_instagram.sql (quote_style en comments,
                              profile_activity ahora también lo trae),
                            020_inicio_novedades.sql (función recent_activity:
-                             citas y fotos de todos los usuarios, para Inicio)
+                             citas y fotos de todos los usuarios, para Inicio),
+                           021_imagen_de_cita_guardada.sql (bucket quote-cards,
+                             comments.quote_image_url, profile_activity y
+                             recent_activity ahora también la traen)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -200,11 +203,20 @@ Las citas destacadas (`kind = 'quote'`) ya existían desde antes; lo nuevo es po
 
 - **Al publicar una cita** (formulario de Comentarios, general o por capítulo) se elige uno de tres estilos de tarjeta — **Portada** (la tapa del libro de fondo, degradado oscuro), **Oscuro** (fondo sólido, tapa como miniatura) o **Editorial** (fondo crema, look de revista) — con una miniatura de cada uno para elegir. El estilo elegido se guarda junto con la cita (`comments.quote_style`), no solo al momento de descargar: la tarjeta se ve siempre igual, la vuelva a descargar quien la publicó o aparezca así en su perfil más adelante.
 - **Justo después de publicar** aparece un botón para descargar la imagen ahí mismo, en vez de limpiar el formulario de una. El mismo botón aparece también junto a cualquier cita ya publicada en la lista de Comentarios, y en la tarjeta de Actividad del perfil al expandirla — en los tres casos, solo si esa cita tiene un estilo guardado (las citas publicadas antes de esta migración quedan con `quote_style = null` y no muestran el botón).
-- **La tarjeta se genera en el navegador con `<canvas>`** (`src/lib/quoteCard.js`), sin backend ni imagen guardada en Storage: se arma de nuevo cada vez que se descarga, a partir del texto y el estilo guardados más los datos del libro/club/persona ya disponibles. Mismo enfoque sin librerías externas que ya usa `imageProcessing.js` para las fotos.
+- **La tarjeta se genera en el navegador con `<canvas>`** (`src/lib/quoteCard.js`), a partir del texto y el estilo guardados más los datos del libro/club/persona ya disponibles. Mismo enfoque sin librerías externas que ya usa `imageProcessing.js` para las fotos.
 - **La marca de agua es el logo real de Libris** (no un isotipo chico): `public/logo-libris.png` para el estilo Editorial (fondo claro) y una variante nueva en crema, `public/logo-libris-cream.png`, para Portada y Oscuro (fondo oscuro) — generada con la misma técnica de recoloreado por píxel que ya se usó para los íconos PWA.
-- Si la portada del libro no llega a cargar en el navegador (por ejemplo, algún problema de CORS con el bucket de Storage), la tarjeta se genera igual, solo que sin esa imagen de fondo/miniatura — nunca rompe la descarga.
+- Si la portada del libro no llega a cargar en el navegador (por ejemplo, algún problema de CORS con el bucket de Storage), la tarjeta se genera igual, solo que sin esa imagen de fondo/miniatura — nunca rompe la descarga ni la publicación.
 
 **Vista previa en vivo al publicar** (`src/components/QuoteCardPreview.jsx`) — antes de tocar "Publicar", debajo del selector de estilo aparece el dibujo real de la tarjeta (no una aproximación), armado con el mismo `renderQuoteCard` que se usa para descargar. Se regenera sola con un debounce de 400ms cada vez que cambia el texto o el estilo elegido.
+
+### La imagen de la cita se guarda al publicar (migración 021)
+
+Al principio la tarjeta no se guardaba en ningún lado — se volvía a dibujar cada vez que alguien quería descargarla, y el feed (Inicio, Actividad del perfil) seguía mostrando la cita con el tratamiento genérico de siempre (la portada del libro de fondo + el texto superpuesto), sin importar qué estilo se hubiera elegido. Ahora, al publicar, el navegador arma la tarjeta (la misma vista previa de arriba) y la sube al bucket `quote-cards` — el feed muestra esa imagen tal cual, en el formato exacto que la persona eligió.
+
+- **`comments.quote_image_url`** guarda la URL pública. Es un "mejor esfuerzo": si la subida falla (o la portada del libro no cargó), la cita se publica igual, solo que sin imagen — y el feed la muestra con el tratamiento genérico de antes, el mismo que ya usan las citas publicadas antes de esta migración.
+- **`ActivityCard`** (Perfil e Inicio): cuando una cita tiene `quote_image_url`, esa imagen ES la tarjeta completa — no se vuelve a poner el texto ni el libro encima, sería redundante (ya está dibujado adentro). Solo un pie de foto chico ("Publicó una cita · hace X") y, al expandir, los mismos botones de descargar y ver los comentarios.
+- **`DownloadQuoteImageButton`** descarga la imagen guardada directamente (`fetch` + blob) cuando existe, en vez de regenerarla — así lo que se descarga es exactamente lo que se ve en el feed, sin ninguna diferencia de un píxel. Sin `quote_image_url` (citas viejas), sigue regenerándola al vuelo como antes.
+- **`profile_activity` y `recent_activity`** ahora también devuelven `quote_image_url` (mismo patrón de DROP + CREATE que las migraciones anteriores).
 
 **Saltos de línea**: escribir con Enter dentro de una cita (o de un comentario común) ahora se respeta tal cual en todos lados — en `Blockquote`, en las tarjetas de Actividad (Perfil e Inicio) y en la imagen exportada de `quoteCard.js`. Antes el salto de línea se perdía: React/CSS colapsan `\n` a un espacio por default (hacía falta `white-space: pre-wrap` en cada lugar que muestra el texto), y `wrapText` en `quoteCard.js` partía el texto entero por espacios sin distinguir un salto de línea puesto a propósito de uno que el envoltorio automático seguiría poniendo solo. Ahora `wrapText` separa primero por párrafo (cada `\n`) y recién ahí envuelve cada uno por ancho.
 

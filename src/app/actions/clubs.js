@@ -496,10 +496,17 @@ export async function updateProgress(formData) {
 // CHECK de comments.quote_style (migración 019) y con QUOTE_STYLES en
 // src/lib/quoteCard.js.
 const VALID_QUOTE_STYLES = ['cover', 'dark', 'editorial'];
+const MAX_QUOTE_IMAGE_BYTES = 8 * 1024 * 1024; // de sobra: el JPEG que arma quoteCard.js pesa mucho menos.
+
+function isFile(value) {
+  return value && typeof value !== 'string' && typeof value.size === 'number';
+}
 
 // Publica un comentario (texto o cita destacada) en el libro activo de un
 // club, o en un capítulo puntual si se manda chapterId. Si es una cita, se
-// guarda además el estilo visual elegido para su tarjeta descargable.
+// guarda el estilo visual elegido y —si el navegador pudo armarla— la
+// imagen ya dibujada en ese estilo (bucket "quote-cards"), para que el feed
+// muestre la tarjeta real en vez de recrearla con el tratamiento genérico.
 export async function postComment(formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
@@ -513,6 +520,22 @@ export async function postComment(formData) {
   const quoteStyle = kind === 'quote' && VALID_QUOTE_STYLES.includes(quoteStyleRaw) ? quoteStyleRaw : null;
   if (!body) return { error: 'Escribe algo antes de publicar.' };
 
+  // La imagen es un "mejor esfuerzo": si no llega, o falla la subida, la
+  // cita se publica igual — solo que el feed la va a mostrar con el
+  // tratamiento genérico (portada + texto), como las citas de antes.
+  let quoteImageUrl = null;
+  const quoteImage = formData.get('quoteImage');
+  if (quoteStyle && isFile(quoteImage) && quoteImage.size > 0 && quoteImage.size <= MAX_QUOTE_IMAGE_BYTES && quoteImage.type === 'image/jpeg') {
+    const path = `${user.id}/${crypto.randomUUID()}.jpg`;
+    const { error: uploadError } = await supabase.storage
+      .from('quote-cards')
+      .upload(path, quoteImage, { contentType: 'image/jpeg' });
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage.from('quote-cards').getPublicUrl(path);
+      quoteImageUrl = publicUrl;
+    }
+  }
+
   const { error } = await supabase.from('comments').insert({
     club_book_id: clubBookId,
     chapter_id: chapterId,
@@ -521,9 +544,10 @@ export async function postComment(formData) {
     body,
     is_spoiler: isSpoiler,
     quote_style: quoteStyle,
+    quote_image_url: quoteImageUrl,
   });
   if (error) return { error: friendlyDbError(error) };
 
   revalidatePath('/', 'layout');
-  return { error: null, quoteStyle };
+  return { error: null, quoteStyle, quoteImageUrl };
 }

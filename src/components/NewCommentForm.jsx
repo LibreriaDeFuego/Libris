@@ -6,7 +6,7 @@ import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { postComment } from '@/app/actions/clubs';
-import { QUOTE_STYLES } from '@/lib/quoteCard';
+import { QUOTE_STYLES, renderQuoteCard } from '@/lib/quoteCard';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { QuoteCardPreview } from '@/components/QuoteCardPreview';
 
@@ -80,6 +80,19 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
     const quoteBody = body.trim();
 
     startTransition(async () => {
+      if (kind === 'quote') {
+        // La misma tarjeta que ya se ve en la vista previa, ahora se sube
+        // junto con la cita — así el feed la muestra en el formato real que
+        // se eligió, en vez de recrearla con el tratamiento genérico. Si
+        // falla (por ejemplo, la portada no cargó por CORS), la cita se
+        // publica igual, solo que sin la imagen guardada.
+        try {
+          const blob = await renderQuoteCard({ style: quoteStyle, quoteText: quoteBody, book, clubName, personName });
+          formData.set('quoteImage', blob, 'cita.jpg');
+        } catch {
+          // sigue sin la imagen.
+        }
+      }
       const result = await postComment(formData);
       if (result?.error) {
         setError(result.error);
@@ -87,7 +100,7 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
       }
       setError(null);
       if (kind === 'quote') {
-        setPublished({ body: quoteBody, style: result.quoteStyle ?? quoteStyle });
+        setPublished({ body: quoteBody, style: result.quoteStyle ?? quoteStyle, imageUrl: result.quoteImageUrl ?? null });
       } else {
         setBody('');
         formRef.current?.reset();
@@ -115,6 +128,7 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
           book={book}
           clubName={clubName}
           personName={personName}
+          imageUrl={published.imageUrl}
           variant="primary"
           size="md"
           label="Descargar imagen para Instagram"

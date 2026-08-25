@@ -42,6 +42,7 @@ function CommentBody({ comment, book, clubName }) {
             book={book}
             clubName={clubName}
             personName={comment.profiles?.display_name}
+            imageUrl={comment.quote_image_url}
           />
         )}
       </div>
