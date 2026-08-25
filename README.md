@@ -100,7 +100,9 @@ supabase/
                            018_usuario_admite_puntos.sql (el username también
                              permite puntos, sin empezar/terminar/repetirlos),
                            019_citas_para_instagram.sql (quote_style en comments,
-                             profile_activity ahora también lo trae)
+                             profile_activity ahora también lo trae),
+                           020_inicio_novedades.sql (función recent_activity:
+                             citas y fotos de todos los usuarios, para Inicio)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -136,12 +138,14 @@ Para activarlo en otro entorno: crear credenciales OAuth en Google Cloud Console
 
 **Pendiente de marca:** la pantalla de consentimiento de Google muestra el dominio de Supabase en vez de "Libris". Para que diga Libris hace falta un dominio propio + el add-on Custom Domain de Supabase (pago) + verificación de la app en Google.
 
-### Estructura de navegación (Recursos / Club / Descubrir / Perfil)
+### Estructura de navegación (Inicio / Recursos / Club / Perfil)
 
+- **Inicio** (`/inicio`) — el feed general: citas y fotos de todos los usuarios de Libris, más recientes primero. Ver "Inicio: feed de novedades" más abajo.
 - **Recursos** (`/recursos`) — contenido curado en dos secciones: **Guías** y **Cursos**. Se sacó la categoría "Autor" (migración 008).
 - **Club** (`/`) — ya no es el detalle de un club: es **"Mis clubes de lectura"**, la lista completa de los clubes en los que participás (los hayas creado o no), cada uno con su actividad más reciente. Tocar uno lleva a `/club/[clubId]`, el detalle real (libro, progreso, comentarios).
-- **Descubrir** (`/descubrir`, antes `club/otros`) — pasó a ser pestaña propia (antes era un link dentro de Club). El directorio de clubes públicos para unirse.
 - **Perfil** (`/perfil`) — el propio perfil, que se puede seguir. La pestaña muestra la foto real de la persona en vez de un ícono (viene de `layout.js`, que busca el perfil propio server-side y se lo pasa a `AppShell`).
+
+**Descubrir** (`/descubrir`) ya no tiene pestaña propia — se llega desde el adelanto que tiene "Mis clubes de lectura" (la búsqueda y "Ver todo en Descubrir"). La ruta sigue igual, es el directorio de clubes públicos para unirse.
 
 ### Perfil de usuario (migración 015)
 
@@ -160,7 +164,15 @@ Desde el propio perfil (botón "Foto", junto al nombre) se puede compartir una f
 - Se mezclan con los comentarios y notas de voz en el mismo feed de "Actividad", ordenadas todas por fecha: `profile_activity` ahora hace un `union all` entre `comments` y `posts`. Como una foto no depende de ningún club, es visible siempre que se puede ver el perfil (mismo criterio que "Seguir").
 - Las tarjetas de "Actividad" pasaron de 380px a 440px de alto — bloques más dominantes, un paso hacia el diseño de scroll por bloques que se probó primero como mockup. Por ahora siguen en el flujo normal de la página (sin un scroll "atrapado" aparte); si hace falta el efecto de encastre tipo TikTok se puede sumar después con `scroll-snap`.
 
-**Novedades se sacó de la app** (pestaña y ruta `/novedades` eliminadas) — mostraba el mismo feed editorial que ya está en Recursos, quedaba redundante. Está pendiente de decisión qué va en su lugar: se evaluó convertirla en un feed de actividad de los clubes propios (comentarios/progreso/nuevos miembros de todos mis clubes en un solo lugar, sin tocar la privacidad de clubes ajenos) más contenido como libros populares (`popular_books`, ya escrita en la base y sin usar) — pero se decidió sacarla primero y definir el reemplazo más adelante.
+**Novedades se sacó de la app** (pestaña y ruta `/novedades` eliminadas) — mostraba el mismo feed editorial que ya está en Recursos, quedaba redundante. Su reemplazo llegó con la migración 020: la pestaña **Inicio** (ver abajo).
+
+### Inicio: feed de novedades (migración 020)
+
+Pestaña nueva, la primera de la barra de abajo (ícono de casa). Es un feed de actividad de **todos** los usuarios de Libris, no solo de tus clubes — mismas tarjetas grandes con foto de fondo que ya tenía "Actividad" en el Perfil, ahora con el nombre y la foto de quien publicó, arriba a la izquierda de cada una (toca y lleva a su perfil).
+
+- **Por ahora, dos tipos de contenido**: citas destacadas y fotos de lo que alguien está leyendo. Se van a ir sumando otros con el tiempo (comentarios, notas de voz, empezar a leer un libro nuevo dentro de un club) — no crear un club, eso no es "una novedad de lectura".
+- **`recent_activity`** (`security definer`) es la función nueva que arma el feed — mismo criterio de visibilidad de club que ya usaba `profile_activity`: las citas de un club abierto o "con solicitud" se ven siempre, las de uno privado (`invite`) solo si sos miembro. Las fotos son públicas siempre, como ya lo eran. A diferencia de `profile_activity` (la actividad de un perfil puntual), esta es general — no filtra por quién sigue a quién, es la misma lógica sin restricción por relación que ya se usa en el buscador de Descubrir.
+- **`ActivityCard`** se movió del Perfil a `src/components/ActivityCard.jsx`, compartido entre las dos pantallas — con una prop `author` opcional que agrega esa fila de nombre y foto solo cuando hace falta (Inicio la usa, Perfil no, porque ahí ya se sabe de quién es la actividad).
 
 ### Nombre de usuario único (migración 017)
 

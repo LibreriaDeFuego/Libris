@@ -9,6 +9,7 @@ import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 // "Mis clubes de lectura" (la búsqueda y "Ver todo en Descubrir"). La ruta
 // /descubrir sigue existiendo tal cual, solo dejó de estar acá abajo.
 const TABS = [
+  { href: '/inicio', match: (path) => path.startsWith('/inicio'), icon: 'home', label: 'Inicio' },
   { href: '/recursos', match: (path) => path.startsWith('/recursos'), icon: 'compass', label: 'Recursos' },
   { href: '/', match: (path) => path === '/' || path.startsWith('/club'), icon: 'book-open', label: 'Club' },
   { href: '/perfil', match: (path) => path.startsWith('/perfil'), icon: 'user', label: 'Perfil' },

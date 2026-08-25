@@ -169,4 +169,8 @@ select 'Migración 019 — profile_activity trae quote_style',
        case when exists (
               select 1 from pg_proc where proname = 'profile_activity' and prosrc like '%quote_style%'
             )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 020 — función recent_activity',
+       case when exists (select 1 from pg_proc where proname = 'recent_activity')
             then 'OK' else 'FALTA' end;
