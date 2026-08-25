@@ -5,10 +5,12 @@ import { usePathname } from 'next/navigation';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 
+// Descubrir ya no tiene pestaña propia — se llega desde el adelanto en
+// "Mis clubes de lectura" (la búsqueda y "Ver todo en Descubrir"). La ruta
+// /descubrir sigue existiendo tal cual, solo dejó de estar acá abajo.
 const TABS = [
   { href: '/recursos', match: (path) => path.startsWith('/recursos'), icon: 'compass', label: 'Recursos' },
   { href: '/', match: (path) => path === '/' || path.startsWith('/club'), icon: 'book-open', label: 'Club' },
-  { href: '/descubrir', match: (path) => path.startsWith('/descubrir'), icon: 'search', label: 'Descubrir' },
   { href: '/perfil', match: (path) => path.startsWith('/perfil'), icon: 'user', label: 'Perfil' },
 ];
 
