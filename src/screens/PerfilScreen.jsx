@@ -15,6 +15,7 @@ import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { AvatarUploader } from '@/components/AvatarUploader';
 import { PostComposer } from '@/components/PostComposer';
 import { UsernameField } from '@/components/UsernameField';
+import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
 const initialState = { error: null };
@@ -207,7 +208,7 @@ function ProfileMenu({ profileId, onEdit }) {
 // Una tarjeta de actividad: un bloque alto que domina la pantalla, con la
 // foto de fondo (la del libro, o la que la persona subió si es una foto
 // propia) y lo que dijo anclado abajo. Tocarla despliega el texto completo.
-function ActivityCard({ activity, canOpenClub }) {
+function ActivityCard({ activity, canOpenClub, personName }) {
   const [expanded, setExpanded] = useState(false);
   const isPhoto = activity.kind === 'photo';
   const isQuote = activity.kind === 'quote';
@@ -261,6 +262,17 @@ function ActivityCard({ activity, canOpenClub }) {
             }}
           >
             {isPhoto ? text : `“${text}”`}
+          </div>
+        )}
+        {expanded && isQuote && activity.quote_style && (
+          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 12 }}>
+            <DownloadQuoteImageButton
+              style={activity.quote_style}
+              quoteText={activity.body}
+              book={{ title: activity.book_title, author: activity.book_author, cover_url: activity.book_cover_url }}
+              clubName={activity.club_name}
+              personName={personName}
+            />
           </div>
         )}
         {expanded && canOpenClub && !isPhoto && (
@@ -358,7 +370,7 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {activity.map((item) => (
-              <ActivityCard key={item.id} activity={item} canOpenClub={myClubIds.has(item.club_id)} />
+              <ActivityCard key={item.id} activity={item} canOpenClub={myClubIds.has(item.club_id)} personName={profile.display_name} />
             ))}
           </div>
         )}

@@ -98,7 +98,9 @@ supabase/
                              función is_username_available, el trigger de alta
                              de cuenta lo guarda si vino en el registro),
                            018_usuario_admite_puntos.sql (el username también
-                             permite puntos, sin empezar/terminar/repetirlos)
+                             permite puntos, sin empezar/terminar/repetirlos),
+                           019_citas_para_instagram.sql (quote_style en comments,
+                             profile_activity ahora también lo trae)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -179,6 +181,16 @@ Una sola barra de búsqueda arriba del directorio de `/descubrir` busca dos cosa
 Con la búsqueda vacía se ve el directorio de siempre; al escribir, aparecen dos secciones ("Clubes" / "Personas") con lo que haya, cada una oculta si no tiene resultados. Hay un debounce de 300ms para no mandar una consulta por letra.
 
 **Pendiente, a propósito**: hoy cualquier persona puede aparecer en esta búsqueda — no existe (todavía) una opción de perfil privado/público como en Instagram. Cuando se agregue esa opción, va a necesitar su propio flujo de "solicitud para seguir" con notificación (como ya existe para unirse a un club "con solicitud", migración 014) — se dejó pendiente a propósito, decisión explícita del dueño del producto.
+
+### Citas para Instagram (migración 019)
+
+Las citas destacadas (`kind = 'quote'`) ya existían desde antes; lo nuevo es poder exportarlas como imagen lista para publicar.
+
+- **Al publicar una cita** (formulario de Comentarios, general o por capítulo) se elige uno de tres estilos de tarjeta — **Portada** (la tapa del libro de fondo, degradado oscuro), **Oscuro** (fondo sólido, tapa como miniatura) o **Editorial** (fondo crema, look de revista) — con una miniatura de cada uno para elegir. El estilo elegido se guarda junto con la cita (`comments.quote_style`), no solo al momento de descargar: la tarjeta se ve siempre igual, la vuelva a descargar quien la publicó o aparezca así en su perfil más adelante.
+- **Justo después de publicar** aparece un botón para descargar la imagen ahí mismo, en vez de limpiar el formulario de una. El mismo botón aparece también junto a cualquier cita ya publicada en la lista de Comentarios, y en la tarjeta de Actividad del perfil al expandirla — en los tres casos, solo si esa cita tiene un estilo guardado (las citas publicadas antes de esta migración quedan con `quote_style = null` y no muestran el botón).
+- **La tarjeta se genera en el navegador con `<canvas>`** (`src/lib/quoteCard.js`), sin backend ni imagen guardada en Storage: se arma de nuevo cada vez que se descarga, a partir del texto y el estilo guardados más los datos del libro/club/persona ya disponibles. Mismo enfoque sin librerías externas que ya usa `imageProcessing.js` para las fotos.
+- **La marca de agua es el logo real de Libris** (no un isotipo chico): `public/logo-libris.png` para el estilo Editorial (fondo claro) y una variante nueva en crema, `public/logo-libris-cream.png`, para Portada y Oscuro (fondo oscuro) — generada con la misma técnica de recoloreado por píxel que ya se usó para los íconos PWA.
+- Si la portada del libro no llega a cargar en el navegador (por ejemplo, algún problema de CORS con el bucket de Storage), la tarjeta se genera igual, solo que sin esa imagen de fondo/miniatura — nunca rompe la descarga.
 
 ### Descubrimiento social — cómo está resuelto
 

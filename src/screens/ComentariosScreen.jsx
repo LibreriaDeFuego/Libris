@@ -11,6 +11,7 @@ import { SpoilerBlock } from '@/design-system/components/content/SpoilerBlock.js
 import { VoiceNotePlayer } from '@/design-system/components/content/VoiceNotePlayer.jsx';
 import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
+import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 import { orderChapters, chapterDisplayLabel } from '@/lib/orderChapters';
 
@@ -20,7 +21,7 @@ function formatDuration(seconds) {
   return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-function CommentBody({ comment }) {
+function CommentBody({ comment, book, clubName }) {
   if (comment.kind === 'voice') {
     return (
       <VoiceNotePlayer
@@ -30,7 +31,22 @@ function CommentBody({ comment }) {
       />
     );
   }
-  if (comment.kind === 'quote') return <Blockquote>{comment.body}</Blockquote>;
+  if (comment.kind === 'quote') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <Blockquote>{comment.body}</Blockquote>
+        {comment.quote_style && (
+          <DownloadQuoteImageButton
+            style={comment.quote_style}
+            quoteText={comment.body}
+            book={book}
+            clubName={clubName}
+            personName={comment.profiles?.display_name}
+          />
+        )}
+      </div>
+    );
+  }
   return (
     <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', margin: '4px 0 0' }}>
       {comment.body}
@@ -38,7 +54,7 @@ function CommentBody({ comment }) {
   );
 }
 
-export function ComentariosScreen({ clubBookId, comments, chapters, volumes }) {
+export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myDisplayName }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
   const [chapterId, setChapterId] = useState(null); // null = comentarios generales del libro
@@ -61,7 +77,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes }) {
         </div>
       )}
 
-      <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} />
+      <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} clubName={clubName} personName={myDisplayName} />
       <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} />
 
       {visibleComments.map((comment) => {
@@ -75,9 +91,9 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes }) {
               </div>
               <div style={{ marginTop: comment.kind === 'text' ? 0 : 6 }}>
                 {comment.is_spoiler ? (
-                  <SpoilerBlock><CommentBody comment={comment} /></SpoilerBlock>
+                  <SpoilerBlock><CommentBody comment={comment} book={book} clubName={clubName} /></SpoilerBlock>
                 ) : (
-                  <CommentBody comment={comment} />
+                  <CommentBody comment={comment} book={book} clubName={clubName} />
                 )}
               </div>
             </div>

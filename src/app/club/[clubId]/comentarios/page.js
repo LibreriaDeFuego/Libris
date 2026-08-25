@@ -12,19 +12,21 @@ export default async function Page({ params }) {
   if (!user) redirect('/login');
 
   const clubs = await getMyClubs(supabase, user.id);
-  if (!clubs.some((c) => c.id === clubId)) notFound();
+  const club = clubs.find((c) => c.id === clubId);
+  if (!club) notFound();
 
   const clubBook = await getActiveClubBook(supabase, clubId);
   if (!clubBook) redirect(`/club/${clubId}`);
 
-  const [{ data: comments }, { data: chapters }, { data: volumes }] = await Promise.all([
+  const [{ data: comments }, { data: chapters }, { data: volumes }, { data: me }] = await Promise.all([
     supabase
       .from('comments')
-      .select('id, kind, body, is_spoiler, created_at, profile_id, chapter_id, voice_url, voice_transcript, voice_duration_seconds, profiles(display_name)')
+      .select('id, kind, body, is_spoiler, created_at, profile_id, chapter_id, voice_url, voice_transcript, voice_duration_seconds, quote_style, profiles(display_name)')
       .eq('club_book_id', clubBook.id)
       .order('created_at', { ascending: false }),
     supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
     supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
+    supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle(),
   ]);
 
   // El bucket de audio es privado: cada nota necesita una URL firmada, que
@@ -51,6 +53,9 @@ export default async function Page({ params }) {
       comments={withAudio}
       chapters={chapters ?? []}
       volumes={volumes ?? []}
+      book={clubBook.books}
+      clubName={club.name}
+      myDisplayName={me?.display_name ?? null}
     />
   );
 }

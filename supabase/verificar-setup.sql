@@ -159,4 +159,14 @@ select 'Migración 017 — username es único',
 union all
 select 'Migración 017 — función is_username_available',
        case when exists (select 1 from pg_proc where proname = 'is_username_available')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 019 — quote_style en comments',
+       case when exists (select 1 from information_schema.columns where table_name = 'comments' and column_name = 'quote_style')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 019 — profile_activity trae quote_style',
+       case when exists (
+              select 1 from pg_proc where proname = 'profile_activity' and prosrc like '%quote_style%'
+            )
             then 'OK' else 'FALTA' end;

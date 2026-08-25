@@ -492,8 +492,14 @@ export async function updateProgress(formData) {
   return { error: null };
 }
 
+// Estilos válidos para la tarjeta de una cita — deben coincidir con el
+// CHECK de comments.quote_style (migración 019) y con QUOTE_STYLES en
+// src/lib/quoteCard.js.
+const VALID_QUOTE_STYLES = ['cover', 'dark', 'editorial'];
+
 // Publica un comentario (texto o cita destacada) en el libro activo de un
-// club, o en un capítulo puntual si se manda chapterId.
+// club, o en un capítulo puntual si se manda chapterId. Si es una cita, se
+// guarda además el estilo visual elegido para su tarjeta descargable.
 export async function postComment(formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
@@ -503,6 +509,8 @@ export async function postComment(formData) {
   const kind = formData.get('kind') || 'text';
   const body = formData.get('body')?.toString().trim();
   const isSpoiler = formData.get('isSpoiler') === 'on';
+  const quoteStyleRaw = formData.get('quoteStyle')?.toString() || null;
+  const quoteStyle = kind === 'quote' && VALID_QUOTE_STYLES.includes(quoteStyleRaw) ? quoteStyleRaw : null;
   if (!body) return { error: 'Escribe algo antes de publicar.' };
 
   const { error } = await supabase.from('comments').insert({
@@ -512,9 +520,10 @@ export async function postComment(formData) {
     kind,
     body,
     is_spoiler: isSpoiler,
+    quote_style: quoteStyle,
   });
   if (error) return { error: friendlyDbError(error) };
 
   revalidatePath('/', 'layout');
-  return { error: null };
+  return { error: null, quoteStyle };
 }
