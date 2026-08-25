@@ -58,20 +58,30 @@ function drawCover(ctx, img, x, y, w, h) {
   ctx.restore();
 }
 
+// Envuelve el texto para que entre en "maxWidth" — pero respeta los saltos
+// de línea que la persona escribió a propósito (cada "\n" es un párrafo
+// propio, envuelto por separado) en vez de aplastarlos junto con los demás
+// espacios, que es lo que hacía un split(/\s+/) sobre el texto entero.
 function wrapText(ctx, text, maxWidth) {
-  const words = text.split(/\s+/).filter(Boolean);
   const lines = [];
-  let line = '';
-  for (const word of words) {
-    const attempt = line ? `${line} ${word}` : word;
-    if (line && ctx.measureText(attempt).width > maxWidth) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = attempt;
+  for (const paragraph of text.split('\n')) {
+    const words = paragraph.split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lines.push('');
+      continue;
     }
+    let line = '';
+    for (const word of words) {
+      const attempt = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(attempt).width > maxWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = attempt;
+      }
+    }
+    if (line) lines.push(line);
   }
-  if (line) lines.push(line);
   return lines;
 }
 

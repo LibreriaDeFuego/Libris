@@ -8,6 +8,7 @@ import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { postComment } from '@/app/actions/clubs';
 import { QUOTE_STYLES } from '@/lib/quoteCard';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
+import { QuoteCardPreview } from '@/components/QuoteCardPreview';
 
 // Miniatura de cada estilo — no es el render real de la tarjeta (eso lo hace
 // quoteCard.js recién al descargar), solo una vista aproximada para elegir.
@@ -58,6 +59,7 @@ function StyleSwatch({ id, label, selected, onSelect, coverUrl }) {
 
 export function NewCommentForm({ clubBookId, chapterId, book, clubName, personName }) {
   const [kind, setKind] = useState('text');
+  const [body, setBody] = useState('');
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [quoteStyle, setQuoteStyle] = useState('cover');
   const [error, setError] = useState(null);
@@ -75,7 +77,7 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
     if (chapterId) formData.set('chapterId', chapterId);
     if (isSpoiler) formData.set('isSpoiler', 'on');
     if (kind === 'quote') formData.set('quoteStyle', quoteStyle);
-    const quoteBody = formData.get('body')?.toString().trim();
+    const quoteBody = body.trim();
 
     startTransition(async () => {
       const result = await postComment(formData);
@@ -87,6 +89,7 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
       if (kind === 'quote') {
         setPublished({ body: quoteBody, style: result.quoteStyle ?? quoteStyle });
       } else {
+        setBody('');
         formRef.current?.reset();
       }
     });
@@ -95,6 +98,7 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
   function publishAnother() {
     setPublished(null);
     setIsSpoiler(false);
+    setBody('');
     formRef.current?.reset();
   }
 
@@ -128,17 +132,26 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
         <Chip selected={kind === 'text'} onClick={() => setKind('text')}>Comentario</Chip>
         <Chip selected={kind === 'quote'} onClick={() => setKind('quote')}>Cita destacada</Chip>
       </div>
-      <Textarea name="body" placeholder={kind === 'quote' ? 'Escribe una cita destacada...' : '¿Qué te pareció este tramo del libro?'} rows={3} />
+      <Textarea
+        name="body"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder={kind === 'quote' ? 'Escribe una cita destacada...' : '¿Qué te pareció este tramo del libro?'}
+        rows={3}
+      />
       {kind === 'quote' && (
-        <div>
-          <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
-            Estilo de la tarjeta
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+              Estilo de la tarjeta
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {QUOTE_STYLES.map((s) => (
+                <StyleSwatch key={s.id} id={s.id} label={s.label} selected={quoteStyle === s.id} onSelect={setQuoteStyle} coverUrl={book?.cover_url} />
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {QUOTE_STYLES.map((s) => (
-              <StyleSwatch key={s.id} id={s.id} label={s.label} selected={quoteStyle === s.id} onSelect={setQuoteStyle} coverUrl={book?.cover_url} />
-            ))}
-          </div>
+          <QuoteCardPreview style={quoteStyle} quoteText={body} book={book} clubName={clubName} personName={personName} />
         </div>
       )}
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>

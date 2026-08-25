@@ -48,7 +48,7 @@ function CommentBody({ comment, book, clubName }) {
     );
   }
   return (
-    <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', margin: '4px 0 0' }}>
+    <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>
       {comment.body}
     </p>
   );

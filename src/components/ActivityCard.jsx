@@ -74,6 +74,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author }) {
               fontSize: 'var(--fs-sm)', marginTop: isPhoto ? 4 : 12, lineHeight: 'var(--lh-snug)',
               color: isQuote ? 'var(--gold-300)' : 'rgba(255,255,255,0.95)',
               fontStyle: isQuote ? 'italic' : 'normal',
+              whiteSpace: 'pre-wrap',
               display: '-webkit-box',
               WebkitLineClamp: expanded ? 'unset' : 2,
               WebkitBoxOrient: 'vertical',
