@@ -111,8 +111,9 @@ function RequestJoinButton({ clubId, initialStatus }) {
 }
 
 // Una fila de club — la misma tarjeta tanto en el directorio completo como
-// en los resultados de búsqueda.
-function ClubRow({ club }) {
+// en los resultados de búsqueda. Exportada porque también la usa el
+// adelanto de Descubrir en MisClubesScreen.
+export function ClubRow({ club }) {
   const isOpen = club.join_mode === 'open';
   return (
     <div

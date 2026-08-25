@@ -12,18 +12,26 @@ export default async function Page() {
   const clubs = await getMyClubs(supabase, user.id);
   if (clubs.length === 0) return <OnboardingScreen />;
 
-  const enrichedClubs = await Promise.all(
-    clubs.map(async (club) => {
-      const [{ count: memberCount }, clubBook] = await Promise.all([
-        supabase.from('club_members').select('*', { count: 'exact', head: true }).eq('club_id', club.id),
-        getActiveClubBook(supabase, club.id),
-      ]);
-      const activity = clubBook
-        ? await getClubActivityPreview(supabase, clubBook.id, clubBook.books?.title ?? 'el libro')
-        : null;
-      return { ...club, memberCount: memberCount ?? 0, book: clubBook?.books ?? null, activity };
-    })
-  );
+  const [enrichedClubs, { data: publicClubs }] = await Promise.all([
+    Promise.all(
+      clubs.map(async (club) => {
+        const [{ count: memberCount }, clubBook] = await Promise.all([
+          supabase.from('club_members').select('*', { count: 'exact', head: true }).eq('club_id', club.id),
+          getActiveClubBook(supabase, club.id),
+        ]);
+        const activity = clubBook
+          ? await getClubActivityPreview(supabase, clubBook.id, clubBook.books?.title ?? 'el libro')
+          : null;
+        return { ...club, memberCount: memberCount ?? 0, book: clubBook?.books ?? null, activity };
+      })
+    ),
+    // Adelanto de Descubrir: un par de clubes públicos que todavía no son
+    // los tuyos, mismo criterio (y misma función) que la pestaña Descubrir.
+    supabase.rpc('discover_public_clubs', { limit_count: 20 }),
+  ]);
 
-  return <MisClubesScreen clubs={enrichedClubs} />;
+  const myClubIds = new Set(clubs.map((c) => c.id));
+  const discoverClubs = (publicClubs ?? []).filter((c) => !myClubIds.has(c.id)).slice(0, 2);
+
+  return <MisClubesScreen clubs={enrichedClubs} discoverClubs={discoverClubs} />;
 }

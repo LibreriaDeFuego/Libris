@@ -12,8 +12,8 @@ import { useRouter } from 'next/navigation';
 
 const initialState = { error: null };
 
-export function OnboardingScreen({ showBack = false }) {
-  const [mode, setMode] = useState('Crear club');
+export function OnboardingScreen({ showBack = false, initialMode = 'Crear club' }) {
+  const [mode, setMode] = useState(initialMode);
   const [visibility, setVisibility] = useState('publico');
   const router = useRouter();
   const [createState, createAction, createPending] = useActionState(createClub, initialState);

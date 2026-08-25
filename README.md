@@ -192,6 +192,17 @@ Las citas destacadas (`kind = 'quote'`) ya existían desde antes; lo nuevo es po
 - **La marca de agua es el logo real de Libris** (no un isotipo chico): `public/logo-libris.png` para el estilo Editorial (fondo claro) y una variante nueva en crema, `public/logo-libris-cream.png`, para Portada y Oscuro (fondo oscuro) — generada con la misma técnica de recoloreado por píxel que ya se usó para los íconos PWA.
 - Si la portada del libro no llega a cargar en el navegador (por ejemplo, algún problema de CORS con el bucket de Storage), la tarjeta se genera igual, solo que sin esa imagen de fondo/miniatura — nunca rompe la descarga.
 
+### Adelanto de Descubrir en "Mis clubes de lectura"
+
+La pantalla de Club (`/`) ya no termina en la lista de tus clubes: debajo, un adelanto de Descubrir con un acceso a la búsqueda (lleva a `/descubrir`, que es donde de verdad se puede tipear) y un par de clubes públicos que todavía no son tuyos — mismo criterio y misma función (`discover_public_clubs`) que la pestaña Descubrir, filtrando los que ya están en "Mis clubes". No hay pestaña nueva ni cambio en la barra de abajo: Descubrir sigue siendo su propia pestaña, esto es solo un adelanto para quien no piensa en tocarla por su cuenta.
+
+**Crear o unirme a un club** pasó de ser un botón fijo en el medio del contenido a dos accesos que abren la misma hoja ("Sumar un club", `src/components/AddClubSheet.jsx`, con las opciones "Crear un club nuevo" / "Unirme con un link"):
+
+- Un ícono "+" junto al logo, arriba de todo — el acceso rápido, disponible sin bajar el scroll.
+- Un link de texto al final de la pantalla ("¿No encontraste tu club?") — de contención para quien llegó leyendo todo hasta abajo sin usar el ícono.
+
+Elegir "Unirme con un link" en la hoja manda a `/club/nuevo?modo=unirme`, que abre `OnboardingScreen` directo en la pestaña "Unirme a un club" (prop `initialMode`) en vez de en "Crear club" — mismo formulario de siempre, solo que ya parado en la pestaña que se buscaba.
+
 ### Descubrimiento social — cómo está resuelto
 
 RLS solo deja ver los clubes propios, y eso no se toca. Lo que otros clubes leen se expone por funciones `security definer`: `other_clubs_reading_count` y `other_clubs_activity` (migración 005) para "otros clubes leyendo el mismo libro", y `discover_public_clubs` (migración 007, extendida en la 014) para el directorio de `/descubrir`. Los clubes con invitación (antes "privados") aparecen anonimizados ("Un club") y no aparecen en el directorio; los abiertos y los "con solicitud" muestran su nombre y son unibles desde ahí, desde **Preferencias del club** (ícono de engranaje), donde cada opción explica exactamente qué ven los demás.

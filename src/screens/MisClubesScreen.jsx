@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { selectClub } from '@/app/actions/clubs';
-import { Button } from '@/design-system/components/core/Button.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
+import { IconButton } from '@/design-system/components/core/IconButton.jsx';
+import { AddClubSheet } from '@/components/AddClubSheet';
+import { ClubRow } from '@/screens/OtrosClubesScreen.jsx';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
 function ClubCard({ club }) {
@@ -58,15 +60,22 @@ function ClubCard({ club }) {
   );
 }
 
-export function MisClubesScreen({ clubs }) {
+export function MisClubesScreen({ clubs, discoverClubs = [] }) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '20px 18px 24px' }}>
-      <div>
-        {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
-        <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block', marginBottom: 14 }} />
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
-          Mis clubes de lectura
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
+          <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block', marginBottom: 14 }} />
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
+            Mis clubes de lectura
+          </div>
         </div>
+        <IconButton aria-label="Sumar un club" size={36} onClick={() => setSheetOpen(true)}>
+          <Icon name="plus" size={16} />
+        </IconButton>
       </div>
 
       {clubs.length === 0 ? (
@@ -79,12 +88,55 @@ export function MisClubesScreen({ clubs }) {
         </div>
       )}
 
-      <Link href="/club/nuevo">
-        <Button variant="secondary" size="md">
-          <Icon name="plus" size={16} />
-          Crear o unirme con un link
-        </Button>
-      </Link>
+      <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+          Descubrir más clubes
+        </div>
+
+        {/* No es un buscador en vivo: lleva a Descubrir, donde sí se puede
+            tipear y buscar clubes y personas. Evita duplicar esa búsqueda acá. */}
+        <Link
+          href="/descubrir"
+          style={{
+            display: 'flex', alignItems: 'center', width: '100%', padding: '12px 16px',
+            borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
+            background: 'var(--surface-card)', color: 'var(--text-tertiary)', fontFamily: 'var(--font-body)',
+            fontSize: 'var(--fs-base)', textDecoration: 'none',
+          }}
+        >
+          Buscar clubes o personas
+        </Link>
+
+        {discoverClubs.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {discoverClubs.map((club) => <ClubRow key={club.id} club={club} />)}
+          </div>
+        )}
+
+        <Link
+          href="/descubrir"
+          style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}
+        >
+          Ver todo en Descubrir
+          <Icon name="arrow-right" size={12} color="var(--text-link)" />
+        </Link>
+      </div>
+
+      <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+
+      <div style={{ textAlign: 'center', padding: '2px 0 6px' }}>
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}
+        >
+          ¿No encontraste tu club? Crear uno o unirme con un link
+        </button>
+      </div>
+
+      {sheetOpen && <AddClubSheet onClose={() => setSheetOpen(false)} />}
     </div>
   );
 }
