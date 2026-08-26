@@ -32,6 +32,18 @@ export function ActivityCard({ activity, canOpenClub, personName, author }) {
       : activity.body;
   const backgroundUrl = isPhoto ? activity.photo_url : hasQuoteImage ? activity.quote_image_url : activity.book_cover_url;
 
+  // Las citas con imagen guardada de antes de que los tres estilos se
+  // unificaran a 3:4 quedaron con su proporción vieja (Portada/Editorial en
+  // 4:5, Oscuro cuadrado) — un "cover" las agranda y les corta los costados,
+  // cortando el texto de la propia tarjeta. Con "contain" se ve completa
+  // siempre, sea cual sea su proporción; las citas nuevas (ya 3:4) llenan el
+  // marco igual, porque coinciden exacto con el contenedor.
+  const background = !backgroundUrl
+    ? 'var(--accent-500)'
+    : hasQuoteImage
+      ? `url(${backgroundUrl}) center / contain no-repeat, var(--hero-bg)`
+      : `center/cover no-repeat url(${backgroundUrl})`;
+
   return (
     <div
       onClick={() => setExpanded((e) => !e)}
@@ -41,7 +53,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author }) {
         // recortarlas de más ni dejar franjas vacías.
         position: 'relative', aspectRatio: '3 / 4', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
         boxShadow: 'var(--shadow-lg)', cursor: 'pointer', flexShrink: 0,
-        background: backgroundUrl ? `center/cover no-repeat url(${backgroundUrl})` : 'var(--accent-500)',
+        background,
       }}
     >
       <div
