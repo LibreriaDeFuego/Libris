@@ -105,7 +105,10 @@ supabase/
                              citas y fotos de todos los usuarios, para Inicio),
                            021_imagen_de_cita_guardada.sql (bucket quote-cards,
                              comments.quote_image_url, profile_activity y
-                             recent_activity ahora también la traen)
+                             recent_activity ahora también la traen),
+                           022_titulo_de_publicacion.sql (posts.title,
+                             profile_activity y recent_activity ahora
+                             también lo traen)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -161,7 +164,7 @@ Cada perfil tiene foto (bucket `avatars`, igual de público que las portadas de 
 
 ### Fotos de lo que estás leyendo (migración 016)
 
-Desde el propio perfil (botón "Foto", junto al nombre) se puede compartir una foto de lo que se está leyendo — de la galería o sacada en el momento con la cámara. Antes de subirla pasa por el mismo recorte estilo Instagram que la foto de perfil (`PhotoCropModal`, `src/components/PhotoCropModal.jsx`), acá en proporción vertical 3:4 en vez de cuadrada, con un texto corto opcional.
+Desde el propio perfil (botón "Foto", junto al nombre) se puede compartir una foto de lo que se está leyendo — de la galería o sacada en el momento con la cámara. Antes de subirla pasa por el mismo recorte estilo Instagram que la foto de perfil (`PhotoCropModal`, `src/components/PhotoCropModal.jsx`) — cuadrada (1:1) desde la migración 022, antes era 3:4 —, con un título y un texto más largo, ambos explicados en "Título e identidad propia para las fotos" más abajo.
 
 - Tabla `posts` (`profile_id`, `image_url`, `caption`), bucket `post-photos` — igual de público que el resto de las imágenes de la app, no está atada a ningún club.
 - Se mezclan con los comentarios y notas de voz en el mismo feed de "Actividad", ordenadas todas por fecha: `profile_activity` ahora hace un `union all` entre `comments` y `posts`. Como una foto no depende de ningún club, es visible siempre que se puede ver el perfil (mismo criterio que "Seguir").
@@ -176,7 +179,7 @@ Pestaña nueva, la primera de la barra de abajo (ícono de casa). Es un feed de 
 - **Por ahora, dos tipos de contenido**: citas destacadas y fotos de lo que alguien está leyendo. Se van a ir sumando otros con el tiempo (comentarios, notas de voz, empezar a leer un libro nuevo dentro de un club) — no crear un club, eso no es "una novedad de lectura".
 - **`recent_activity`** (`security definer`) es la función nueva que arma el feed — mismo criterio de visibilidad de club que ya usaba `profile_activity`: las citas de un club abierto o "con solicitud" se ven siempre, las de uno privado (`invite`) solo si sos miembro. Las fotos son públicas siempre, como ya lo eran. A diferencia de `profile_activity` (la actividad de un perfil puntual), esta es general — no filtra por quién sigue a quién, es la misma lógica sin restricción por relación que ya se usa en el buscador de Descubrir.
 - **`ActivityCard`** se movió del Perfil a `src/components/ActivityCard.jsx`, compartido entre las dos pantallas — con una prop `author` opcional que agrega la fila de nombre y foto solo cuando hace falta (Inicio la usa, Perfil no, porque ahí ya se sabe de quién es la actividad).
-- **El orden de la tarjeta es el de un posteo de Instagram**, no el de la tarjeta "hero" original: primero quién publicó (si hay `author`), después la imagen sola y limpia —nada escrito encima, ni el nombre ni el texto—, y recién abajo el texto (de qué se trata, la cita o el comentario) y los botones. Antes todo eso iba superpuesto sobre la imagen con un degradado para que se leyera; se sacó ese tratamiento por completo, en las dos pantallas que usan la tarjeta.
+- **El orden de la tarjeta es el de un posteo de Instagram**, no el de la tarjeta "hero" original: primero quién publicó (si hay `author`), después la imagen sola y limpia —nada escrito encima, ni el nombre ni el texto—, y recién abajo el texto (de qué se trata, la cita o el comentario) y los botones. Antes todo eso iba superpuesto sobre la imagen con un degradado para que se leyera; se sacó ese tratamiento por completo, en las dos pantallas que usan la tarjeta. Las fotos son la excepción desde la migración 022 — tienen su propio tratamiento con título y texto en un panel de color, ver "Título e identidad propia para las fotos" más abajo.
 
 ### Nombre de usuario único (migración 017)
 
@@ -224,6 +227,14 @@ Al principio la tarjeta no se guardaba en ningún lado — se volvía a dibujar 
 **Los tres estilos quedaron en 3:4**, la misma proporción que ya usan las fotos de "lo que estás leyendo" — antes Portada y Editorial eran 4:5 y Oscuro cuadrado, así que dos citas seguidas en el feed (o una cita y una foto) no medían lo mismo. `quoteCard.js` ahora dibuja los tres a 1080×1440 (una sola constante `HEIGHT`, no una por estilo); como el centrado del texto ya se calculaba a partir del alto del lienzo, no hizo falta retocar cada estilo a mano. La tarjeta de Actividad (`ActivityCard`) pasó de una altura fija (440px) a `aspect-ratio: 3 / 4`, para que el recuadro que envuelve cualquier imagen del feed —cita o foto— tenga siempre esa misma proporción.
 
 **Las citas con imagen guardada de antes de este cambio** quedaron con su proporción vieja (Portada/Editorial en 4:5, Oscuro cuadrado) grabada para siempre en el JPEG — no hay forma de "reconvertirlas" a 3:4 sin volver a dibujarlas. Mostrarlas con `background-size: cover` en el marco nuevo las agranda y les corta los costados, cortando el propio texto de la tarjeta (bug real, reportado y visto en captura). Por eso, específicamente cuando hay `quote_image_url`, el fondo usa `contain` en vez de `cover` — se ve completa siempre, sea cual sea su proporción real, a costa de un borde de color liso a los costados si no coincide con 3:4 exacto. Las citas nuevas (ya nacen en 3:4) llenan el marco igual que con `cover`, porque coinciden exacto con el contenedor.
+
+### Título e identidad propia para las fotos (migración 022)
+
+Publicar una foto ahora pide **título** (obligatorio) además del texto largo, opcional — antes era solo un texto corto. La foto se recorta **cuadrada (1:1)**, no ya 3:4.
+
+- **`posts.title`** — columna nueva, nullable (las fotos de antes de esta migración quedan sin título). `createPost` la exige de acá en adelante: sin título, no se publica.
+- **En el feed (Inicio y Actividad del perfil), una foto ya no se ve como un posteo de Instagram genérico** — tiene identidad propia: arriba, un panel de color (`--gold-500`, fijo por ahora — elegir el color es una idea para más adelante, todavía no tiene columna) con el título y el texto; abajo, un marco cuadrado donde la foto flota chica, con una sombra proyectada en diagonal y un brillo de luz por encima (capas de `box-shadow` + un `linear-gradient` en `mix-blend-mode: soft-light`) — el mismo tratamiento que se probó y aprobó como mockup antes de construirlo. El nombre de quien publicó y la fecha siguen totalmente afuera de la tarjeta (la fila de `author`, sin cambios) — nunca se dibujan encima ni adentro del panel de color.
+- **Pendiente, a propósito**: cuando alguien suba una foto de la portada de un libro (no de sí mismo leyendo), la foto puede traer fondo/mesa/mano de la propia toma — se decidió resolverlo con un recorte guiado (una guía rectangular ajustable antes de publicar, como el recorte que ya existe pero encuadrando el libro en vez de la persona), pendiente de construir.
 
 ### Adelanto de Descubrir en "Mis clubes de lectura"
 
