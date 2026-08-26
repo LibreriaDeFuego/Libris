@@ -3,6 +3,12 @@
 // externas — mismo enfoque que imageProcessing.js para las fotos de perfil.
 
 const WIDTH = 1080;
+// 3:4 (ancho/alto) — la misma proporción que ya usan las fotos de "lo que
+// estás leyendo", para que toda imagen que se publica en el feed (cita o
+// foto) quede del mismo tamaño. Antes cada estilo tenía la suya (Portada y
+// Editorial 4:5, Oscuro cuadrado) — quedaban desparejas entre sí y con las
+// fotos.
+const HEIGHT = Math.round((WIDTH * 4) / 3);
 const CREAM = '#FFF8EC';
 const HERO_BG = '#16150F';
 const INK = '#1B1B1F';
@@ -130,7 +136,7 @@ function metaLine({ book, clubName, personName }) {
 // --- Estilo "cover": la portada de fondo, con degradado y texto crema.
 async function renderCover(ctx, { quoteText, book, clubName, personName }) {
   const W = WIDTH;
-  const H = Math.round((WIDTH * 5) / 4);
+  const H = HEIGHT;
   ctx.fillStyle = HERO_BG;
   ctx.fillRect(0, 0, W, H);
   if (book?.cover_url) {
@@ -208,7 +214,7 @@ async function renderCover(ctx, { quoteText, book, clubName, personName }) {
 // --- Estilo "dark": fondo oscuro sólido, cita + libro apilados al centro.
 async function renderDark(ctx, { quoteText, book, clubName, personName }) {
   const W = WIDTH;
-  const H = WIDTH;
+  const H = HEIGHT;
   ctx.fillStyle = HERO_BG;
   ctx.fillRect(0, 0, W, H);
 
@@ -260,7 +266,7 @@ async function renderDark(ctx, { quoteText, book, clubName, personName }) {
 // --- Estilo "editorial": look de revista, todo centrado sobre fondo crema.
 async function renderEditorial(ctx, { quoteText, book, clubName, personName }) {
   const W = WIDTH;
-  const H = Math.round((WIDTH * 5) / 4);
+  const H = HEIGHT;
   ctx.fillStyle = CREAM;
   ctx.fillRect(0, 0, W, H);
 
@@ -337,10 +343,9 @@ export async function renderQuoteCard({ style, quoteText, book, clubName, person
   if (!render) throw new Error('Estilo de cita desconocido.');
   await ensureFonts();
 
-  const height = style === 'dark' ? WIDTH : Math.round((WIDTH * 5) / 4);
   const canvas = document.createElement('canvas');
   canvas.width = WIDTH;
-  canvas.height = height;
+  canvas.height = HEIGHT;
   const ctx = canvas.getContext('2d');
   await render(ctx, { quoteText, book, clubName, personName });
 

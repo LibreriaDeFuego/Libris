@@ -36,7 +36,10 @@ export function ActivityCard({ activity, canOpenClub, personName, author }) {
     <div
       onClick={() => setExpanded((e) => !e)}
       style={{
-        position: 'relative', height: 440, borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+        // 3:4 — misma proporción que ahora usan todas las imágenes que se
+        // publican (citas y fotos), para que la tarjeta las muestre sin
+        // recortarlas de más ni dejar franjas vacías.
+        position: 'relative', aspectRatio: '3 / 4', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
         boxShadow: 'var(--shadow-lg)', cursor: 'pointer', flexShrink: 0,
         background: backgroundUrl ? `center/cover no-repeat url(${backgroundUrl})` : 'var(--accent-500)',
       }}

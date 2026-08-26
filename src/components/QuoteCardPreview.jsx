@@ -52,7 +52,7 @@ export function QuoteCardPreview({ style, quoteText, book, clubName, personName 
     <div
       style={{
         borderRadius: 'var(--radius-md)', overflow: 'hidden', position: 'relative',
-        background: 'var(--surface-sunken)', aspectRatio: style === 'dark' ? '1 / 1' : '4 / 5',
+        background: 'var(--surface-sunken)', aspectRatio: '3 / 4',
         maxWidth: 220, margin: '0 auto',
       }}
     >
