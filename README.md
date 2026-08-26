@@ -171,7 +171,7 @@ Desde el propio perfil (botón "Foto", junto al nombre) se puede compartir una f
 
 ### Inicio: feed de novedades (migración 020)
 
-Pestaña nueva, la primera de la barra de abajo (ícono de casa). Es un feed de actividad de **todos** los usuarios de Libris, no solo de tus clubes — mismas tarjetas grandes con foto de fondo que ya tenía "Actividad" en el Perfil, ahora con el nombre y la foto de quien publicó, arriba a la izquierda de cada una (toca y lleva a su perfil).
+Pestaña nueva, la primera de la barra de abajo (ícono de casa). Es un feed de actividad de **todos** los usuarios de Libris, no solo de tus clubes — mismas tarjetas grandes con foto de fondo que ya tenía "Actividad" en el Perfil, ahora con el nombre y la foto de quien publicó en una fila propia arriba de cada tarjeta —no superpuestos sobre la imagen— (toca y lleva a su perfil).
 
 - **Por ahora, dos tipos de contenido**: citas destacadas y fotos de lo que alguien está leyendo. Se van a ir sumando otros con el tiempo (comentarios, notas de voz, empezar a leer un libro nuevo dentro de un club) — no crear un club, eso no es "una novedad de lectura".
 - **`recent_activity`** (`security definer`) es la función nueva que arma el feed — mismo criterio de visibilidad de club que ya usaba `profile_activity`: las citas de un club abierto o "con solicitud" se ven siempre, las de uno privado (`invite`) solo si sos miembro. Las fotos son públicas siempre, como ya lo eran. A diferencia de `profile_activity` (la actividad de un perfil puntual), esta es general — no filtra por quién sigue a quién, es la misma lógica sin restricción por relación que ya se usa en el buscador de Descubrir.
