@@ -171,11 +171,12 @@ Desde el propio perfil (botón "Foto", junto al nombre) se puede compartir una f
 
 ### Inicio: feed de novedades (migración 020)
 
-Pestaña nueva, la primera de la barra de abajo (ícono de casa). Es un feed de actividad de **todos** los usuarios de Libris, no solo de tus clubes — mismas tarjetas grandes con foto de fondo que ya tenía "Actividad" en el Perfil, ahora con el nombre y la foto de quien publicó en una fila propia arriba de cada tarjeta —no superpuestos sobre la imagen— (toca y lleva a su perfil).
+Pestaña nueva, la primera de la barra de abajo (ícono de casa). Es un feed de actividad de **todos** los usuarios de Libris, no solo de tus clubes.
 
 - **Por ahora, dos tipos de contenido**: citas destacadas y fotos de lo que alguien está leyendo. Se van a ir sumando otros con el tiempo (comentarios, notas de voz, empezar a leer un libro nuevo dentro de un club) — no crear un club, eso no es "una novedad de lectura".
 - **`recent_activity`** (`security definer`) es la función nueva que arma el feed — mismo criterio de visibilidad de club que ya usaba `profile_activity`: las citas de un club abierto o "con solicitud" se ven siempre, las de uno privado (`invite`) solo si sos miembro. Las fotos son públicas siempre, como ya lo eran. A diferencia de `profile_activity` (la actividad de un perfil puntual), esta es general — no filtra por quién sigue a quién, es la misma lógica sin restricción por relación que ya se usa en el buscador de Descubrir.
-- **`ActivityCard`** se movió del Perfil a `src/components/ActivityCard.jsx`, compartido entre las dos pantallas — con una prop `author` opcional que agrega esa fila de nombre y foto solo cuando hace falta (Inicio la usa, Perfil no, porque ahí ya se sabe de quién es la actividad).
+- **`ActivityCard`** se movió del Perfil a `src/components/ActivityCard.jsx`, compartido entre las dos pantallas — con una prop `author` opcional que agrega la fila de nombre y foto solo cuando hace falta (Inicio la usa, Perfil no, porque ahí ya se sabe de quién es la actividad).
+- **El orden de la tarjeta es el de un posteo de Instagram**, no el de la tarjeta "hero" original: primero quién publicó (si hay `author`), después la imagen sola y limpia —nada escrito encima, ni el nombre ni el texto—, y recién abajo el texto (de qué se trata, la cita o el comentario) y los botones. Antes todo eso iba superpuesto sobre la imagen con un degradado para que se leyera; se sacó ese tratamiento por completo, en las dos pantallas que usan la tarjeta.
 
 ### Nombre de usuario único (migración 017)
 
