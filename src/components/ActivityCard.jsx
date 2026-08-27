@@ -1,11 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { BookReviewCard } from '@/components/BookReviewCard';
+import { PostMenu } from '@/components/PostMenu';
+import { deleteBookReview } from '@/app/actions/clubs';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
 // Una tarjeta de actividad, con el mismo orden que un posteo de Instagram:
@@ -20,8 +23,22 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 // La usan tanto el Perfil (donde ya se sabe de quién es la actividad, no
 // hace falta repetirlo) como el Inicio (donde "author" identifica quién
 // publicó cada tarjeta del feed, con su nombre y foto en una fila propia).
-export function ActivityCard({ activity, canOpenClub, personName, author }) {
+//
+// En la propia reseña final (isOwn), el menú de 3 puntos junto al nombre
+// permite borrarla directo desde acá; "Editar" lleva a los comentarios del
+// club, donde vive el formulario de edición (acá no se cuenta con
+// club_book_id para abrir el mismo modal).
+export function ActivityCard({ activity, canOpenClub, personName, author, isOwn }) {
   const [expanded, setExpanded] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  function handleDeleteReview() {
+    if (!window.confirm('¿Eliminar esta reseña? No se puede deshacer.')) return;
+    startTransition(async () => {
+      await deleteBookReview(activity.id);
+    });
+  }
   const isPhoto = activity.kind === 'photo';
   const isQuote = activity.kind === 'quote';
   const isReview = activity.kind === 'review';
@@ -69,8 +86,18 @@ export function ActivityCard({ activity, canOpenClub, personName, author }) {
 
   if (isReview) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {authorRow}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: pending ? 0.6 : 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {authorRow}
+          {isOwn && (
+            <PostMenu
+              editLabel="Editar reseña"
+              onEdit={() => router.push(`/club/${activity.club_id}/comentarios`)}
+              deleteLabel="Eliminar reseña"
+              onDelete={handleDeleteReview}
+            />
+          )}
+        </div>
         <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
           <BookReviewCard title={activity.title} body={activity.body} coverUrl={activity.book_cover_url} expanded={expanded} />
         </div>

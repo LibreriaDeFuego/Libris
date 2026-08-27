@@ -604,3 +604,23 @@ export async function postBookReview(formData) {
   revalidatePath('/', 'layout');
   return { error: null };
 }
+
+// Borra tu propia reseña final. "eq('profile_id', user.id)" es cinturón y
+// tirantes — la política de RLS (migración 024) ya lo exige, esto solo
+// evita una consulta que de entrada no puede tocar nada.
+export async function deleteBookReview(reviewId) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+  if (!reviewId) return { error: 'Falta la reseña.' };
+
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', reviewId)
+    .eq('profile_id', user.id)
+    .eq('kind', 'review');
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}

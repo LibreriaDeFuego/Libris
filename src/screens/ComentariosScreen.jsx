@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
@@ -13,6 +13,9 @@ import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { BookReviewCard } from '@/components/BookReviewCard';
+import { PostMenu } from '@/components/PostMenu';
+import { FinalReviewModal } from './FinalReviewModal.jsx';
+import { deleteBookReview } from '@/app/actions/clubs';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 import { orderChapters, chapterDisplayLabel } from '@/lib/orderChapters';
 
@@ -59,22 +62,43 @@ function CommentBody({ comment, book, clubName }) {
 // La reseña final de alguien que terminó el libro: el título y el texto
 // (hasta 5 líneas) dentro del mismo panel de color que la portada
 // (BookReviewCard, mismo bloque que usa ActivityCard en Inicio y Perfil) —
-// tocar la tarjeta despliega el resto.
-function ReviewCard({ review, book }) {
+// tocar la tarjeta despliega el resto. En la propia reseña, el menú de 3
+// puntos junto al nombre ofrece editarla (abre FinalReviewModal, precargada)
+// o borrarla.
+function ReviewCard({ review, book, isOwn, onEdit }) {
   const [expanded, setExpanded] = useState(false);
+  const [pending, startTransition] = useTransition();
   const name = review.profiles?.display_name ?? 'Alguien';
+
+  function handleDelete() {
+    if (!window.confirm('¿Eliminar esta reseña? No se puede deshacer.')) return;
+    startTransition(async () => {
+      await deleteBookReview(review.id);
+    });
+  }
+
   const card = (
-    <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
+    <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer', opacity: pending ? 0.6 : 1 }}>
       <BookReviewCard title={review.title} body={review.body} coverUrl={book?.cover_url} expanded={expanded} />
     </div>
   );
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <Avatar name={name} size={30} />
-        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
-          {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· terminó el libro · {formatRelativeTime(review.created_at)}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Avatar name={name} size={30} />
+          <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
+            {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· terminó el libro · {formatRelativeTime(review.created_at)}</span>
+          </div>
         </div>
+        {isOwn && (
+          <PostMenu
+            editLabel="Editar reseña"
+            onEdit={() => onEdit(review)}
+            deleteLabel="Eliminar reseña"
+            onDelete={handleDelete}
+          />
+        )}
       </div>
       {review.is_spoiler ? <SpoilerBlock>{card}</SpoilerBlock> : card}
     </div>
@@ -85,11 +109,12 @@ function ReviewCard({ review, book }) {
 // "general del libro" (se sacó a propósito, para reforzar comentar
 // capítulo a capítulo). Arriba de todo, aparte, la reseña final de quienes
 // ya terminaron el libro (kind = 'review'), si hay alguna.
-export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myDisplayName }) {
+export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myDisplayName, myProfileId }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
   const reviews = useMemo(() => comments.filter((c) => c.kind === 'review'), [comments]);
   const [chapterId, setChapterId] = useState(orderedChapters[0]?.id ?? null);
+  const [editingReview, setEditingReview] = useState(null);
 
   const visibleComments = chapterId ? comments.filter((c) => c.chapter_id === chapterId) : [];
 
@@ -102,7 +127,9 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
 
       {reviews.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {reviews.map((review) => <ReviewCard key={review.id} review={review} book={book} />)}
+          {reviews.map((review) => (
+            <ReviewCard key={review.id} review={review} book={book} isOwn={review.profile_id === myProfileId} onEdit={setEditingReview} />
+          ))}
         </div>
       )}
 
@@ -148,6 +175,15 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
         <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '20px 0', textAlign: 'center' }}>
           Este club todavía no tiene capítulos — un administrador puede agregarlos desde &ldquo;Gestionar capítulos&rdquo;.
         </div>
+      )}
+
+      {editingReview && (
+        <FinalReviewModal
+          clubBookId={clubBookId}
+          book={book}
+          myReview={editingReview}
+          onClose={() => setEditingReview(null)}
+        />
       )}
     </div>
   );

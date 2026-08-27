@@ -17,5 +17,5 @@ export default async function Page() {
 
   const myClubIds = new Set(myClubs.map((c) => c.id));
 
-  return <InicioScreen activity={activity ?? []} myClubIds={myClubIds} />;
+  return <InicioScreen activity={activity ?? []} myClubIds={myClubIds} myProfileId={user.id} />;
 }

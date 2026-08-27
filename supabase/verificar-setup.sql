@@ -208,4 +208,16 @@ select 'Migración 023 — recent_activity trae las reseñas',
        case when exists (
               select 1 from pg_proc where proname = 'recent_activity' and prosrc like '%''review''%'
             )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 024 — política de editar comentarios propios',
+       case when exists (
+              select 1 from pg_policies where tablename = 'comments' and cmd = 'UPDATE'
+            )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 024 — política de borrar comentarios propios',
+       case when exists (
+              select 1 from pg_policies where tablename = 'comments' and cmd = 'DELETE'
+            )
             then 'OK' else 'FALTA' end;

@@ -56,6 +56,7 @@ export default async function Page({ params }) {
       book={clubBook.books}
       clubName={club.name}
       myDisplayName={me?.display_name ?? null}
+      myProfileId={user.id}
     />
   );
 }

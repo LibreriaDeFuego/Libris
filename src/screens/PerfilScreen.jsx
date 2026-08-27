@@ -285,7 +285,7 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {activity.map((item) => (
-              <ActivityCard key={item.id} activity={item} canOpenClub={myClubIds.has(item.club_id)} personName={profile.display_name} />
+              <ActivityCard key={item.id} activity={item} canOpenClub={myClubIds.has(item.club_id)} personName={profile.display_name} isOwn={isOwn} />
             ))}
           </div>
         )}

@@ -108,7 +108,10 @@ supabase/
                              recent_activity ahora también la traen),
                            023_resena_final_y_solo_capitulos.sql (reading_progress.
                              finished_at, comments.title + kind 'review',
-                             se saca "General del libro" de Comentarios)
+                             se saca "General del libro" de Comentarios),
+                           024_editar_borrar_resena.sql (políticas update +
+                             delete en comments, para editar/borrar tu propia
+                             reseña final)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -239,6 +242,16 @@ Los comentarios de un club ya no tienen sección "General del libro" — se sac�
 - **`recent_activity`** ahora también trae las reseñas (antes solo citas destacadas + fotos), con el mismo criterio de privacidad de club que ya usaban las citas. `profile_activity` y `recent_activity` ahora devuelven `title` (antes solo lo tenían las citas destacadas, que no lo usan — queda null para ellas).
 
 **Sobre la foto de las personas leyendo (migración 016)**: esto NO le tocó nada — sigue tal cual, recorte 3:4, sin título, con el tratamiento genérico de siempre en el feed. La identidad con portada + sombra es específica de la reseña final, donde la imagen es la tapa de un libro real (con su propia proporción, conocida), no una foto que puede traer cualquier fondo.
+
+### Editar o borrar tu propia reseña final (migración 024)
+
+Junto al nombre de quien publicó una reseña (kind = 'review'), un menú de 3 puntos (`src/components/PostMenu.jsx`) ofrece **Editar reseña** / **Eliminar reseña** — solo a quien la escribió, nunca a nadie más.
+
+- **`comments` no tenía política de update ni de delete** (solo select + insert) — nadie podía tocar lo que ya había publicado, de ningún tipo. La migración agrega ambas, para quien es dueño del comentario (`profile_id = auth.uid()`); es una política general de la tabla, no limitada a reseñas, aunque por ahora la UI solo ofrece editar/borrar reseñas.
+- **`deleteBookReview`** (`src/app/actions/clubs.js`) borra la propia reseña — RLS la respalda, el `.eq('profile_id', user.id)` en la consulta es cinturón y tirantes, no la única traba.
+- **Editar** reabre `FinalReviewModal` precargado (prop `myReview`), que ya sabía hacer esto desde la migración 023 (`reviewId` en el formulario evita duplicar la reseña) — ahora se le puede llegar también desde el propio menú, no solo por convención de una sola reseña por libro.
+- **Dónde vive cada acción**: en **Comentarios del club** (`ComentariosScreen`), el menú abre el modal de edición ahí mismo — la pantalla ya tiene `clubBookId` y el libro a mano. En **Inicio y Perfil** (`ActivityCard`), "Eliminar" borra directo y "Editar" navega a los comentarios del club en vez de duplicar el modal — el feed no trae `club_book_id` en cada tarjeta.
+- **A propósito, no se tocó** editar/borrar comentarios de capítulo, citas o notas de voz — habilitar eso para citas/voz necesita limpiar también el archivo en Storage (imagen de la cita, audio), fuera del alcance de este cambio.
 
 ### Adelanto de Descubrir en "Mis clubes de lectura"
 

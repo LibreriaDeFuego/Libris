@@ -6,7 +6,7 @@ import { ActivityCard } from '@/components/ActivityCard';
 // cualquier persona en Libris, más recientes primero. Por ahora solo esos
 // dos tipos — se van a ir sumando otros (comentarios, notas de voz, empezar
 // un libro nuevo) más adelante, extendiendo recent_activity.
-export function InicioScreen({ activity, myClubIds }) {
+export function InicioScreen({ activity, myClubIds, myProfileId }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '20px 18px 24px' }}>
       <div>
@@ -27,6 +27,7 @@ export function InicioScreen({ activity, myClubIds }) {
               canOpenClub={myClubIds.has(item.club_id)}
               personName={item.display_name}
               author={{ id: item.profile_id, display_name: item.display_name, avatar_url: item.avatar_url }}
+              isOwn={item.profile_id === myProfileId}
             />
           ))}
         </div>
