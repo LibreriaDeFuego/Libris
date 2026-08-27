@@ -20,12 +20,10 @@ export async function createPost(prevState, formData) {
   const user = await requireUser(supabase);
 
   const file = formData.get('file');
-  const title = formData.get('title')?.toString().trim() || '';
   const caption = formData.get('caption')?.toString().trim() || null;
 
   if (!isFile(file) || file.size === 0) return { error: 'Elige una foto.' };
   if (file.size > MAX_PHOTO_BYTES) return { error: 'La foto no puede pesar más de 8 MB.' };
-  if (!title) return { error: 'Ponle un título.' };
 
   const extension = PHOTO_EXTENSIONS[file.type];
   if (!extension) return { error: 'La foto tiene que ser JPG, PNG o WEBP.' };
@@ -41,7 +39,6 @@ export async function createPost(prevState, formData) {
   const { error } = await supabase.from('posts').insert({
     profile_id: user.id,
     image_url: publicUrl,
-    title,
     caption,
   });
   if (error) return { error: friendlyDbError(error) };

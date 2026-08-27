@@ -193,20 +193,4 @@ select 'Migración 021 — recent_activity trae quote_image_url',
        case when exists (
               select 1 from pg_proc where proname = 'recent_activity' and prosrc like '%quote_image_url%'
             )
-            then 'OK' else 'FALTA' end
-union all
-select 'Migración 022 — title en posts',
-       case when exists (select 1 from information_schema.columns where table_name = 'posts' and column_name = 'title')
-            then 'OK' else 'FALTA' end
-union all
-select 'Migración 022 — profile_activity trae title',
-       case when exists (
-              select 1 from pg_proc where proname = 'profile_activity' and prosrc like '%p.title%'
-            )
-            then 'OK' else 'FALTA' end
-union all
-select 'Migración 022 — recent_activity trae title',
-       case when exists (
-              select 1 from pg_proc where proname = 'recent_activity' and prosrc like '%po.title%'
-            )
             then 'OK' else 'FALTA' end;
