@@ -56,30 +56,17 @@ function CommentBody({ comment, book, clubName }) {
   );
 }
 
-// La reseña final de alguien que terminó el libro: el título junto a la
-// portada (BookReviewCard, mismo bloque que usa ActivityCard en Inicio y
-// Perfil), y el texto de la reseña abajo — hasta 5 líneas, tocar despliega
-// el resto.
+// La reseña final de alguien que terminó el libro: el título y el texto
+// (hasta 5 líneas) dentro del mismo panel de color que la portada
+// (BookReviewCard, mismo bloque que usa ActivityCard en Inicio y Perfil) —
+// tocar la tarjeta despliega el resto.
 function ReviewCard({ review, book }) {
   const [expanded, setExpanded] = useState(false);
   const name = review.profiles?.display_name ?? 'Alguien';
-  const body = (
-    <>
-      <BookReviewCard title={review.title} coverUrl={book?.cover_url} />
-      {review.body && (
-        <div
-          onClick={() => setExpanded((e) => !e)}
-          style={{
-            cursor: 'pointer', marginTop: 8, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)',
-            lineHeight: 'var(--lh-snug)', whiteSpace: 'pre-wrap',
-            display: '-webkit-box', WebkitLineClamp: expanded ? 'unset' : 5, WebkitBoxOrient: 'vertical',
-            overflow: expanded ? 'visible' : 'hidden',
-          }}
-        >
-          {review.body}
-        </div>
-      )}
-    </>
+  const card = (
+    <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
+      <BookReviewCard title={review.title} body={review.body} coverUrl={book?.cover_url} expanded={expanded} />
+    </div>
   );
   return (
     <div>
@@ -89,7 +76,7 @@ function ReviewCard({ review, book }) {
           {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· terminó el libro · {formatRelativeTime(review.created_at)}</span>
         </div>
       </div>
-      {review.is_spoiler ? <SpoilerBlock>{body}</SpoilerBlock> : body}
+      {review.is_spoiler ? <SpoilerBlock>{card}</SpoilerBlock> : card}
     </div>
   );
 }

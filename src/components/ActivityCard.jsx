@@ -71,29 +71,16 @@ export function ActivityCard({ activity, canOpenClub, personName, author }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {authorRow}
-        <BookReviewCard title={activity.title} coverUrl={activity.book_cover_url} />
-        <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer', padding: '0 2px' }}>
-          <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 6 }}>
+        <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
+          <BookReviewCard title={activity.title} body={activity.body} coverUrl={activity.book_cover_url} expanded={expanded} />
+        </div>
+        <div style={{ padding: '0 2px' }}>
+          <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600 }}>
             {activity.club_name} · terminó {activity.book_title} · {formatRelativeTime(activity.created_at)}
           </div>
-          {activity.body && (
-            <div
-              style={{
-                fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-snug)',
-                whiteSpace: 'pre-wrap',
-                display: '-webkit-box',
-                WebkitLineClamp: expanded ? 'unset' : 5,
-                WebkitBoxOrient: 'vertical',
-                overflow: expanded ? 'visible' : 'hidden',
-              }}
-            >
-              {activity.body}
-            </div>
-          )}
           {expanded && canOpenClub && (
             <Link
               href={`/club/${activity.club_id}/comentarios`}
-              onClick={(e) => e.stopPropagation()}
               style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 10, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
             >
               Ver el resto de los comentarios en el club

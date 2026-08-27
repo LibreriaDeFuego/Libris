@@ -1,14 +1,17 @@
-// El bloque de "reseña final": el título en un panel de color y, fundido
-// con él (mismo mecanismo que el mockup "Identidad de Citas" — colapsando
-// el espacio entre los dos con un margin-top negativo), la portada del
-// libro flotando chica con una sombra proyectada en diagonal y un brillo de
-// luz por encima. La portada es la que ya tiene el libro en el club — no
-// una foto que suba la persona — así que cualquier proporción de tapa se ve
-// completa: el ancho/alto salen del propio tamaño natural de la imagen
-// (max-width/max-height, sin recortarla ni deformarla).
+// El bloque de "reseña final": el título y el texto de la reseña, dentro
+// del mismo panel de color, y fundida con él (mismo mecanismo que el
+// mockup "Identidad de Citas" — colapsando el espacio entre los dos con un
+// margin-top negativo), la portada del libro flotando chica con una
+// sombra proyectada en diagonal y un brillo de luz por encima. La portada
+// es la que ya tiene el libro en el club — no una foto que suba la
+// persona — así que cualquier proporción de tapa se ve completa: el
+// ancho/alto salen del propio tamaño natural de la imagen (max-width/
+// max-height, sin recortarla ni deformarla).
 //
-// Lo usan tanto ActivityCard (Inicio y Perfil) como la vista previa en vivo
-// de FinalReviewModal, al declarar un libro terminado.
+// Lo usan tanto ActivityCard (Inicio y Perfil) como ComentariosScreen y la
+// vista previa en vivo de FinalReviewModal, al declarar un libro
+// terminado. El texto se ve hasta 5 líneas; "expanded" lo despliega
+// completo (lo maneja quien use el componente, tocando la tarjeta).
 const REVIEW_SHADOW = [
   '-1px 3px 0 rgba(20,16,4,0.36)',
   '-5px 10px 4px rgba(20,16,4,0.33)',
@@ -20,13 +23,27 @@ const REVIEW_SHADOW = [
 
 const REVIEW_LIGHT = 'linear-gradient(210deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.06) 30%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.42) 100%)';
 
-export function BookReviewCard({ title, coverUrl }) {
+export function BookReviewCard({ title, body, coverUrl, expanded = false }) {
   return (
     <div style={{ background: 'var(--gold-500)', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
       <div style={{ padding: '28px 20px 22px' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--fs-2xl)', lineHeight: 1.18, color: 'var(--neutral-900)' }}>
           {title}
         </div>
+        {body && (
+          <div
+            style={{
+              fontSize: 'var(--fs-sm)', lineHeight: 1.55, color: 'rgba(27,27,31,0.82)', marginTop: 12,
+              whiteSpace: 'pre-wrap',
+              display: '-webkit-box',
+              WebkitLineClamp: expanded ? 'unset' : 5,
+              WebkitBoxOrient: 'vertical',
+              overflow: expanded ? 'visible' : 'hidden',
+            }}
+          >
+            {body}
+          </div>
+        )}
       </div>
       <div style={{ marginTop: -20, padding: '0 20px 30px', display: 'flex', justifyContent: 'center' }}>
         {coverUrl ? (

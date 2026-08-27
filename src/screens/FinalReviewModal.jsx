@@ -39,7 +39,7 @@ export function FinalReviewModal({ clubBookId, book, myReview, onClose }) {
   return (
     <Modal title="¡Lo terminaste! Contanos qué te pareció" onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <BookReviewCard title={title || 'Tu título acá'} coverUrl={book?.cover_url} />
+        <BookReviewCard title={title || 'Tu título acá'} body={body} coverUrl={book?.cover_url} expanded />
         <Input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} />
         <Textarea
           placeholder="Tu reseña — lo que quieras contar del libro (opcional)"
