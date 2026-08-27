@@ -31,10 +31,10 @@ export default async function Page({ params }) {
   };
 
   if (!clubBook) {
-    return <ClubScreen {...baseProps} book={null} clubBookId={null} chapters={[]} volumes={[]} myProgress={null} previews={[]} otherClubsCount={0} />;
+    return <ClubScreen {...baseProps} book={null} clubBookId={null} chapters={[]} volumes={[]} myProgress={null} myReview={null} previews={[]} otherClubsCount={0} />;
   }
 
-  const [{ data: chapters }, { data: volumes }, { data: myProgress }, { data: comments }, { data: otherClubsCount }] = await Promise.all([
+  const [{ data: chapters }, { data: volumes }, { data: myProgress }, { data: myReview }, { data: comments }, { data: otherClubsCount }] = await Promise.all([
     supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
     supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
     supabase
@@ -43,10 +43,20 @@ export default async function Page({ params }) {
       .eq('club_book_id', clubBook.id)
       .eq('profile_id', user.id)
       .maybeSingle(),
+    // La reseña que esta persona ya haya publicado para este libro (si hay),
+    // para precargar el formulario al editarla en vez de duplicarla.
+    supabase
+      .from('comments')
+      .select('id, title, body, is_spoiler')
+      .eq('club_book_id', clubBook.id)
+      .eq('profile_id', user.id)
+      .eq('kind', 'review')
+      .maybeSingle(),
     supabase
       .from('comments')
       .select('id, kind, body, is_spoiler, created_at, profiles(display_name)')
       .eq('club_book_id', clubBook.id)
+      .neq('kind', 'review') // las reseñas tienen su propia sección, no van en "Impresiones recientes"
       .order('created_at', { ascending: false })
       .limit(3),
     // RLS solo expone los clubes propios; el conteo de "otros clubes leyendo
@@ -65,6 +75,7 @@ export default async function Page({ params }) {
       chapters={chapters ?? []}
       volumes={volumes ?? []}
       myProgress={myProgress ?? null}
+      myReview={myReview ?? null}
       previews={comments ?? []}
       otherClubsCount={Number(otherClubsCount ?? 0)}
     />

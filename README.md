@@ -105,7 +105,10 @@ supabase/
                              citas y fotos de todos los usuarios, para Inicio),
                            021_imagen_de_cita_guardada.sql (bucket quote-cards,
                              comments.quote_image_url, profile_activity y
-                             recent_activity ahora también la traen)
+                             recent_activity ahora también la traen),
+                           023_resena_final_y_solo_capitulos.sql (reading_progress.
+                             finished_at, comments.title + kind 'review',
+                             se saca "General del libro" de Comentarios)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -224,6 +227,18 @@ Al principio la tarjeta no se guardaba en ningún lado — se volvía a dibujar 
 **Los tres estilos quedaron en 3:4**, la misma proporción que ya usan las fotos de "lo que estás leyendo" — antes Portada y Editorial eran 4:5 y Oscuro cuadrado, así que dos citas seguidas en el feed (o una cita y una foto) no medían lo mismo. `quoteCard.js` ahora dibuja los tres a 1080×1440 (una sola constante `HEIGHT`, no una por estilo); como el centrado del texto ya se calculaba a partir del alto del lienzo, no hizo falta retocar cada estilo a mano. La tarjeta de Actividad (`ActivityCard`) pasó de una altura fija (440px) a `aspect-ratio: 3 / 4`, para que el recuadro que envuelve cualquier imagen del feed —cita o foto— tenga siempre esa misma proporción.
 
 **Las citas con imagen guardada de antes de este cambio** quedaron con su proporción vieja (Portada/Editorial en 4:5, Oscuro cuadrado) grabada para siempre en el JPEG — no hay forma de "reconvertirlas" a 3:4 sin volver a dibujarlas. Mostrarlas con `background-size: cover` en el marco nuevo las agranda y les corta los costados, cortando el propio texto de la tarjeta (bug real, reportado y visto en captura). Por eso, específicamente cuando hay `quote_image_url`, el fondo usa `contain` en vez de `cover` — se ve completa siempre, sea cual sea su proporción real, a costa de un borde de color liso a los costados si no coincide con 3:4 exacto. Las citas nuevas (ya nacen en 3:4) llenan el marco igual que con `cover`, porque coinciden exacto con el contenedor.
+
+### La reseña final, al terminar el libro; comentarios solo por capítulo (migración 023)
+
+Los comentarios de un club ya no tienen sección "General del libro" — se sacó a propósito, para reforzar comentar capítulo a capítulo (que era la mitad de las opciones y quedaba floja frente a la otra mitad). `ComentariosScreen` arranca siempre en el primer capítulo; si el club todavía no tiene ninguno, muestra un aviso en vez de un formulario sin dónde publicar.
+
+- **"Terminado"** es una tercera opción en **Actualizar progreso** (junto a "Por capítulo" y "Por página"). Al guardarla, `reading_progress.finished_at` queda con la fecha, el progreso pasa a 100% (ancla el capítulo al último de la lista, o a la página total ya registrada si el libro no tiene capítulos) — y se abre **`FinalReviewModal`**: título obligatorio + una reseña, tan larga como quieras.
+- **La reseña es un comentario más** (`comments`, `kind = 'review'`), pero siempre del libro entero — `chapter_id` queda null a la fuerza (constraint `comments_review_shape_check`), nunca se cuelga de un capítulo puntual. Una por persona por libro, por convención de la propia UI (`FinalReviewModal` precarga la que ya exista, vía `reviewId`, para editarla en vez de duplicarla) — no hay un constraint en la base que lo obligue.
+- **`BookReviewCard`** (`src/components/BookReviewCard.jsx`) es el bloque visual: el título en un panel de color (`--gold-500`, fijo por ahora) y, fundido con él, la portada del libro —la que ya tiene el club, no una foto que suba la persona— flotando chica con una sombra proyectada en diagonal y un brillo de luz por encima. Mismo tratamiento que se probó y aprobó primero como mockup ("Identidad de Citas"), ahora aplicado a portadas reales: como el ancho/alto salen del tamaño natural de la imagen (`max-width`/`max-height`, sin recortar ni deformar), cualquier proporción de tapa se ve completa. Lo usan tanto `ComentariosScreen` (arriba de todo, antes de los capítulos) como `ActivityCard` (Inicio y Perfil) y la vista previa en vivo de `FinalReviewModal`.
+- **En el feed, el texto de la reseña se ve hasta 5 líneas** (una más que el resto de los comentarios largos, que se clampean a 2) — tocar la tarjeta despliega el resto, mismo mecanismo que ya usaba `ActivityCard`.
+- **`recent_activity`** ahora también trae las reseñas (antes solo citas destacadas + fotos), con el mismo criterio de privacidad de club que ya usaban las citas. `profile_activity` y `recent_activity` ahora devuelven `title` (antes solo lo tenían las citas destacadas, que no lo usan — queda null para ellas).
+
+**Sobre la foto de las personas leyendo (migración 016)**: esto NO le tocó nada — sigue tal cual, recorte 3:4, sin título, con el tratamiento genérico de siempre en el feed. La identidad con portada + sombra es específica de la reseña final, donde la imagen es la tapa de un libro real (con su propia proporción, conocida), no una foto que puede traer cualquier fondo.
 
 ### Adelanto de Descubrir en "Mis clubes de lectura"
 

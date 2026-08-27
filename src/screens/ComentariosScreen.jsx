@@ -12,6 +12,7 @@ import { VoiceNotePlayer } from '@/design-system/components/content/VoiceNotePla
 import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
+import { BookReviewCard } from '@/components/BookReviewCard';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 import { orderChapters, chapterDisplayLabel } from '@/lib/orderChapters';
 
@@ -55,12 +56,55 @@ function CommentBody({ comment, book, clubName }) {
   );
 }
 
+// La reseña final de alguien que terminó el libro: el título junto a la
+// portada (BookReviewCard, mismo bloque que usa ActivityCard en Inicio y
+// Perfil), y el texto de la reseña abajo — hasta 5 líneas, tocar despliega
+// el resto.
+function ReviewCard({ review, book }) {
+  const [expanded, setExpanded] = useState(false);
+  const name = review.profiles?.display_name ?? 'Alguien';
+  const body = (
+    <>
+      <BookReviewCard title={review.title} coverUrl={book?.cover_url} />
+      {review.body && (
+        <div
+          onClick={() => setExpanded((e) => !e)}
+          style={{
+            cursor: 'pointer', marginTop: 8, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)',
+            lineHeight: 'var(--lh-snug)', whiteSpace: 'pre-wrap',
+            display: '-webkit-box', WebkitLineClamp: expanded ? 'unset' : 5, WebkitBoxOrient: 'vertical',
+            overflow: expanded ? 'visible' : 'hidden',
+          }}
+        >
+          {review.body}
+        </div>
+      )}
+    </>
+  );
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <Avatar name={name} size={30} />
+        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
+          {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· terminó el libro · {formatRelativeTime(review.created_at)}</span>
+        </div>
+      </div>
+      {review.is_spoiler ? <SpoilerBlock>{body}</SpoilerBlock> : body}
+    </div>
+  );
+}
+
+// Comentarios de un libro, siempre por capítulo — no hay una sección
+// "general del libro" (se sacó a propósito, para reforzar comentar
+// capítulo a capítulo). Arriba de todo, aparte, la reseña final de quienes
+// ya terminaron el libro (kind = 'review'), si hay alguna.
 export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myDisplayName }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
-  const [chapterId, setChapterId] = useState(null); // null = comentarios generales del libro
+  const reviews = useMemo(() => comments.filter((c) => c.kind === 'review'), [comments]);
+  const [chapterId, setChapterId] = useState(orderedChapters[0]?.id ?? null);
 
-  const visibleComments = comments.filter((c) => (c.chapter_id ?? null) === chapterId);
+  const visibleComments = chapterId ? comments.filter((c) => c.chapter_id === chapterId) : [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 18px 24px' }}>
@@ -69,42 +113,53 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>Comentarios</div>
       </div>
 
-      {orderedChapters.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: 'auto' }}>
-          <Chip selected={chapterId === null} onClick={() => setChapterId(null)}>General del libro</Chip>
-          {orderedChapters.map((c) => (
-            <Chip key={c.id} selected={chapterId === c.id} onClick={() => setChapterId(c.id)}>{chapterDisplayLabel(c)}</Chip>
-          ))}
+      {reviews.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {reviews.map((review) => <ReviewCard key={review.id} review={review} book={book} />)}
         </div>
       )}
 
-      <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} clubName={clubName} personName={myDisplayName} />
-      <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} />
-
-      {visibleComments.map((comment) => {
-        const name = comment.profiles?.display_name ?? 'Alguien';
-        return (
-          <div key={comment.id} style={{ display: 'flex', gap: 10 }}>
-            <Avatar name={name} size={36} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(comment.created_at)}</span>
-              </div>
-              <div style={{ marginTop: comment.kind === 'text' ? 0 : 6 }}>
-                {comment.is_spoiler ? (
-                  <SpoilerBlock><CommentBody comment={comment} book={book} clubName={clubName} /></SpoilerBlock>
-                ) : (
-                  <CommentBody comment={comment} book={book} clubName={clubName} />
-                )}
-              </div>
-            </div>
+      {orderedChapters.length > 0 ? (
+        <>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: 'auto' }}>
+            {orderedChapters.map((c) => (
+              <Chip key={c.id} selected={chapterId === c.id} onClick={() => setChapterId(c.id)}>{chapterDisplayLabel(c)}</Chip>
+            ))}
           </div>
-        );
-      })}
 
-      {visibleComments.length === 0 && (
+          <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} clubName={clubName} personName={myDisplayName} />
+          <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} />
+
+          {visibleComments.map((comment) => {
+            const name = comment.profiles?.display_name ?? 'Alguien';
+            return (
+              <div key={comment.id} style={{ display: 'flex', gap: 10 }}>
+                <Avatar name={name} size={36} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(comment.created_at)}</span>
+                  </div>
+                  <div style={{ marginTop: comment.kind === 'text' ? 0 : 6 }}>
+                    {comment.is_spoiler ? (
+                      <SpoilerBlock><CommentBody comment={comment} book={book} clubName={clubName} /></SpoilerBlock>
+                    ) : (
+                      <CommentBody comment={comment} book={book} clubName={clubName} />
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {visibleComments.length === 0 && (
+            <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '20px 0', textAlign: 'center' }}>
+              Sé el primero en comentar este capítulo.
+            </div>
+          )}
+        </>
+      ) : (
         <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '20px 0', textAlign: 'center' }}>
-          {chapterId === null ? 'Sé el primero en comentar el libro.' : 'Sé el primero en comentar este capítulo.'}
+          Este club todavía no tiene capítulos — un administrador puede agregarlos desde &ldquo;Gestionar capítulos&rdquo;.
         </div>
       )}
     </div>

@@ -193,4 +193,19 @@ select 'Migración 021 — recent_activity trae quote_image_url',
        case when exists (
               select 1 from pg_proc where proname = 'recent_activity' and prosrc like '%quote_image_url%'
             )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 023 — finished_at en reading_progress',
+       case when exists (select 1 from information_schema.columns where table_name = 'reading_progress' and column_name = 'finished_at')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 023 — title en comments + kind review',
+       case when exists (select 1 from information_schema.columns where table_name = 'comments' and column_name = 'title')
+        and exists (select 1 from pg_constraint where conname = 'comments_kind_check' and pg_get_constraintdef(oid) like '%review%')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 023 — recent_activity trae las reseñas',
+       case when exists (
+              select 1 from pg_proc where proname = 'recent_activity' and prosrc like '%''review''%'
+            )
             then 'OK' else 'FALTA' end;

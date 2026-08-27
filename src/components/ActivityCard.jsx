@@ -5,12 +5,17 @@ import Link from 'next/link';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
+import { BookReviewCard } from '@/components/BookReviewCard';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
 // Una tarjeta de actividad, con el mismo orden que un posteo de Instagram:
 // arriba quién publicó (si corresponde), después la imagen sola y limpia
 // —nada escrito encima—, y abajo el texto (de qué se trata, la cita o el
 // comentario). Tocar el bloque de abajo despliega el texto completo.
+//
+// Las reseñas finales (kind = 'review', al declarar un libro terminado) son
+// la excepción: el título va junto a la portada, en un panel de color
+// propio (BookReviewCard) — no una imagen de fondo con texto encima.
 //
 // La usan tanto el Perfil (donde ya se sabe de quién es la actividad, no
 // hace falta repetirlo) como el Inicio (donde "author" identifica quién
@@ -19,6 +24,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author }) {
   const [expanded, setExpanded] = useState(false);
   const isPhoto = activity.kind === 'photo';
   const isQuote = activity.kind === 'quote';
+  const isReview = activity.kind === 'review';
   // Si la cita se publicó con la tarjeta ya armada (migración 021), esa
   // imagen ES el contenido — no hace falta repetir la cita como texto abajo
   // (ya está dibujada adentro). Las citas de antes de esa migración (o
@@ -51,17 +57,57 @@ export function ActivityCard({ activity, canOpenClub, personName, author }) {
       ? `Publicó una cita · ${formatRelativeTime(activity.created_at)}`
       : `${activity.club_name} · ${formatRelativeTime(activity.created_at)}`;
 
+  const authorRow = author && (
+    <Link
+      href={`/perfil/${author.id}`}
+      style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
+    >
+      <Avatar name={author.display_name} src={author.avatar_url} size={30} />
+      <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-primary)' }}>{author.display_name}</span>
+    </Link>
+  );
+
+  if (isReview) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {authorRow}
+        <BookReviewCard title={activity.title} coverUrl={activity.book_cover_url} />
+        <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer', padding: '0 2px' }}>
+          <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 6 }}>
+            {activity.club_name} · terminó {activity.book_title} · {formatRelativeTime(activity.created_at)}
+          </div>
+          {activity.body && (
+            <div
+              style={{
+                fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-snug)',
+                whiteSpace: 'pre-wrap',
+                display: '-webkit-box',
+                WebkitLineClamp: expanded ? 'unset' : 5,
+                WebkitBoxOrient: 'vertical',
+                overflow: expanded ? 'visible' : 'hidden',
+              }}
+            >
+              {activity.body}
+            </div>
+          )}
+          {expanded && canOpenClub && (
+            <Link
+              href={`/club/${activity.club_id}/comentarios`}
+              onClick={(e) => e.stopPropagation()}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 10, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
+            >
+              Ver el resto de los comentarios en el club
+              <Icon name="arrow-right" size={12} color="var(--text-link)" />
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {author && (
-        <Link
-          href={`/perfil/${author.id}`}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
-        >
-          <Avatar name={author.display_name} src={author.avatar_url} size={30} />
-          <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-primary)' }}>{author.display_name}</span>
-        </Link>
-      )}
+      {authorRow}
 
       {/* La imagen va sola, sin nada escrito encima — igual que un posteo. */}
       <div

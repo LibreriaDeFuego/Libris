@@ -437,7 +437,7 @@ export async function updateClubPreferences(prevState, formData) {
   return { error: null, saved: true };
 }
 
-// Actualiza el progreso del usuario en el libro activo de un club. Dos
+// Actualiza el progreso del usuario en el libro activo de un club. Tres
 // formas de registrarlo, porque cada quien puede tener una edición distinta
 // del mismo libro:
 //   - "chapter": elige un capítulo de la lista. El % de la barra sale de en
@@ -445,6 +445,11 @@ export async function updateClubPreferences(prevState, formData) {
 //     para todos, aunque cambie la paginación de cada edición).
 //   - "page": página actual y total de páginas de SU edición. El % sale de
 //     esa proporción, propia de cada persona.
+//   - "finished": declara el libro terminado — 100%, y guarda "finished_at"
+//     (dispara, del lado del cliente, el formulario de la reseña final).
+//     Para no romper el "hay que haber un capítulo o una página" que ya
+//     exige la base, se ancla al último capítulo si el libro tiene, o a la
+//     página total ya registrada si no.
 export async function updateProgress(formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
@@ -458,6 +463,7 @@ export async function updateProgress(formData) {
   let currentPage = null;
   let totalPages = null;
   let percent;
+  let finishedAt = null;
 
   if (mode === 'page') {
     currentPage = parseInt(formData.get('currentPage')?.toString() ?? '', 10);
@@ -466,6 +472,23 @@ export async function updateProgress(formData) {
     if (!Number.isFinite(currentPage) || currentPage < 0) return { error: 'Indica en qué página vas.' };
     if (currentPage > totalPages) return { error: 'La página no puede ser mayor que el total.' };
     percent = Math.round((currentPage / totalPages) * 100);
+  } else if (mode === 'finished') {
+    const [{ data: chapters }, { data: volumes }, { data: existing }] = await Promise.all([
+      supabase.from('chapters').select('id, number, volume_id').eq('club_book_id', clubBookId),
+      supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBookId),
+      supabase.from('reading_progress').select('total_pages').eq('club_book_id', clubBookId).eq('profile_id', user.id).maybeSingle(),
+    ]);
+    const ordered = orderChapters(chapters ?? [], volumes ?? []);
+    if (ordered.length > 0) {
+      chapterId = ordered[ordered.length - 1].id;
+    } else if (existing?.total_pages) {
+      currentPage = existing.total_pages;
+      totalPages = existing.total_pages;
+    } else {
+      return { error: 'Registra en qué página vas antes de marcarlo como terminado.' };
+    }
+    percent = 100;
+    finishedAt = new Date().toISOString();
   } else {
     chapterId = formData.get('chapterId')?.toString();
     if (!chapterId) return { error: 'Elige un capítulo.' };
@@ -480,16 +503,16 @@ export async function updateProgress(formData) {
     percent = Math.round(((index + 1) / ordered.length) * 100);
   }
 
+  const payload = { club_book_id: clubBookId, profile_id: user.id, chapter_id: chapterId, current_page: currentPage, total_pages: totalPages, percent, reaction };
+  if (finishedAt) payload.finished_at = finishedAt;
+
   const { error } = await supabase
     .from('reading_progress')
-    .upsert(
-      { club_book_id: clubBookId, profile_id: user.id, chapter_id: chapterId, current_page: currentPage, total_pages: totalPages, percent, reaction },
-      { onConflict: 'club_book_id,profile_id' }
-    );
+    .upsert(payload, { onConflict: 'club_book_id,profile_id' });
   if (error) return { error: friendlyDbError(error) };
 
   revalidatePath('/', 'layout');
-  return { error: null };
+  return { error: null, finished: mode === 'finished' };
 }
 
 // Estilos válidos para la tarjeta de una cita — deben coincidir con el
@@ -550,4 +573,34 @@ export async function postComment(formData) {
 
   revalidatePath('/', 'layout');
   return { error: null, quoteStyle, quoteImageUrl };
+}
+
+// Publica (o actualiza, si ya existía una) la reseña final de un libro —
+// título + texto, siempre del libro entero (chapter_id null). Es un
+// comentario más (kind = 'review'), lo dispara declarar el libro como
+// terminado en Actualizar progreso. Si "reviewId" llega, es una edición de
+// la reseña que esa persona ya había publicado para este libro (una por
+// persona por libro, por convención de la propia UI — no hay constraint en
+// la base que lo obligue, así que técnicamente se podría duplicar a mano).
+export async function postBookReview(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const clubBookId = formData.get('clubBookId')?.toString();
+  const reviewId = formData.get('reviewId')?.toString() || null;
+  const title = formData.get('title')?.toString().trim();
+  const body = formData.get('body')?.toString().trim() || null;
+  const isSpoiler = formData.get('isSpoiler') === 'on';
+  if (!clubBookId) return { error: 'Falta el libro del club.' };
+  if (!title) return { error: 'Ponle un título a tu reseña.' };
+
+  const row = { club_book_id: clubBookId, chapter_id: null, profile_id: user.id, kind: 'review', title, body, is_spoiler: isSpoiler };
+
+  const { error } = reviewId
+    ? await supabase.from('comments').update(row).eq('id', reviewId).eq('profile_id', user.id)
+    : await supabase.from('comments').insert(row);
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
 }

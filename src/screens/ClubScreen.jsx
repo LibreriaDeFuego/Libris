@@ -9,6 +9,7 @@ import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { InviteButton } from '@/components/InviteButton';
 import { CoverHero } from '@/components/CoverHero';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
+import { FinalReviewModal } from './FinalReviewModal.jsx';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 import { orderChapters } from '@/lib/orderChapters';
 import { computeHeroProgress } from '@/lib/heroProgress';
@@ -34,8 +35,9 @@ function PreferenciasIconButton({ clubId, pendingRequestCount, tone }) {
   );
 }
 
-export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, previews, otherClubsCount, isAdmin, pendingRequestCount = 0 }) {
+export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, previews, otherClubsCount, isAdmin, pendingRequestCount = 0 }) {
   const [showModal, setShowModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const router = useRouter();
 
   const orderedChapters = orderChapters(chapters, volumes ?? []);
@@ -136,6 +138,19 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
               initialTotalPages={myProgress?.total_pages ?? null}
               initialReaction={myProgress?.reaction ?? null}
               onClose={() => setShowModal(false)}
+              onFinished={() => {
+                setShowModal(false);
+                setShowReviewModal(true);
+              }}
+            />
+          )}
+
+          {showReviewModal && (
+            <FinalReviewModal
+              clubBookId={clubBookId}
+              book={book}
+              myReview={myReview}
+              onClose={() => setShowReviewModal(false)}
             />
           )}
         </>
