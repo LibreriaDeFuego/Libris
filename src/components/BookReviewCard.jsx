@@ -26,7 +26,7 @@ const REVIEW_LIGHT = 'linear-gradient(210deg, rgba(255,255,255,0.5) 0%, rgba(255
 export function BookReviewCard({ title, body, coverUrl, expanded = false }) {
   return (
     <div style={{ background: 'var(--gold-500)', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
-      <div style={{ padding: '28px 20px 22px' }}>
+      <div style={{ padding: '28px 20px 44px' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--fs-2xl)', lineHeight: 1.18, color: 'var(--neutral-900)' }}>
           {title}
         </div>
