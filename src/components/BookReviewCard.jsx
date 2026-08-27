@@ -52,12 +52,12 @@ export function BookReviewCard({ title, body, coverUrl, expanded = false }) {
             <img
               src={coverUrl}
               alt=""
-              style={{ display: 'block', width: 'auto', height: 'auto', maxWidth: 190, maxHeight: 260, borderRadius: 4, boxShadow: REVIEW_SHADOW }}
+              style={{ display: 'block', width: 'auto', height: 'auto', maxWidth: 190, maxHeight: 260, borderRadius: '0 4px 4px 0', boxShadow: REVIEW_SHADOW }}
             />
-            <div style={{ position: 'absolute', inset: 0, borderRadius: 4, mixBlendMode: 'soft-light', pointerEvents: 'none', background: REVIEW_LIGHT }} />
+            <div style={{ position: 'absolute', inset: 0, borderRadius: '0 4px 4px 0', mixBlendMode: 'soft-light', pointerEvents: 'none', background: REVIEW_LIGHT }} />
           </div>
         ) : (
-          <div style={{ width: 150, height: 210, borderRadius: 4, background: 'var(--neutral-0)', opacity: 0.5 }} />
+          <div style={{ width: 150, height: 210, borderRadius: '0 4px 4px 0', background: 'var(--neutral-0)', opacity: 0.5 }} />
         )}
       </div>
     </div>
