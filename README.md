@@ -119,7 +119,10 @@ supabase/
                              el texto de tus propias fotos en posts —
                              borrar ya existía desde la 016),
                            027_editar_borrar_citas.sql (amplía las políticas
-                             de la 025 para incluir también kind = 'quote')
+                             de la 025 para incluir también kind = 'quote'),
+                           028_editar_borrar_comentarios_y_voz.sql (las
+                             mismas políticas, ahora los 4 kind: review,
+                             quote, text, voice)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -277,7 +280,15 @@ Mismo menú de 3 puntos otra vez, ahora también en tus propias citas destacadas
 - **La migración 025 había dejado editar/borrar limitado a `kind = 'review'`** — las citas quedaron afuera a propósito en ese momento, porque borrar o cambiar el texto de una cita con imagen guardada (`quote_image_url`) dejaba el archivo viejo huérfano en Storage, algo que reseñas y comentarios de capítulo no tienen (la reseña no tiene archivo propio: usa la portada del libro). La 027 amplía esas políticas a también `kind = 'quote'`, ahora que `updateQuote`/`deleteQuote` (`src/app/actions/clubs.js`) ya hacen esa limpieza.
 - **Editar una cita regenera la tarjeta**: `EditQuoteModal` (`src/components/EditQuoteModal.jsx`) reusa el mismo selector de estilo y la misma vista previa en vivo (`QuoteCardPreview`) que ya tenía `NewCommentForm` al publicar — al guardar, el navegador vuelve a dibujar la imagen con el texto/estilo nuevos (`renderQuoteCard`) y `updateQuote` la sube y borra la vieja. Si la cita nunca tuvo imagen guardada (de antes de la migración 021, o si en su momento falló la subida), edita igual — sencillamente puede terminar generando una por primera vez.
 - **Dónde vive cada acción**: en **Comentarios del club**, el menú va en la fila de nombre + fecha de cada comentario (antes sin nada a la derecha); en **Inicio y Perfil** (`ActivityCard`), mismo tratamiento que ya tenían las fotos — encabezado con `PostMenu`, `flex-end` en Perfil por la misma razón que las fotos.
-- **A propósito, sigue sin tocarse** editar/borrar comentarios de capítulo y notas de voz.
+
+### Editar o borrar comentarios de capítulo y notas de voz (migración 028)
+
+Los dos tipos que quedaban sin tocar — cerrando el círculo: ahora los cuatro tipos de comentario (reseña, cita, comentario de capítulo, nota de voz) se pueden editar o borrar desde su propio menú de 3 puntos.
+
+- **Comentarios de capítulo** (`kind = 'text'`): `EditCommentModal` (`src/components/EditCommentModal.jsx`) edita el texto y el spoiler — sin archivo propio, no hay nada que limpiar en Storage. `updateComment`/`deleteComment` en `src/app/actions/clubs.js`.
+- **Notas de voz** (`kind = 'voice'`): `EditVoiceModal` (`src/components/EditVoiceModal.jsx`) deja escuchar el audio (con `VoiceNotePlayer`, de solo lectura) y edita la transcripción/resumen y el spoiler — el audio en sí no se regraba desde acá, para eso conviene borrar y grabar de nuevo. `updateVoiceComment`/`deleteVoiceComment` en `src/app/actions/media.js` (junto a `postVoiceComment`, que ya vivía ahí). Borrar sí limpia Storage — a diferencia de fotos y citas, acá `voice_url` ya es el *path* del archivo (no una URL pública: el bucket `voice-notes` es privado, cada reproducción usa una URL firmada), así que `deleteVoiceComment` lo borra directo, sin tener que desarmar una URL.
+- **La política se angostó bastante en las migraciones 025/027** (`kind in ('review', 'quote')`) — la 028 la vuelve a abrir a los cuatro tipos, listados explícitamente (`kind in ('review', 'quote', 'text', 'voice')`) en vez de sacar la condición del todo, para que un tipo de comentario nuevo el día de mañana no quede editable de arrastre sin que alguien lo decida a propósito.
+- **Solo en Comentarios del club** — a diferencia de reseña/foto/cita, comentarios de capítulo y notas de voz no aparecen en el feed de Inicio (`recent_activity` no los trae) y sí aparecen en el de Perfil (`profile_activity` no filtra por `kind`) pero `ActivityCard` ahí todavía no tiene el menú para estos dos tipos — quedó pendiente a propósito, se puede sumar si hace falta.
 
 ### Adelanto de Descubrir en "Mis clubes de lectura"
 

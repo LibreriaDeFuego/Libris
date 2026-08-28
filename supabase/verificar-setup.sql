@@ -242,4 +242,12 @@ select 'Migración 027 — editar/borrar también alcanza a las citas (kind quot
             ) and exists (
               select 1 from pg_policies where tablename = 'comments' and cmd = 'DELETE' and qual like '%quote%'
             )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 028 — editar/borrar alcanza también comentarios y notas de voz',
+       case when exists (
+              select 1 from pg_policies where tablename = 'comments' and cmd = 'UPDATE' and qual like '%voice%'
+            ) and exists (
+              select 1 from pg_policies where tablename = 'comments' and cmd = 'DELETE' and qual like '%voice%'
+            )
             then 'OK' else 'FALTA' end;

@@ -16,7 +16,10 @@ import { BookReviewCard } from '@/components/BookReviewCard';
 import { PostMenu } from '@/components/PostMenu';
 import { FinalReviewModal } from './FinalReviewModal.jsx';
 import { EditQuoteModal } from '@/components/EditQuoteModal';
-import { deleteBookReview, deleteQuote } from '@/app/actions/clubs';
+import { EditCommentModal } from '@/components/EditCommentModal';
+import { EditVoiceModal } from '@/components/EditVoiceModal';
+import { deleteBookReview, deleteQuote, deleteComment } from '@/app/actions/clubs';
+import { deleteVoiceComment } from '@/app/actions/media';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 import { orderChapters, chapterDisplayLabel } from '@/lib/orderChapters';
 
@@ -111,9 +114,10 @@ function ReviewCard({ review, book, isOwn, onEdit }) {
 // capítulo a capítulo). Arriba de todo, aparte, la reseña final de quienes
 // ya terminaron el libro (kind = 'review'), si hay alguna.
 //
-// La propia cita (kind = 'quote') tiene el mismo menú de 3 puntos que la
-// reseña — "Editar" abre EditQuoteModal (texto + estilo, regenera la
-// tarjeta guardada) y "Eliminar" borra, con confirmación.
+// Igual que la reseña, la propia cita/comentario/nota de voz tiene el mismo
+// menú de 3 puntos junto al nombre — "Editar" abre el modal que corresponde
+// (EditQuoteModal, EditCommentModal o EditVoiceModal) y "Eliminar" borra,
+// con confirmación.
 export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myDisplayName, myProfileId }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
@@ -121,14 +125,30 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   const [chapterId, setChapterId] = useState(orderedChapters[0]?.id ?? null);
   const [editingReview, setEditingReview] = useState(null);
   const [editingQuote, setEditingQuote] = useState(null);
-  const [, startQuoteTransition] = useTransition();
+  const [editingComment, setEditingComment] = useState(null);
+  const [editingVoice, setEditingVoice] = useState(null);
+  const [, startDeleteTransition] = useTransition();
 
   const visibleComments = chapterId ? comments.filter((c) => c.chapter_id === chapterId) : [];
 
   function handleDeleteQuote(commentId) {
     if (!window.confirm('¿Eliminar esta cita? No se puede deshacer.')) return;
-    startQuoteTransition(async () => {
+    startDeleteTransition(async () => {
       await deleteQuote(commentId);
+    });
+  }
+
+  function handleDeleteComment(commentId) {
+    if (!window.confirm('¿Eliminar este comentario? No se puede deshacer.')) return;
+    startDeleteTransition(async () => {
+      await deleteComment(commentId);
+    });
+  }
+
+  function handleDeleteVoice(commentId) {
+    if (!window.confirm('¿Eliminar esta nota de voz? No se puede deshacer.')) return;
+    startDeleteTransition(async () => {
+      await deleteVoiceComment(commentId);
     });
   }
 
@@ -160,7 +180,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
 
           {visibleComments.map((comment) => {
             const name = comment.profiles?.display_name ?? 'Alguien';
-            const isOwnQuote = comment.kind === 'quote' && comment.profile_id === myProfileId;
+            const isOwn = comment.profile_id === myProfileId;
             return (
               <div key={comment.id} style={{ display: 'flex', gap: 10 }}>
                 <Avatar name={name} size={36} />
@@ -169,12 +189,28 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
                     <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
                       {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(comment.created_at)}</span>
                     </div>
-                    {isOwnQuote && (
+                    {isOwn && comment.kind === 'quote' && (
                       <PostMenu
                         editLabel="Editar cita"
                         onEdit={() => setEditingQuote(comment)}
                         deleteLabel="Eliminar cita"
                         onDelete={() => handleDeleteQuote(comment.id)}
+                      />
+                    )}
+                    {isOwn && comment.kind === 'text' && (
+                      <PostMenu
+                        editLabel="Editar comentario"
+                        onEdit={() => setEditingComment(comment)}
+                        deleteLabel="Eliminar comentario"
+                        onDelete={() => handleDeleteComment(comment.id)}
+                      />
+                    )}
+                    {isOwn && comment.kind === 'voice' && (
+                      <PostMenu
+                        editLabel="Editar nota de voz"
+                        onEdit={() => setEditingVoice(comment)}
+                        deleteLabel="Eliminar nota de voz"
+                        onDelete={() => handleDeleteVoice(comment.id)}
                       />
                     )}
                   </div>
@@ -218,6 +254,20 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
           clubName={clubName}
           personName={myDisplayName}
           onClose={() => setEditingQuote(null)}
+        />
+      )}
+
+      {editingComment && (
+        <EditCommentModal
+          comment={editingComment}
+          onClose={() => setEditingComment(null)}
+        />
+      )}
+
+      {editingVoice && (
+        <EditVoiceModal
+          comment={editingVoice}
+          onClose={() => setEditingVoice(null)}
         />
       )}
     </div>

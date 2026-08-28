@@ -669,6 +669,48 @@ export async function deleteQuote(commentId) {
   return { error: null };
 }
 
+// Edita el texto de tu propio comentario de capítulo (kind = 'text') —
+// migración 028. Sin archivo propio, no hay nada que limpiar en Storage.
+export async function updateComment(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const commentId = formData.get('commentId')?.toString();
+  const body = formData.get('body')?.toString().trim();
+  const isSpoiler = formData.get('isSpoiler') === 'on';
+  if (!commentId) return { error: 'Falta el comentario.' };
+  if (!body) return { error: 'Escribe algo antes de guardar.' };
+
+  const { error } = await supabase
+    .from('comments')
+    .update({ body, is_spoiler: isSpoiler })
+    .eq('id', commentId)
+    .eq('profile_id', user.id)
+    .eq('kind', 'text');
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
+// Borra tu propio comentario de capítulo — solo la fila, no hay archivo.
+export async function deleteComment(commentId) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+  if (!commentId) return { error: 'Falta el comentario.' };
+
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', commentId)
+    .eq('profile_id', user.id)
+    .eq('kind', 'text');
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
 // Publica (o actualiza, si ya existía una) la reseña final de un libro —
 // título + texto, siempre del libro entero (chapter_id null). Es un
 // comentario más (kind = 'review'), lo dispara declarar el libro como

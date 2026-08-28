@@ -150,3 +150,59 @@ export async function postVoiceComment(formData) {
   revalidatePath('/', 'layout');
   return { error: null };
 }
+
+// Edita tu propia nota de voz — migración 028. Solo la transcripción y el
+// spoiler; el audio en sí no se reemplaza desde acá (para eso conviene
+// borrar y grabar otra).
+export async function updateVoiceComment(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const commentId = formData.get('commentId')?.toString();
+  const transcript = formData.get('transcript')?.toString().trim() || null;
+  const isSpoiler = formData.get('isSpoiler') === 'on';
+  if (!commentId) return { error: 'Falta la nota de voz.' };
+
+  const { error } = await supabase
+    .from('comments')
+    .update({ voice_transcript: transcript, is_spoiler: isSpoiler })
+    .eq('id', commentId)
+    .eq('profile_id', user.id)
+    .eq('kind', 'voice');
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
+// Borra tu propia nota de voz — la fila y también el archivo en Storage
+// (bucket privado "voice-notes"); acá "voice_url" ya es el path guardado
+// directamente (no una URL pública), a diferencia de fotos y citas.
+export async function deleteVoiceComment(commentId) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+  if (!commentId) return { error: 'Falta la nota de voz.' };
+
+  const { data: existing } = await supabase
+    .from('comments')
+    .select('voice_url')
+    .eq('id', commentId)
+    .eq('profile_id', user.id)
+    .eq('kind', 'voice')
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', commentId)
+    .eq('profile_id', user.id)
+    .eq('kind', 'voice');
+  if (error) return { error: friendlyDbError(error) };
+
+  if (existing?.voice_url) {
+    await supabase.storage.from('voice-notes').remove([existing.voice_url]);
+  }
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
