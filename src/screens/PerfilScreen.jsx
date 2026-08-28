@@ -285,7 +285,14 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {activity.map((item) => (
-              <ActivityCard key={item.id} activity={item} canOpenClub={myClubIds.has(item.club_id)} personName={profile.display_name} isOwn={isOwn} />
+              <ActivityCard
+                key={item.id}
+                activity={item}
+                canOpenClub={myClubIds.has(item.club_id)}
+                personName={profile.display_name}
+                isOwn={isOwn}
+                author={item.kind === 'review' ? { id: profile.id, display_name: profile.display_name, avatar_url: profile.avatar_url } : undefined}
+              />
             ))}
           </div>
         )}

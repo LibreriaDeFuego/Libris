@@ -24,10 +24,13 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 // hace falta repetirlo) como el Inicio (donde "author" identifica quién
 // publicó cada tarjeta del feed, con su nombre y foto en una fila propia).
 //
-// En la propia reseña final (isOwn), el menú de 3 puntos junto al nombre
-// permite borrarla directo desde acá; "Editar" lleva a los comentarios del
-// club, donde vive el formulario de edición (acá no se cuenta con
-// club_book_id para abrir el mismo modal).
+// La reseña final es la excepción a "no hace falta repetirlo": ahí el
+// nombre (+ fecha) va siempre, en Perfil igual que en Inicio, para que el
+// menú de 3 puntos, del otro lado de la fila, quede siempre a la derecha —
+// sin nombre a la izquierda quedaba pegado al borde izquierdo. En la propia
+// reseña (isOwn), ese menú permite borrarla directo desde acá; "Editar"
+// lleva a los comentarios del club, donde vive el formulario de edición
+// (acá no se cuenta con club_book_id para abrir el mismo modal).
 export function ActivityCard({ activity, canOpenClub, personName, author, isOwn }) {
   const [expanded, setExpanded] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -85,10 +88,25 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
   );
 
   if (isReview) {
+    // El nombre va siempre — a diferencia del resto de la tarjeta (donde en
+    // Perfil se omite por redundante), acá hace falta el mismo encabezado
+    // en Perfil y en Inicio: es lo que hace que los 3 puntos, al quedar del
+    // otro lado en un "space-between", terminen siempre a la derecha.
+    const reviewName = author ? (
+      <Link href={`/perfil/${author.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+        <Avatar name={author.display_name} src={author.avatar_url} size={30} />
+        <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-primary)' }}>{author.display_name}</span>
+      </Link>
+    ) : (
+      <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-primary)' }}>{personName}</span>
+    );
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: pending ? 0.6 : 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {authorRow}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {reviewName}
+            <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600 }}>{formatRelativeTime(activity.created_at)}</span>
+          </div>
           {isOwn && (
             <PostMenu
               editLabel="Editar reseña"
@@ -103,7 +121,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
         </div>
         <div style={{ padding: '0 2px' }}>
           <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600 }}>
-            {activity.club_name} · terminó {activity.book_title} · {formatRelativeTime(activity.created_at)}
+            {activity.club_name} · terminó {activity.book_title}
           </div>
           {expanded && canOpenClub && (
             <Link
