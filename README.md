@@ -114,7 +114,10 @@ supabase/
                              reseña final),
                            025_editar_borrar_solo_resenas.sql (angosta esas
                              políticas a kind = 'review' — la 024 había
-                             quedado general, para cualquier comentario)
+                             quedado general, para cualquier comentario),
+                           026_editar_foto_propia.sql (política de editar
+                             el texto de tus propias fotos en posts —
+                             borrar ya existía desde la 016)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -255,6 +258,15 @@ Junto al nombre de quien publicó una reseña (kind = 'review'), un menú de 3 p
 - **Editar** reabre `FinalReviewModal` precargado (prop `myReview`), que ya sabía hacer esto desde la migración 023 (`reviewId` en el formulario evita duplicar la reseña) — ahora se le puede llegar también desde el propio menú, no solo por convención de una sola reseña por libro.
 - **Dónde vive cada acción**: en **Comentarios del club** (`ComentariosScreen`), el menú abre el modal de edición ahí mismo — la pantalla ya tiene `clubBookId` y el libro a mano. En **Inicio y Perfil** (`ActivityCard`), "Eliminar" borra directo y "Editar" navega a los comentarios del club en vez de duplicar el modal — el feed no trae `club_book_id` en cada tarjeta.
 - **A propósito, no se tocó** editar/borrar comentarios de capítulo, citas o notas de voz — habilitar eso para citas/voz necesita limpiar también el archivo en Storage (imagen de la cita, audio), fuera del alcance de este cambio.
+
+### Editar o borrar tu propia foto (migración 026)
+
+Mismo menú de 3 puntos (`PostMenu`), ahora también en tus propias fotos de "lo que estás leyendo" — en Inicio y en Perfil.
+
+- **`posts` ya tenía política de borrar** desde la migración 016 (no tenía UI ni acción para usarla). La 026 agrega la de editar — solo el texto (`caption`); la foto en sí no se reemplaza desde acá, mismo criterio que la reseña (ahí tampoco se reemplaza la portada).
+- **`updatePost`/`deletePost`** (`src/app/actions/posts.js`). A diferencia de la reseña, acá `deletePost` sí limpia Storage: borra también el archivo de la foto (`post-photos`), porque el post es dueño de un único archivo propio — no pasa lo mismo con una cita (comparte estilo con otras) ni con una nota de voz, donde la limpieza queda pendiente a propósito.
+- **`EditPostModal`** (`src/components/EditPostModal.jsx`) es la vista previa de la foto (fija) + el texto editable — mismo patrón liviano que un formulario, sin volver a pasar por el recorte.
+- **En Perfil**, donde `ActivityCard` no repite el nombre (redundante, ya se sabe de quién es el perfil), la fila de encabezado con el menú usa `justify-content: flex-end` en vez de `space-between` — sin eso, un solo elemento en la fila quedaba pegado a la izquierda (mismo bug que tuvo la reseña, corregido ahí con el nombre siempre visible; acá se resolvió distinto porque no hacía falta agregar el nombre).
 
 ### Adelanto de Descubrir en "Mis clubes de lectura"
 

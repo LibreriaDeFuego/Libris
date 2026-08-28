@@ -47,3 +47,56 @@ export async function createPost(prevState, formData) {
   revalidatePath('/perfil');
   return { error: null };
 }
+
+// Edita el texto de tu propia foto (migración 026). La imagen queda como
+// está — no se reemplaza acá, mismo criterio que la reseña final.
+export async function updatePost(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const postId = formData.get('postId')?.toString();
+  const caption = formData.get('caption')?.toString().trim() || null;
+  if (!postId) return { error: 'Falta la publicación.' };
+
+  const { error } = await supabase
+    .from('posts')
+    .update({ caption })
+    .eq('id', postId)
+    .eq('profile_id', user.id);
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
+// Borra tu propia foto — la fila y, a diferencia de la reseña (donde no
+// hay archivo propio: la portada es del libro), también el archivo en
+// Storage, para no dejarlo huérfano. "post-photos" es público, así que la
+// URL guardada ya trae el path completo después de "/post-photos/".
+export async function deletePost(postId) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+  if (!postId) return { error: 'Falta la publicación.' };
+
+  const { data: post } = await supabase
+    .from('posts')
+    .select('image_url')
+    .eq('id', postId)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from('posts')
+    .delete()
+    .eq('id', postId)
+    .eq('profile_id', user.id);
+  if (error) return { error: friendlyDbError(error) };
+
+  const path = post?.image_url?.split('/post-photos/')[1];
+  if (path) {
+    await supabase.storage.from('post-photos').remove([path]);
+  }
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}

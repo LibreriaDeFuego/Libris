@@ -8,7 +8,9 @@ import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { BookReviewCard } from '@/components/BookReviewCard';
 import { PostMenu } from '@/components/PostMenu';
+import { EditPostModal } from '@/components/EditPostModal';
 import { deleteBookReview } from '@/app/actions/clubs';
+import { deletePost } from '@/app/actions/posts';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
 // Una tarjeta de actividad, con el mismo orden que un posteo de Instagram:
@@ -31,8 +33,19 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 // reseña (isOwn), ese menú permite borrarla directo desde acá; "Editar"
 // lleva a los comentarios del club, donde vive el formulario de edición
 // (acá no se cuenta con club_book_id para abrir el mismo modal).
+//
+// Las fotos propias (isPhoto && isOwn) tienen el mismo menú de 3 puntos,
+// siempre a la derecha (si no hay "author" a la izquierda —Perfil—, el
+// encabezado usa flex-end en vez de space-between, para que no se pegue a
+// la izquierda con un solo elemento adentro). "Editar" abre EditPostModal
+// ahí mismo — solo el texto, la foto no se reemplaza — y "Eliminar" borra
+// directo, con confirmación. A diferencia de la reseña, acá si hace falta
+// limpiar Storage (deletePost borra también el archivo), porque la foto es
+// el único archivo propio del post — no pasa lo mismo con citas o notas de
+// voz, que quedan pendientes a propósito (ver README).
 export function ActivityCard({ activity, canOpenClub, personName, author, isOwn }) {
   const [expanded, setExpanded] = useState(false);
+  const [editingPhoto, setEditingPhoto] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -40,6 +53,13 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
     if (!window.confirm('¿Eliminar esta reseña? No se puede deshacer.')) return;
     startTransition(async () => {
       await deleteBookReview(activity.id);
+    });
+  }
+
+  function handleDeletePhoto() {
+    if (!window.confirm('¿Eliminar esta foto? No se puede deshacer.')) return;
+    startTransition(async () => {
+      await deletePost(activity.id);
     });
   }
   const isPhoto = activity.kind === 'photo';
@@ -138,8 +158,20 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {authorRow}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: pending ? 0.6 : 1 }}>
+      {(authorRow || (isPhoto && isOwn)) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: authorRow ? 'space-between' : 'flex-end' }}>
+          {authorRow}
+          {isPhoto && isOwn && (
+            <PostMenu
+              editLabel="Editar foto"
+              onEdit={() => setEditingPhoto(true)}
+              deleteLabel="Eliminar foto"
+              onDelete={handleDeletePhoto}
+            />
+          )}
+        </div>
+      )}
 
       {/* La imagen va sola, sin nada escrito encima — igual que un posteo. */}
       <div
@@ -204,6 +236,15 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
           </Link>
         )}
       </div>
+
+      {editingPhoto && (
+        <EditPostModal
+          postId={activity.id}
+          photoUrl={activity.photo_url}
+          initialCaption={activity.body}
+          onClose={() => setEditingPhoto(false)}
+        />
+      )}
     </div>
   );
 }

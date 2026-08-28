@@ -228,4 +228,10 @@ select 'Migración 025 — editar/borrar limitado a la reseña (kind review)',
             ) and exists (
               select 1 from pg_policies where tablename = 'comments' and cmd = 'DELETE' and qual like '%review%'
             )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 026 — política de editar el texto de tus propias fotos',
+       case when exists (
+              select 1 from pg_policies where tablename = 'posts' and cmd = 'UPDATE'
+            )
             then 'OK' else 'FALTA' end;
