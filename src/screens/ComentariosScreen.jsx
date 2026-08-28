@@ -15,7 +15,8 @@ import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton'
 import { BookReviewCard } from '@/components/BookReviewCard';
 import { PostMenu } from '@/components/PostMenu';
 import { FinalReviewModal } from './FinalReviewModal.jsx';
-import { deleteBookReview } from '@/app/actions/clubs';
+import { EditQuoteModal } from '@/components/EditQuoteModal';
+import { deleteBookReview, deleteQuote } from '@/app/actions/clubs';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 import { orderChapters, chapterDisplayLabel } from '@/lib/orderChapters';
 
@@ -109,14 +110,27 @@ function ReviewCard({ review, book, isOwn, onEdit }) {
 // "general del libro" (se sacó a propósito, para reforzar comentar
 // capítulo a capítulo). Arriba de todo, aparte, la reseña final de quienes
 // ya terminaron el libro (kind = 'review'), si hay alguna.
+//
+// La propia cita (kind = 'quote') tiene el mismo menú de 3 puntos que la
+// reseña — "Editar" abre EditQuoteModal (texto + estilo, regenera la
+// tarjeta guardada) y "Eliminar" borra, con confirmación.
 export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myDisplayName, myProfileId }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
   const reviews = useMemo(() => comments.filter((c) => c.kind === 'review'), [comments]);
   const [chapterId, setChapterId] = useState(orderedChapters[0]?.id ?? null);
   const [editingReview, setEditingReview] = useState(null);
+  const [editingQuote, setEditingQuote] = useState(null);
+  const [, startQuoteTransition] = useTransition();
 
   const visibleComments = chapterId ? comments.filter((c) => c.chapter_id === chapterId) : [];
+
+  function handleDeleteQuote(commentId) {
+    if (!window.confirm('¿Eliminar esta cita? No se puede deshacer.')) return;
+    startQuoteTransition(async () => {
+      await deleteQuote(commentId);
+    });
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 18px 24px' }}>
@@ -146,12 +160,23 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
 
           {visibleComments.map((comment) => {
             const name = comment.profiles?.display_name ?? 'Alguien';
+            const isOwnQuote = comment.kind === 'quote' && comment.profile_id === myProfileId;
             return (
               <div key={comment.id} style={{ display: 'flex', gap: 10 }}>
                 <Avatar name={name} size={36} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(comment.created_at)}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(comment.created_at)}</span>
+                    </div>
+                    {isOwnQuote && (
+                      <PostMenu
+                        editLabel="Editar cita"
+                        onEdit={() => setEditingQuote(comment)}
+                        deleteLabel="Eliminar cita"
+                        onDelete={() => handleDeleteQuote(comment.id)}
+                      />
+                    )}
                   </div>
                   <div style={{ marginTop: comment.kind === 'text' ? 0 : 6 }}>
                     {comment.is_spoiler ? (
@@ -183,6 +208,16 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
           book={book}
           myReview={editingReview}
           onClose={() => setEditingReview(null)}
+        />
+      )}
+
+      {editingQuote && (
+        <EditQuoteModal
+          quote={editingQuote}
+          book={book}
+          clubName={clubName}
+          personName={myDisplayName}
+          onClose={() => setEditingQuote(null)}
         />
       )}
     </div>

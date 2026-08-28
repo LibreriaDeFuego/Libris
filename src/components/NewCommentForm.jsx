@@ -12,7 +12,9 @@ import { QuoteCardPreview } from '@/components/QuoteCardPreview';
 
 // Miniatura de cada estilo — no es el render real de la tarjeta (eso lo hace
 // quoteCard.js recién al descargar), solo una vista aproximada para elegir.
-function StyleSwatch({ id, label, selected, onSelect, coverUrl }) {
+// Exportada porque EditQuoteModal la reusa tal cual, para editar una cita ya
+// publicada con el mismo selector.
+export function StyleSwatch({ id, label, selected, onSelect, coverUrl }) {
   const isCover = id === 'cover';
   const isDark = id === 'dark';
   const isLightSample = !isCover && !isDark;

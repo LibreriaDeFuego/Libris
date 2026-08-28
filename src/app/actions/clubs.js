@@ -575,6 +575,100 @@ export async function postComment(formData) {
   return { error: null, quoteStyle, quoteImageUrl };
 }
 
+// Edita el texto (y opcionalmente el estilo) de tu propia cita — migración
+// 027. Si tenía una imagen guardada, el navegador vuelve a dibujar la
+// tarjeta con el texto nuevo (mismo renderQuoteCard que al publicar) y acá
+// se reemplaza el archivo viejo en Storage, para que no queden dos
+// versiones (una con el texto de antes) dando vueltas.
+export async function updateQuote(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const commentId = formData.get('commentId')?.toString();
+  const body = formData.get('body')?.toString().trim();
+  const isSpoiler = formData.get('isSpoiler') === 'on';
+  const quoteStyleRaw = formData.get('quoteStyle')?.toString() || null;
+  const quoteStyle = VALID_QUOTE_STYLES.includes(quoteStyleRaw) ? quoteStyleRaw : null;
+  if (!commentId) return { error: 'Falta la cita.' };
+  if (!body) return { error: 'Escribe algo antes de guardar.' };
+
+  const { data: existing } = await supabase
+    .from('comments')
+    .select('quote_image_url')
+    .eq('id', commentId)
+    .eq('profile_id', user.id)
+    .eq('kind', 'quote')
+    .maybeSingle();
+
+  // Mismo "mejor esfuerzo" que al publicar: si la imagen nueva no llega o
+  // falla la subida, se guarda el texto/estilo igual, solo que sin imagen
+  // (el feed cae al tratamiento genérico).
+  let quoteImageUrl = null;
+  const quoteImage = formData.get('quoteImage');
+  if (quoteStyle && isFile(quoteImage) && quoteImage.size > 0 && quoteImage.size <= MAX_QUOTE_IMAGE_BYTES && quoteImage.type === 'image/jpeg') {
+    const path = `${user.id}/${crypto.randomUUID()}.jpg`;
+    const { error: uploadError } = await supabase.storage
+      .from('quote-cards')
+      .upload(path, quoteImage, { contentType: 'image/jpeg' });
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage.from('quote-cards').getPublicUrl(path);
+      quoteImageUrl = publicUrl;
+    }
+  }
+
+  const { error } = await supabase
+    .from('comments')
+    .update({ body, is_spoiler: isSpoiler, quote_style: quoteStyle, quote_image_url: quoteImageUrl })
+    .eq('id', commentId)
+    .eq('profile_id', user.id)
+    .eq('kind', 'quote');
+  if (error) return { error: friendlyDbError(error) };
+
+  // La imagen vieja queda huérfana si no se limpia — se borra recién acá,
+  // después de guardar bien la fila (mejor un archivo de más colgado si algo
+  // falla antes, que perder la referencia a uno que sigue en uso).
+  const oldPath = existing?.quote_image_url?.split('/quote-cards/')[1];
+  if (oldPath) {
+    await supabase.storage.from('quote-cards').remove([oldPath]);
+  }
+
+  revalidatePath('/', 'layout');
+  return { error: null, quoteStyle, quoteImageUrl };
+}
+
+// Borra tu propia cita — la fila y, si tenía imagen guardada, también el
+// archivo en Storage (mismo criterio que las fotos: acá la cita es dueña de
+// un único archivo propio, no compartido con nada más).
+export async function deleteQuote(commentId) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+  if (!commentId) return { error: 'Falta la cita.' };
+
+  const { data: existing } = await supabase
+    .from('comments')
+    .select('quote_image_url')
+    .eq('id', commentId)
+    .eq('profile_id', user.id)
+    .eq('kind', 'quote')
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', commentId)
+    .eq('profile_id', user.id)
+    .eq('kind', 'quote');
+  if (error) return { error: friendlyDbError(error) };
+
+  const path = existing?.quote_image_url?.split('/quote-cards/')[1];
+  if (path) {
+    await supabase.storage.from('quote-cards').remove([path]);
+  }
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
 // Publica (o actualiza, si ya existía una) la reseña final de un libro —
 // título + texto, siempre del libro entero (chapter_id null). Es un
 // comentario más (kind = 'review'), lo dispara declarar el libro como

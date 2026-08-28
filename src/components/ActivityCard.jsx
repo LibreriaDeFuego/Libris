@@ -9,7 +9,8 @@ import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton'
 import { BookReviewCard } from '@/components/BookReviewCard';
 import { PostMenu } from '@/components/PostMenu';
 import { EditPostModal } from '@/components/EditPostModal';
-import { deleteBookReview } from '@/app/actions/clubs';
+import { EditQuoteModal } from '@/components/EditQuoteModal';
+import { deleteBookReview, deleteQuote } from '@/app/actions/clubs';
 import { deletePost } from '@/app/actions/posts';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
@@ -34,18 +35,20 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 // lleva a los comentarios del club, donde vive el formulario de edición
 // (acá no se cuenta con club_book_id para abrir el mismo modal).
 //
-// Las fotos propias (isPhoto && isOwn) tienen el mismo menú de 3 puntos,
-// siempre a la derecha (si no hay "author" a la izquierda —Perfil—, el
-// encabezado usa flex-end en vez de space-between, para que no se pegue a
-// la izquierda con un solo elemento adentro). "Editar" abre EditPostModal
-// ahí mismo — solo el texto, la foto no se reemplaza — y "Eliminar" borra
-// directo, con confirmación. A diferencia de la reseña, acá si hace falta
-// limpiar Storage (deletePost borra también el archivo), porque la foto es
-// el único archivo propio del post — no pasa lo mismo con citas o notas de
-// voz, que quedan pendientes a propósito (ver README).
+// Las fotos y las citas propias (isPhoto/isQuote && isOwn) tienen el mismo
+// menú de 3 puntos, siempre a la derecha (si no hay "author" a la
+// izquierda —Perfil—, el encabezado usa flex-end en vez de space-between,
+// para que no se pegue a la izquierda con un solo elemento adentro).
+// "Editar" abre un modal ahí mismo — en la foto, solo el texto (la foto no
+// se reemplaza); en la cita, el texto y el estilo, que regenera la tarjeta
+// guardada — y "Eliminar" borra directo, con confirmación. Las dos limpian
+// también Storage (deletePost/deleteQuote borran el archivo), porque cada
+// una es dueña de un único archivo propio. Las notas de voz quedan
+// pendientes a propósito (ver README).
 export function ActivityCard({ activity, canOpenClub, personName, author, isOwn }) {
   const [expanded, setExpanded] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState(false);
+  const [editingQuote, setEditingQuote] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -60,6 +63,13 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
     if (!window.confirm('¿Eliminar esta foto? No se puede deshacer.')) return;
     startTransition(async () => {
       await deletePost(activity.id);
+    });
+  }
+
+  function handleDeleteQuote() {
+    if (!window.confirm('¿Eliminar esta cita? No se puede deshacer.')) return;
+    startTransition(async () => {
+      await deleteQuote(activity.id);
     });
   }
   const isPhoto = activity.kind === 'photo';
@@ -159,7 +169,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: pending ? 0.6 : 1 }}>
-      {(authorRow || (isPhoto && isOwn)) && (
+      {(authorRow || ((isPhoto || isQuote) && isOwn)) && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: authorRow ? 'space-between' : 'flex-end' }}>
           {authorRow}
           {isPhoto && isOwn && (
@@ -168,6 +178,14 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
               onEdit={() => setEditingPhoto(true)}
               deleteLabel="Eliminar foto"
               onDelete={handleDeletePhoto}
+            />
+          )}
+          {isQuote && isOwn && (
+            <PostMenu
+              editLabel="Editar cita"
+              onEdit={() => setEditingQuote(true)}
+              deleteLabel="Eliminar cita"
+              onDelete={handleDeleteQuote}
             />
           )}
         </div>
@@ -243,6 +261,16 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
           photoUrl={activity.photo_url}
           initialCaption={activity.body}
           onClose={() => setEditingPhoto(false)}
+        />
+      )}
+
+      {editingQuote && (
+        <EditQuoteModal
+          quote={{ id: activity.id, body: activity.body, quote_style: activity.quote_style }}
+          book={{ title: activity.book_title, author: activity.book_author, cover_url: activity.book_cover_url }}
+          clubName={activity.club_name}
+          personName={personName}
+          onClose={() => setEditingQuote(false)}
         />
       )}
     </div>

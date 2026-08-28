@@ -234,4 +234,12 @@ select 'Migración 026 — política de editar el texto de tus propias fotos',
        case when exists (
               select 1 from pg_policies where tablename = 'posts' and cmd = 'UPDATE'
             )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 027 — editar/borrar también alcanza a las citas (kind quote)',
+       case when exists (
+              select 1 from pg_policies where tablename = 'comments' and cmd = 'UPDATE' and qual like '%quote%'
+            ) and exists (
+              select 1 from pg_policies where tablename = 'comments' and cmd = 'DELETE' and qual like '%quote%'
+            )
             then 'OK' else 'FALTA' end;

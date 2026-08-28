@@ -117,7 +117,9 @@ supabase/
                              quedado general, para cualquier comentario),
                            026_editar_foto_propia.sql (política de editar
                              el texto de tus propias fotos en posts —
-                             borrar ya existía desde la 016)
+                             borrar ya existía desde la 016),
+                           027_editar_borrar_citas.sql (amplía las políticas
+                             de la 025 para incluir también kind = 'quote')
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -257,16 +259,25 @@ Junto al nombre de quien publicó una reseña (kind = 'review'), un menú de 3 p
 - **`deleteBookReview`** (`src/app/actions/clubs.js`) borra la propia reseña — RLS la respalda, el `.eq('profile_id', user.id).eq('kind', 'review')` en la consulta es cinturón y tirantes, no la única traba.
 - **Editar** reabre `FinalReviewModal` precargado (prop `myReview`), que ya sabía hacer esto desde la migración 023 (`reviewId` en el formulario evita duplicar la reseña) — ahora se le puede llegar también desde el propio menú, no solo por convención de una sola reseña por libro.
 - **Dónde vive cada acción**: en **Comentarios del club** (`ComentariosScreen`), el menú abre el modal de edición ahí mismo — la pantalla ya tiene `clubBookId` y el libro a mano. En **Inicio y Perfil** (`ActivityCard`), "Eliminar" borra directo y "Editar" navega a los comentarios del club en vez de duplicar el modal — el feed no trae `club_book_id` en cada tarjeta.
-- **A propósito, no se tocó** editar/borrar comentarios de capítulo, citas o notas de voz — habilitar eso para citas/voz necesita limpiar también el archivo en Storage (imagen de la cita, audio), fuera del alcance de este cambio.
+- **A propósito, no se tocó** editar/borrar comentarios de capítulo ni notas de voz — habilitar eso para notas de voz necesita limpiar también el archivo en Storage (el audio), fuera del alcance de este cambio. Las citas sí se sumaron después, en la migración 027.
 
 ### Editar o borrar tu propia foto (migración 026)
 
 Mismo menú de 3 puntos (`PostMenu`), ahora también en tus propias fotos de "lo que estás leyendo" — en Inicio y en Perfil.
 
 - **`posts` ya tenía política de borrar** desde la migración 016 (no tenía UI ni acción para usarla). La 026 agrega la de editar — solo el texto (`caption`); la foto en sí no se reemplaza desde acá, mismo criterio que la reseña (ahí tampoco se reemplaza la portada).
-- **`updatePost`/`deletePost`** (`src/app/actions/posts.js`). A diferencia de la reseña, acá `deletePost` sí limpia Storage: borra también el archivo de la foto (`post-photos`), porque el post es dueño de un único archivo propio — no pasa lo mismo con una cita (comparte estilo con otras) ni con una nota de voz, donde la limpieza queda pendiente a propósito.
+- **`updatePost`/`deletePost`** (`src/app/actions/posts.js`). A diferencia de la reseña, acá `deletePost` sí limpia Storage: borra también el archivo de la foto (`post-photos`), porque el post es dueño de un único archivo propio.
 - **`EditPostModal`** (`src/components/EditPostModal.jsx`) es la vista previa de la foto (fija) + el texto editable — mismo patrón liviano que un formulario, sin volver a pasar por el recorte.
 - **En Perfil**, donde `ActivityCard` no repite el nombre (redundante, ya se sabe de quién es el perfil), la fila de encabezado con el menú usa `justify-content: flex-end` en vez de `space-between` — sin eso, un solo elemento en la fila quedaba pegado a la izquierda (mismo bug que tuvo la reseña, corregido ahí con el nombre siempre visible; acá se resolvió distinto porque no hacía falta agregar el nombre).
+
+### Editar o borrar tu propia cita (migración 027)
+
+Mismo menú de 3 puntos otra vez, ahora también en tus propias citas destacadas — en Comentarios del club, en Inicio y en Perfil.
+
+- **La migración 025 había dejado editar/borrar limitado a `kind = 'review'`** — las citas quedaron afuera a propósito en ese momento, porque borrar o cambiar el texto de una cita con imagen guardada (`quote_image_url`) dejaba el archivo viejo huérfano en Storage, algo que reseñas y comentarios de capítulo no tienen (la reseña no tiene archivo propio: usa la portada del libro). La 027 amplía esas políticas a también `kind = 'quote'`, ahora que `updateQuote`/`deleteQuote` (`src/app/actions/clubs.js`) ya hacen esa limpieza.
+- **Editar una cita regenera la tarjeta**: `EditQuoteModal` (`src/components/EditQuoteModal.jsx`) reusa el mismo selector de estilo y la misma vista previa en vivo (`QuoteCardPreview`) que ya tenía `NewCommentForm` al publicar — al guardar, el navegador vuelve a dibujar la imagen con el texto/estilo nuevos (`renderQuoteCard`) y `updateQuote` la sube y borra la vieja. Si la cita nunca tuvo imagen guardada (de antes de la migración 021, o si en su momento falló la subida), edita igual — sencillamente puede terminar generando una por primera vez.
+- **Dónde vive cada acción**: en **Comentarios del club**, el menú va en la fila de nombre + fecha de cada comentario (antes sin nada a la derecha); en **Inicio y Perfil** (`ActivityCard`), mismo tratamiento que ya tenían las fotos — encabezado con `PostMenu`, `flex-end` en Perfil por la misma razón que las fotos.
+- **A propósito, sigue sin tocarse** editar/borrar comentarios de capítulo y notas de voz.
 
 ### Adelanto de Descubrir en "Mis clubes de lectura"
 
