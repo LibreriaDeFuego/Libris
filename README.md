@@ -111,7 +111,10 @@ supabase/
                              se saca "General del libro" de Comentarios),
                            024_editar_borrar_resena.sql (políticas update +
                              delete en comments, para editar/borrar tu propia
-                             reseña final)
+                             reseña final),
+                           025_editar_borrar_solo_resenas.sql (angosta esas
+                             políticas a kind = 'review' — la 024 había
+                             quedado general, para cualquier comentario)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -243,12 +246,12 @@ Los comentarios de un club ya no tienen sección "General del libro" — se sac�
 
 **Sobre la foto de las personas leyendo (migración 016)**: esto NO le tocó nada — sigue tal cual, recorte 3:4, sin título, con el tratamiento genérico de siempre en el feed. La identidad con portada + sombra es específica de la reseña final, donde la imagen es la tapa de un libro real (con su propia proporción, conocida), no una foto que puede traer cualquier fondo.
 
-### Editar o borrar tu propia reseña final (migración 024)
+### Editar o borrar tu propia reseña final (migraciones 024 y 025)
 
 Junto al nombre de quien publicó una reseña (kind = 'review'), un menú de 3 puntos (`src/components/PostMenu.jsx`) ofrece **Editar reseña** / **Eliminar reseña** — solo a quien la escribió, nunca a nadie más.
 
-- **`comments` no tenía política de update ni de delete** (solo select + insert) — nadie podía tocar lo que ya había publicado, de ningún tipo. La migración agrega ambas, para quien es dueño del comentario (`profile_id = auth.uid()`); es una política general de la tabla, no limitada a reseñas, aunque por ahora la UI solo ofrece editar/borrar reseñas.
-- **`deleteBookReview`** (`src/app/actions/clubs.js`) borra la propia reseña — RLS la respalda, el `.eq('profile_id', user.id)` en la consulta es cinturón y tirantes, no la única traba.
+- **`comments` no tenía política de update ni de delete** (solo select + insert) — nadie podía tocar lo que ya había publicado, de ningún tipo. La migración 024 agregó ambas, pero de entrada quedó general (cualquier `kind`, no solo reseñas) — eso no correspondía, porque ni la UI ni la limpieza de Storage (una cita borrada dejaría huérfana su imagen guardada; una nota de voz, su audio) están pensadas para eso todavía. La migración 025 la angostó a `kind = 'review'` — es lo único editable/borrable hoy, a propósito.
+- **`deleteBookReview`** (`src/app/actions/clubs.js`) borra la propia reseña — RLS la respalda, el `.eq('profile_id', user.id).eq('kind', 'review')` en la consulta es cinturón y tirantes, no la única traba.
 - **Editar** reabre `FinalReviewModal` precargado (prop `myReview`), que ya sabía hacer esto desde la migración 023 (`reviewId` en el formulario evita duplicar la reseña) — ahora se le puede llegar también desde el propio menú, no solo por convención de una sola reseña por libro.
 - **Dónde vive cada acción**: en **Comentarios del club** (`ComentariosScreen`), el menú abre el modal de edición ahí mismo — la pantalla ya tiene `clubBookId` y el libro a mano. En **Inicio y Perfil** (`ActivityCard`), "Eliminar" borra directo y "Editar" navega a los comentarios del club en vez de duplicar el modal — el feed no trae `club_book_id` en cada tarjeta.
 - **A propósito, no se tocó** editar/borrar comentarios de capítulo, citas o notas de voz — habilitar eso para citas/voz necesita limpiar también el archivo en Storage (imagen de la cita, audio), fuera del alcance de este cambio.

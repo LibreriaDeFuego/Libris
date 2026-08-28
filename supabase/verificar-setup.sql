@@ -220,4 +220,12 @@ select 'Migración 024 — política de borrar comentarios propios',
        case when exists (
               select 1 from pg_policies where tablename = 'comments' and cmd = 'DELETE'
             )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 025 — editar/borrar limitado a la reseña (kind review)',
+       case when exists (
+              select 1 from pg_policies where tablename = 'comments' and cmd = 'UPDATE' and qual like '%review%'
+            ) and exists (
+              select 1 from pg_policies where tablename = 'comments' and cmd = 'DELETE' and qual like '%review%'
+            )
             then 'OK' else 'FALTA' end;
