@@ -342,6 +342,10 @@ Dos ampliaciones charladas después de construir lo de arriba.
 - La misma columna `replies` de `profile_activity`/`recent_activity` lleva, para las filas `kind = 'photo'`, los comentarios de esa foto en vez de un hilo de respuestas — mismo lugar, para que `ActivityCard` no tenga que distinguir de dónde vienen.
 - `PhotoCommentsBlock` (`src/components/PhotoCommentsBlock.jsx`) es el componente — mismo patrón visual que `EngagementBlock` (Me gusta + un botón que abre la lista y el campo para escribir) pero sin hilo anidado. `postPhotoComment` en `src/app/actions/posts.js`.
 
+**Responder a un comentario puntual, estilo Instagram** — cada comentario ya puesto (dentro de `EngagementBlock`: Comentarios del club, Inicio y Perfil) tiene su propio "Responder", chiquito, junto a su "Me gusta". No crea un segundo nivel de hilo — sigue siendo un solo nivel de anidamiento, todo cuelga del mismo original — solo precarga el campo compartido con `@Nombre ` para que quede claro a quién le está contestando, mismo truco que usa Instagram por dentro (el `@Nombre` queda como texto plano en el comentario, no es un link ni una mención de verdad). No se tocó `PhotoCommentsBlock` — sigue sin "Responder" por comentario, a propósito, mismo criterio simplificado de la 033.
+
+- `Textarea` (`src/design-system/components/forms/Textarea.jsx`) pasó a `React.forwardRef` — antes no hacía falta, ahora `EngagementBlock` necesita enfocar el campo a mano al tocar "Responder" en una respuesta puntual.
+
 ### Adelanto de Descubrir en "Mis clubes de lectura"
 
 La pantalla de Club (`/`) ya no termina en la lista de tus clubes: debajo, un adelanto de Descubrir con un acceso a la búsqueda (lleva a `/descubrir`, que es donde de verdad se puede tipear) y un par de clubes públicos que todavía no son tuyos — mismo criterio y misma función (`discover_public_clubs`) que la pestaña Descubrir, filtrando los que ya están en "Mis clubes". No hay pestaña nueva ni cambio en la barra de abajo: Descubrir sigue siendo su propia pestaña, esto es solo un adelanto para quien no piensa en tocarla por su cuenta.
