@@ -10,8 +10,9 @@ import { BookReviewCard } from '@/components/BookReviewCard';
 import { PostMenu } from '@/components/PostMenu';
 import { EditPostModal } from '@/components/EditPostModal';
 import { EditQuoteModal } from '@/components/EditQuoteModal';
-import { deleteBookReview, deleteQuote } from '@/app/actions/clubs';
-import { deletePost } from '@/app/actions/posts';
+import { LikeButton } from '@/components/LikeButton';
+import { deleteBookReview, deleteQuote, toggleCommentLike } from '@/app/actions/clubs';
+import { deletePost, togglePostLike } from '@/app/actions/posts';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
 // Una tarjeta de actividad, con el mismo orden que un posteo de Instagram:
@@ -45,6 +46,10 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 // también Storage (deletePost/deleteQuote borran el archivo), porque cada
 // una es dueña de un único archivo propio. Las notas de voz quedan
 // pendientes a propósito (ver README).
+//
+// "Me gusta" (LikeButton) va en todo lo que aparece acá — lo ve y lo puede
+// tocar cualquiera, no solo isOwn. "Responder" y "Compartir" no viven acá
+// todavía: solo en Comentarios del club (ver README).
 export function ActivityCard({ activity, canOpenClub, personName, author, isOwn }) {
   const [expanded, setExpanded] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState(false);
@@ -149,6 +154,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
         <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
           <BookReviewCard title={activity.title} body={activity.body} coverUrl={activity.book_cover_url} expanded={expanded} />
         </div>
+        <LikeButton liked={activity.liked_by_me} count={activity.like_count} onToggle={() => toggleCommentLike(activity.id)} />
         <div style={{ padding: '0 2px' }}>
           <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600 }}>
             {activity.club_name} · terminó {activity.book_title}
@@ -197,6 +203,12 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
           aspectRatio: '3 / 4', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
           boxShadow: 'var(--shadow-sm)', flexShrink: 0, background,
         }}
+      />
+
+      <LikeButton
+        liked={activity.liked_by_me}
+        count={activity.like_count}
+        onToggle={() => (isPhoto ? togglePostLike(activity.id) : toggleCommentLike(activity.id))}
       />
 
       <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer', padding: '0 2px' }}>

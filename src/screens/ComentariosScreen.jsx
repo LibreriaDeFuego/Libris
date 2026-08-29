@@ -14,11 +14,12 @@ import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { BookReviewCard } from '@/components/BookReviewCard';
 import { PostMenu } from '@/components/PostMenu';
+import { EngagementBlock } from '@/components/EngagementBlock';
 import { FinalReviewModal } from './FinalReviewModal.jsx';
 import { EditQuoteModal } from '@/components/EditQuoteModal';
 import { EditCommentModal } from '@/components/EditCommentModal';
 import { EditVoiceModal } from '@/components/EditVoiceModal';
-import { deleteBookReview, deleteQuote, deleteComment } from '@/app/actions/clubs';
+import { deleteBookReview, deleteQuote, deleteComment, toggleShareToFeed } from '@/app/actions/clubs';
 import { deleteVoiceComment } from '@/app/actions/media';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 import { orderChapters, chapterDisplayLabel } from '@/lib/orderChapters';
@@ -68,8 +69,9 @@ function CommentBody({ comment, book, clubName }) {
 // (BookReviewCard, mismo bloque que usa ActivityCard en Inicio y Perfil) —
 // tocar la tarjeta despliega el resto. En la propia reseña, el menú de 3
 // puntos junto al nombre ofrece editarla (abre FinalReviewModal, precargada)
-// o borrarla.
-function ReviewCard({ review, book, isOwn, onEdit }) {
+// o borrarla. Debajo, Me gusta + Responder y el hilo de respuestas — igual
+// que en cualquier otro comentario (EngagementBlock).
+function ReviewCard({ review, book, isOwn, onEdit, replies }) {
   const [expanded, setExpanded] = useState(false);
   const [pending, startTransition] = useTransition();
   const name = review.profiles?.display_name ?? 'Alguien';
@@ -87,8 +89,8 @@ function ReviewCard({ review, book, isOwn, onEdit }) {
     </div>
   );
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Avatar name={name} size={30} />
           <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -105,6 +107,7 @@ function ReviewCard({ review, book, isOwn, onEdit }) {
         )}
       </div>
       {review.is_spoiler ? <SpoilerBlock>{card}</SpoilerBlock> : card}
+      <EngagementBlock commentId={review.id} liked={review.liked_by_me} likeCount={review.like_count} replies={replies} />
     </div>
   );
 }
@@ -118,10 +121,29 @@ function ReviewCard({ review, book, isOwn, onEdit }) {
 // menú de 3 puntos junto al nombre — "Editar" abre el modal que corresponde
 // (EditQuoteModal, EditCommentModal o EditVoiceModal) y "Eliminar" borra,
 // con confirmación.
+//
+// Debajo de cada uno (reseña, cita, comentario, nota de voz), EngagementBlock
+// pone Me gusta + Responder y el hilo de respuestas — cualquier miembro del
+// club los ve. "Compartir" es aparte: solo aparece en tus propios
+// comentarios de capítulo y notas de voz (reseñas/citas ya aparecen
+// siempre en Inicio, no necesitan esto) y solo vos lo ves.
 export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myDisplayName, myProfileId }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
-  const reviews = useMemo(() => comments.filter((c) => c.kind === 'review'), [comments]);
+  // Las respuestas (parent_comment_id no nulo) no son "un comentario más" en
+  // ninguna de estas listas — se agrupan aparte y se anidan bajo su original.
+  const reviews = useMemo(() => comments.filter((c) => c.kind === 'review' && !c.parent_comment_id), [comments]);
+  const repliesByParent = useMemo(() => {
+    const map = new Map();
+    for (const c of comments) {
+      if (!c.parent_comment_id) continue;
+      const list = map.get(c.parent_comment_id) ?? [];
+      list.push(c);
+      map.set(c.parent_comment_id, list);
+    }
+    for (const list of map.values()) list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    return map;
+  }, [comments]);
   const [chapterId, setChapterId] = useState(orderedChapters[0]?.id ?? null);
   const [editingReview, setEditingReview] = useState(null);
   const [editingQuote, setEditingQuote] = useState(null);
@@ -129,7 +151,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   const [editingVoice, setEditingVoice] = useState(null);
   const [, startDeleteTransition] = useTransition();
 
-  const visibleComments = chapterId ? comments.filter((c) => c.chapter_id === chapterId) : [];
+  const visibleComments = chapterId ? comments.filter((c) => c.chapter_id === chapterId && !c.parent_comment_id) : [];
 
   function handleDeleteQuote(commentId) {
     if (!window.confirm('¿Eliminar esta cita? No se puede deshacer.')) return;
@@ -162,7 +184,14 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
       {reviews.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {reviews.map((review) => (
-            <ReviewCard key={review.id} review={review} book={book} isOwn={review.profile_id === myProfileId} onEdit={setEditingReview} />
+            <ReviewCard
+              key={review.id}
+              review={review}
+              book={book}
+              isOwn={review.profile_id === myProfileId}
+              onEdit={setEditingReview}
+              replies={repliesByParent.get(review.id) ?? []}
+            />
           ))}
         </div>
       )}
@@ -220,6 +249,19 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
                     ) : (
                       <CommentBody comment={comment} book={book} clubName={clubName} />
                     )}
+                  </div>
+                  <div style={{ marginTop: 6 }}>
+                    <EngagementBlock
+                      commentId={comment.id}
+                      liked={comment.liked_by_me}
+                      likeCount={comment.like_count}
+                      replies={repliesByParent.get(comment.id) ?? []}
+                      share={
+                        isOwn && (comment.kind === 'text' || comment.kind === 'voice')
+                          ? { shared: comment.shared_to_feed, onToggle: () => toggleShareToFeed(comment.id) }
+                          : undefined
+                      }
+                    />
                   </div>
                 </div>
               </div>

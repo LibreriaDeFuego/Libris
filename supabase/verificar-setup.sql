@@ -250,4 +250,23 @@ select 'Migración 028 — editar/borrar alcanza también comentarios y notas de
             ) and exists (
               select 1 from pg_policies where tablename = 'comments' and cmd = 'DELETE' and qual like '%voice%'
             )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 029 — tablas de "Me gusta" (comment_likes, post_likes)',
+       case when exists (select 1 from information_schema.tables where table_name = 'comment_likes')
+        and exists (select 1 from information_schema.tables where table_name = 'post_likes')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 029 — recent_activity trae like_count',
+       case when exists (
+              select 1 from pg_proc where proname = 'recent_activity' and prosrc like '%like_count%'
+            )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 030 — comments.parent_comment_id (Responder)',
+       case when exists (select 1 from information_schema.columns where table_name = 'comments' and column_name = 'parent_comment_id')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 031 — comments.shared_to_feed (Compartir)',
+       case when exists (select 1 from information_schema.columns where table_name = 'comments' and column_name = 'shared_to_feed')
             then 'OK' else 'FALTA' end;

@@ -760,3 +760,90 @@ export async function deleteBookReview(reviewId) {
   revalidatePath('/', 'layout');
   return { error: null };
 }
+
+// "Me gusta" en una reseña, cita, comentario o nota de voz — migración 029.
+// Toggle simple: si ya existe tu like, lo saca; si no, lo pone. La política
+// de RLS de comment_likes exige ser miembro del club del comentario, igual
+// que para verlo o comentarlo — acá no hace falta repetir esa comprobación
+// a mano, alcanza con dejar que la propia inserción falle si no corresponde.
+export async function toggleCommentLike(commentId) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+  if (!commentId) return { error: 'Falta el comentario.' };
+
+  const { data: existing } = await supabase
+    .from('comment_likes')
+    .select('id')
+    .eq('comment_id', commentId)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+
+  const { error } = existing
+    ? await supabase.from('comment_likes').delete().eq('id', existing.id)
+    : await supabase.from('comment_likes').insert({ comment_id: commentId, profile_id: user.id });
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
+// Responde a una reseña, cita, comentario o nota de voz — migración 030.
+// La respuesta es un comentario más (kind = 'text'), con parent_comment_id
+// apuntando al original; hereda su club_book_id y chapter_id (no se
+// confía en lo que mande el navegador para eso, se lee del original).
+export async function postReply(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const parentCommentId = formData.get('parentCommentId')?.toString();
+  const body = formData.get('body')?.toString().trim();
+  if (!parentCommentId) return { error: 'Falta el comentario original.' };
+  if (!body) return { error: 'Escribe algo antes de responder.' };
+
+  const { data: parent } = await supabase
+    .from('comments')
+    .select('club_book_id, chapter_id')
+    .eq('id', parentCommentId)
+    .maybeSingle();
+  if (!parent) return { error: 'No encontramos el comentario original.' };
+
+  const { error } = await supabase.from('comments').insert({
+    club_book_id: parent.club_book_id,
+    chapter_id: parent.chapter_id,
+    profile_id: user.id,
+    kind: 'text',
+    body,
+    parent_comment_id: parentCommentId,
+  });
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
+// Comparte (o deja de compartir) tu propio comentario de capítulo o nota
+// de voz en Inicio — migración 031. Reseñas, citas y fotos no necesitan
+// esto: ya aparecen siempre ahí, no cambia nada para ellas.
+export async function toggleShareToFeed(commentId) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+  if (!commentId) return { error: 'Falta el comentario.' };
+
+  const { data: existing } = await supabase
+    .from('comments')
+    .select('shared_to_feed')
+    .eq('id', commentId)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+  if (!existing) return { error: 'No encontramos el comentario.' };
+
+  const { error } = await supabase
+    .from('comments')
+    .update({ shared_to_feed: !existing.shared_to_feed })
+    .eq('id', commentId)
+    .eq('profile_id', user.id);
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}

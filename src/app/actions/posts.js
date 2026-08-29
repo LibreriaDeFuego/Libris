@@ -100,3 +100,26 @@ export async function deletePost(postId) {
   revalidatePath('/', 'layout');
   return { error: null };
 }
+
+// "Me gusta" en una foto — migración 029. Mismo toggle que toggleCommentLike
+// (clubs.js), sobre post_likes en vez de comment_likes.
+export async function togglePostLike(postId) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+  if (!postId) return { error: 'Falta la foto.' };
+
+  const { data: existing } = await supabase
+    .from('post_likes')
+    .select('id')
+    .eq('post_id', postId)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+
+  const { error } = existing
+    ? await supabase.from('post_likes').delete().eq('id', existing.id)
+    : await supabase.from('post_likes').insert({ post_id: postId, profile_id: user.id });
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}

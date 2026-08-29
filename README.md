@@ -122,7 +122,15 @@ supabase/
                              de la 025 para incluir también kind = 'quote'),
                            028_editar_borrar_comentarios_y_voz.sql (las
                              mismas políticas, ahora los 4 kind: review,
-                             quote, text, voice)
+                             quote, text, voice),
+                           029_me_gusta.sql (comment_likes + post_likes,
+                             like_count/liked_by_me en profile_activity y
+                             recent_activity),
+                           030_responder.sql (comments.parent_comment_id,
+                             profile_activity excluye las respuestas),
+                           031_compartir_en_inicio.sql (comments.
+                             shared_to_feed, recent_activity trae texto/voz
+                             compartidos)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -289,6 +297,29 @@ Los dos tipos que quedaban sin tocar — cerrando el círculo: ahora los cuatro 
 - **Notas de voz** (`kind = 'voice'`): `EditVoiceModal` (`src/components/EditVoiceModal.jsx`) deja escuchar el audio (con `VoiceNotePlayer`, de solo lectura) y edita la transcripción/resumen y el spoiler — el audio en sí no se regraba desde acá, para eso conviene borrar y grabar de nuevo. `updateVoiceComment`/`deleteVoiceComment` en `src/app/actions/media.js` (junto a `postVoiceComment`, que ya vivía ahí). Borrar sí limpia Storage — a diferencia de fotos y citas, acá `voice_url` ya es el *path* del archivo (no una URL pública: el bucket `voice-notes` es privado, cada reproducción usa una URL firmada), así que `deleteVoiceComment` lo borra directo, sin tener que desarmar una URL.
 - **La política se angostó bastante en las migraciones 025/027** (`kind in ('review', 'quote')`) — la 028 la vuelve a abrir a los cuatro tipos, listados explícitamente (`kind in ('review', 'quote', 'text', 'voice')`) en vez de sacar la condición del todo, para que un tipo de comentario nuevo el día de mañana no quede editable de arrastre sin que alguien lo decida a propósito.
 - **Solo en Comentarios del club** — a diferencia de reseña/foto/cita, comentarios de capítulo y notas de voz no aparecen en el feed de Inicio (`recent_activity` no los trae) y sí aparecen en el de Perfil (`profile_activity` no filtra por `kind`) pero `ActivityCard` ahí todavía no tiene el menú para estos dos tipos — quedó pendiente a propósito, se puede sumar si hace falta.
+
+### Me gusta, Responder y Compartir (migraciones 029, 030 y 031)
+
+Una fila de acciones bajo cada reseña, cita, comentario, nota de voz y foto — mockeada primero ("Botones de acción") y confirmada antes de construirla.
+
+**Me gusta (029)** — el corazón + contador, en todo lo que aparece en Comentarios del club, Inicio y Perfil. Lo puede tocar cualquier miembro del club (no solo el dueño), a diferencia del resto de los botones de esta sección.
+
+- Dos tablas, no una genérica: `comment_likes` (apunta a `comments`) y `post_likes` (apunta a `posts`) — cada una con su propia foreign key real, en vez de una referencia "polimórfica" sin garantía de integridad. La política de `comment_likes` respeta la privacidad del club (mismo criterio que `is_club_member` ya usa para los comentarios); `post_likes` es pública, como las fotos.
+- `toggleCommentLike`/`toggleShareToFeed`/`postReply` en `src/app/actions/clubs.js`, `togglePostLike` en `src/app/actions/posts.js` — todas simples toggles: si ya existe tu fila, la borra; si no, la crea.
+- `profile_activity` y `recent_activity` ahora también traen `like_count` y `liked_by_me`, calculados con un `left join lateral` a la tabla de likes que corresponda — no hace falta una consulta aparte. La pantalla de Comentarios del club, que no pasa por esas funciones, los trae aparte (`comment_likes` filtrado por los ids de esa página) y los mezcla a mano, en `comentarios/page.js`.
+- `LikeButton` (`src/components/LikeButton.jsx`) es el componente — sin estado optimista propio: dispara la acción y el conteo real llega con el refresco normal de la página, mismo patrón que ya usan los botones de eliminar. `Icon.jsx` ganó una prop `fill` opcional (antes no existía) para poder pintar el corazón relleno cuando está marcado.
+
+**Responder (030)** — una respuesta es un comentario más (`kind = 'text'`), con `parent_comment_id` apuntando al original; hereda su `club_book_id`/`chapter_id`. No hace falta una tabla ni una política nueva para publicarla — la política que ya deja comentar en el club no distingue por `kind`. Se excluye de `profile_activity` (con `parent_comment_id is null`) para que no aparezca como una actividad propia repetida en el perfil de quien respondió.
+
+- **Un solo nivel de anidamiento** — se puede responder a una reseña/cita/comentario/nota de voz, pero no a una respuesta (la UI no ofrece "Responder" ahí; no hay una restricción en la base que lo impida, es una convención de la propia interfaz, igual que "una reseña por persona por libro").
+- **Por ahora, solo en Comentarios del club** — ahí es donde ya está disponible el arreglo completo de comentarios de un libro para armar el hilo. Extenderlo a la reseña que se ve en Inicio/Perfil llevaría a `recent_activity`/`profile_activity` a devolver también las respuestas de cada fila, más trabajo que se dejó pendiente a propósito.
+
+**Compartir (031)** — solo tiene sentido, y solo aparece, en tus propios comentarios de capítulo y notas de voz: reseñas, citas y fotos ya aparecen siempre en Inicio, no hay nada que "compartir" ahí. Retoma la idea charlada antes de construirla: los comentarios del club se sentían atrapados adentro, sin forma de que quien los escribió los hiciera más públicos.
+
+- `comments.shared_to_feed boolean not null default false` — todo lo que ya existe queda exactamente como estaba (nada se comparte solo). `recent_activity` ahora también trae comentarios y notas de voz, pero solo si `shared_to_feed = true` (y no son una respuesta).
+- **Solo lo ve el dueño** — `ShareButton` (`src/components/ShareButton.jsx`) se muestra condicionalmente desde quien usa el componente (`isOwn && kind en text/voice`), no hay nada del lado del botón que lo esconda por su cuenta.
+
+Los tres viven juntos en `EngagementBlock` (`src/components/EngagementBlock.jsx`): Me gusta + Responder siempre, Compartir opcional (prop `share`), y debajo, el hilo de respuestas — las que ya hay, anidadas con su propio `LikeButton` chico, y el campo para escribir una nueva si se tocó "Responder". Lo usan tanto `ReviewCard` como cada comentario de capítulo en `ComentariosScreen`; `ActivityCard` (Inicio y Perfil) usa `LikeButton` solo, sin Responder ni Compartir (ver más arriba).
 
 ### Adelanto de Descubrir en "Mis clubes de lectura"
 

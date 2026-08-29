@@ -10,7 +10,10 @@ function toPascalCase(name) {
     .join('');
 }
 
-export function Icon({ name, size = 20, color = 'currentColor', strokeWidth = 1.75 }) {
+// "fill" es opcional — por default los íconos de línea van sin relleno
+// (fill="none" es lo que ya trae Lucide), pero el corazón de "Me gusta"
+// marcado necesita ir relleno.
+export function Icon({ name, size = 20, color = 'currentColor', strokeWidth = 1.75, fill }) {
   const LucideIcon = LucideIcons[toPascalCase(name)];
   if (!LucideIcon) {
     if (process.env.NODE_ENV !== 'production') {
@@ -18,5 +21,5 @@ export function Icon({ name, size = 20, color = 'currentColor', strokeWidth = 1.
     }
     return React.createElement('span', { style: { width: size, height: size, display: 'inline-flex' } });
   }
-  return React.createElement(LucideIcon, { size, color, strokeWidth });
+  return React.createElement(LucideIcon, { size, color, strokeWidth, ...(fill && { fill }) });
 }

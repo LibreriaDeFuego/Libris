@@ -21,7 +21,7 @@ export default async function Page({ params }) {
   const [{ data: comments }, { data: chapters }, { data: volumes }, { data: me }] = await Promise.all([
     supabase
       .from('comments')
-      .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, profiles(display_name)')
+      .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, parent_comment_id, shared_to_feed, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, profiles(display_name)')
       .eq('club_book_id', clubBook.id)
       .order('created_at', { ascending: false }),
     supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
@@ -42,9 +42,26 @@ export default async function Page({ params }) {
     }
   }
 
+  // Los likes se traen aparte y se mezclan acá — más simple que sumarlos
+  // adentro de esta consulta directa a "comments" (a diferencia de Inicio y
+  // Perfil, que ya los traen listos desde recent_activity/profile_activity).
+  const commentIds = (comments ?? []).map((c) => c.id);
+  const { data: likeRows } = commentIds.length > 0
+    ? await supabase.from('comment_likes').select('comment_id, profile_id').in('comment_id', commentIds)
+    : { data: [] };
+  const likesByComment = new Map();
+  for (const row of likeRows ?? []) {
+    const entry = likesByComment.get(row.comment_id) ?? { count: 0, likedByMe: false };
+    entry.count += 1;
+    if (row.profile_id === user.id) entry.likedByMe = true;
+    likesByComment.set(row.comment_id, entry);
+  }
+
   const withAudio = (comments ?? []).map((c) => ({
     ...c,
     audio_url: c.voice_url ? signedByPath.get(c.voice_url) ?? null : null,
+    like_count: likesByComment.get(c.id)?.count ?? 0,
+    liked_by_me: likesByComment.get(c.id)?.likedByMe ?? false,
   }));
 
   return (
