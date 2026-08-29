@@ -21,7 +21,7 @@ export default async function Page({ params }) {
   const [{ data: comments }, { data: chapters }, { data: volumes }, { data: me }] = await Promise.all([
     supabase
       .from('comments')
-      .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, parent_comment_id, shared_to_feed, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, profiles(display_name)')
+      .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, parent_comment_id, reply_to_id, shared_to_feed, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, profiles(display_name)')
       .eq('club_book_id', clubBook.id)
       .order('created_at', { ascending: false }),
     supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),

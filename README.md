@@ -136,7 +136,11 @@ supabase/
                              el hilo de la reseña/cita),
                            033_comentarios_en_fotos.sql (tabla post_comments,
                              "replies" también lleva los comentarios de
-                             cada foto)
+                             cada foto),
+                           034_agrupar_respuestas.sql (comments.
+                             reply_to_id, para agrupar visualmente una
+                             respuesta debajo del comentario puntual al
+                             que le contesta)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -345,6 +349,12 @@ Dos ampliaciones charladas después de construir lo de arriba.
 **Responder a un comentario puntual, estilo Instagram** — cada comentario ya puesto (dentro de `EngagementBlock`: Comentarios del club, Inicio y Perfil) tiene su propio "Responder", chiquito, junto a su "Me gusta". No crea un segundo nivel de hilo — sigue siendo un solo nivel de anidamiento, todo cuelga del mismo original — solo precarga el campo compartido con `@Nombre ` para que quede claro a quién le está contestando, mismo truco que usa Instagram por dentro (el `@Nombre` queda como texto plano en el comentario, no es un link ni una mención de verdad). No se tocó `PhotoCommentsBlock` — sigue sin "Responder" por comentario, a propósito, mismo criterio simplificado de la 033.
 
 - `Textarea` (`src/design-system/components/forms/Textarea.jsx`) pasó a `React.forwardRef` — antes no hacía falta, ahora `EngagementBlock` necesita enfocar el campo a mano al tocar "Responder" en una respuesta puntual.
+
+**Agrupar visualmente esa respuesta (migración 034)** — al principio, responderle a una respuesta puntual quedaba igual que cualquier otro comentario: al final de la lista, sin nada que la distinga salvo el `@Nombre` en el texto. Ahora se agrupa debajo del comentario al que le contesta, con más sangría y un avatar más chico — como un conjunto propio, no una fila más.
+
+- `comments.reply_to_id` — distinto de `parent_comment_id` (que sigue apuntando siempre al comentario original, nunca a otra respuesta: eso es lo que mantiene el límite de "un solo nivel de anidamiento" real, en la base). `reply_to_id` es solo para agrupar en la pantalla — nunca arma un hilo más profundo.
+- `groupReplies` (adentro de `EngagementBlock.jsx`) resuelve la cadena completa (una respuesta que le contesta a otra respuesta) hasta encontrar la raíz, y agrupa todo bajo ese mismo nivel extra de sangría — no se sigue escalonando más profundo por cada respuesta-a-una-respuesta.
+- `postReply` guarda `reply_to_id` cuando llega (tocaste "Responder" en una respuesta puntual); queda `null` si tocaste el "Comentar" general. `profile_activity`/`recent_activity` ahora también devuelven `reply_to_id` dentro de cada objeto de `replies`, para que `ActivityCard` agrupe igual que `ComentariosScreen`.
 
 ### Adelanto de Descubrir en "Mis clubes de lectura"
 

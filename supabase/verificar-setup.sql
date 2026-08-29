@@ -279,4 +279,8 @@ select 'Migración 032 — recent_activity trae el hilo de respuestas (replies)'
 union all
 select 'Migración 033 — tabla de comentarios de fotos (post_comments)',
        case when exists (select 1 from information_schema.tables where table_name = 'post_comments')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 034 — comments.reply_to_id (agrupar respuestas)',
+       case when exists (select 1 from information_schema.columns where table_name = 'comments' and column_name = 'reply_to_id')
             then 'OK' else 'FALTA' end;

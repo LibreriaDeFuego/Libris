@@ -789,13 +789,19 @@ export async function toggleCommentLike(commentId) {
 
 // Responde a una reseña, cita, comentario o nota de voz — migración 030.
 // La respuesta es un comentario más (kind = 'text'), con parent_comment_id
-// apuntando al original; hereda su club_book_id y chapter_id (no se
-// confía en lo que mande el navegador para eso, se lee del original).
+// apuntando SIEMPRE al original (nunca a otra respuesta — un solo nivel
+// de anidamiento); hereda su club_book_id y chapter_id (no se confía en lo
+// que mande el navegador para eso, se lee del original). "replyToId"
+// (opcional, migración 034) es distinto: si vino de tocar "Responder" en
+// una respuesta puntual (no en el "Comentar" general), guarda a cuál —
+// solo para que la pantalla la agrupe debajo suyo, nunca arma un hilo más
+// profundo.
 export async function postReply(formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
   const parentCommentId = formData.get('parentCommentId')?.toString();
+  const replyToId = formData.get('replyToId')?.toString() || null;
   const body = formData.get('body')?.toString().trim();
   if (!parentCommentId) return { error: 'Falta el comentario original.' };
   if (!body) return { error: 'Escribe algo antes de responder.' };
@@ -814,6 +820,7 @@ export async function postReply(formData) {
     kind: 'text',
     body,
     parent_comment_id: parentCommentId,
+    reply_to_id: replyToId,
   });
   if (error) return { error: friendlyDbError(error) };
 
