@@ -10,12 +10,14 @@ import { ShareButton } from '@/components/ShareButton';
 import { postReply, toggleCommentLike } from '@/app/actions/clubs';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
-// Me gusta + Responder (+ Compartir, opcional) para una reseña, cita,
+// Me gusta + Comentar (+ Compartir, opcional) para una reseña, cita,
 // comentario o nota de voz puntual — y, debajo, su hilo de respuestas: las
 // que ya hay (anidadas, con su propio "me gusta" chico) y el campo para
-// escribir una nueva si se tocó "Responder". Todo en un solo componente
-// porque el botón que abre el campo y el campo en sí comparten el mismo
-// estado (si no, habría que subirlo a quien use esto).
+// escribir una nueva si se tocó "Comentar". El botón dice "Comentar", no
+// "Responder" — es la acción de dejar un comentario, aunque por dentro
+// quede guardado como una respuesta (parent_comment_id) al original. Todo
+// en un solo componente porque el botón que abre el campo y el campo en sí
+// comparten el mismo estado (si no, habría que subirlo a quien use esto).
 export function EngagementBlock({ commentId, liked, likeCount, replies, share }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [body, setBody] = useState('');
@@ -48,7 +50,7 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share })
           }}
         >
           <Icon name="message-circle" size={18} color="var(--text-tertiary)" />
-          <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>Responder</span>
+          <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>Comentar</span>
         </button>
         {share && <ShareButton shared={share.shared} onToggle={share.onToggle} />}
       </div>
@@ -77,13 +79,13 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share })
 
           {replyOpen && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Escribe una respuesta…" rows={2} />
+              <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Escribe un comentario…" rows={2} />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <Button variant="secondary" size="sm" type="button" onClick={() => setReplyOpen(false)} disabled={pending}>
                   Cancelar
                 </Button>
                 <Button variant="primary" size="sm" type="button" onClick={handleSubmitReply} disabled={pending || !body.trim()}>
-                  {pending ? 'Enviando…' : 'Responder'}
+                  {pending ? 'Enviando…' : 'Comentar'}
                 </Button>
               </div>
             </div>

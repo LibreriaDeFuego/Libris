@@ -304,7 +304,7 @@ Los dos tipos que quedaban sin tocar — cerrando el círculo: ahora los cuatro 
 - **La política se angostó bastante en las migraciones 025/027** (`kind in ('review', 'quote')`) — la 028 la vuelve a abrir a los cuatro tipos, listados explícitamente (`kind in ('review', 'quote', 'text', 'voice')`) en vez de sacar la condición del todo, para que un tipo de comentario nuevo el día de mañana no quede editable de arrastre sin que alguien lo decida a propósito.
 - **Solo en Comentarios del club** — a diferencia de reseña/foto/cita, comentarios de capítulo y notas de voz no aparecen en el feed de Inicio (`recent_activity` no los trae) y sí aparecen en el de Perfil (`profile_activity` no filtra por `kind`) pero `ActivityCard` ahí todavía no tiene el menú para estos dos tipos — quedó pendiente a propósito, se puede sumar si hace falta.
 
-### Me gusta, Responder y Compartir (migraciones 029, 030 y 031)
+### Me gusta, Comentar y Compartir (migraciones 029, 030 y 031)
 
 Una fila de acciones bajo cada reseña, cita, comentario, nota de voz y foto — mockeada primero ("Botones de acción") y confirmada antes de construirla.
 
@@ -315,9 +315,9 @@ Una fila de acciones bajo cada reseña, cita, comentario, nota de voz y foto —
 - `profile_activity` y `recent_activity` ahora también traen `like_count` y `liked_by_me`, calculados con un `left join lateral` a la tabla de likes que corresponda — no hace falta una consulta aparte. La pantalla de Comentarios del club, que no pasa por esas funciones, los trae aparte (`comment_likes` filtrado por los ids de esa página) y los mezcla a mano, en `comentarios/page.js`.
 - `LikeButton` (`src/components/LikeButton.jsx`) es el componente — sin estado optimista propio: dispara la acción y el conteo real llega con el refresco normal de la página, mismo patrón que ya usan los botones de eliminar. `Icon.jsx` ganó una prop `fill` opcional (antes no existía) para poder pintar el corazón relleno cuando está marcado.
 
-**Responder (030)** — una respuesta es un comentario más (`kind = 'text'`), con `parent_comment_id` apuntando al original; hereda su `club_book_id`/`chapter_id`. No hace falta una tabla ni una política nueva para publicarla — la política que ya deja comentar en el club no distingue por `kind`. Se excluye de `profile_activity` (con `parent_comment_id is null`) para que no aparezca como una actividad propia repetida en el perfil de quien respondió.
+**Comentar (030)** — el botón dice "Comentar", no "Responder" (hay una diferencia entre las dos palabras y "Comentar" es la que corresponde acá) — pero por dentro sigue siendo una respuesta: un comentario más (`kind = 'text'`), con `parent_comment_id` apuntando al original; hereda su `club_book_id`/`chapter_id`. No hace falta una tabla ni una política nueva para publicarla — la política que ya deja comentar en el club no distingue por `kind`. Se excluye de `profile_activity` (con `parent_comment_id is null`) para que no aparezca como una actividad propia repetida en el perfil de quien comentó.
 
-- **Un solo nivel de anidamiento** — se puede responder a una reseña/cita/comentario/nota de voz, pero no a una respuesta (la UI no ofrece "Responder" ahí; no hay una restricción en la base que lo impida, es una convención de la propia interfaz, igual que "una reseña por persona por libro").
+- **Un solo nivel de anidamiento** — se puede comentar una reseña/cita/comentario/nota de voz, pero no un comentario ya puesto (la UI no ofrece "Comentar" ahí; no hay una restricción en la base que lo impida, es una convención de la propia interfaz, igual que "una reseña por persona por libro").
 - **Al principio solo vivía en Comentarios del club** — llevarlo también a Inicio y Perfil (reseñas y citas) fue la migración 032, más abajo.
 
 **Compartir (031)** — solo tiene sentido, y solo aparece, en tus propios comentarios de capítulo y notas de voz: reseñas, citas y fotos ya aparecen siempre en Inicio, no hay nada que "compartir" ahí. Retoma la idea charlada antes de construirla: los comentarios del club se sentían atrapados adentro, sin forma de que quien los escribió los hiciera más públicos.
@@ -325,13 +325,13 @@ Una fila de acciones bajo cada reseña, cita, comentario, nota de voz y foto —
 - `comments.shared_to_feed boolean not null default false` — todo lo que ya existe queda exactamente como estaba (nada se comparte solo). `recent_activity` ahora también trae comentarios y notas de voz, pero solo si `shared_to_feed = true` (y no son una respuesta).
 - **Solo lo ve el dueño** — `ShareButton` (`src/components/ShareButton.jsx`) se muestra condicionalmente desde quien usa el componente (`isOwn && kind en text/voice`), no hay nada del lado del botón que lo esconda por su cuenta.
 
-Los tres viven juntos en `EngagementBlock` (`src/components/EngagementBlock.jsx`): Me gusta + Responder siempre, Compartir opcional (prop `share`), y debajo, el hilo de respuestas — las que ya hay, anidadas con su propio `LikeButton` chico, y el campo para escribir una nueva si se tocó "Responder". Lo usan `ReviewCard`, cada comentario de capítulo en `ComentariosScreen`, y ahora también `ActivityCard` para reseñas y citas (ver migración 032). Compartir sigue siendo exclusivo de Comentarios del club — reseñas, citas y fotos no lo necesitan en ningún lado.
+Los tres viven juntos en `EngagementBlock` (`src/components/EngagementBlock.jsx`): Me gusta + Comentar siempre, Compartir opcional (prop `share`), y debajo, el hilo de respuestas — las que ya hay, anidadas con su propio `LikeButton` chico, y el campo para escribir una nueva si se tocó "Comentar". Lo usan `ReviewCard`, cada comentario de capítulo en `ComentariosScreen`, y ahora también `ActivityCard` para reseñas y citas (ver migración 032). Compartir sigue siendo exclusivo de Comentarios del club — reseñas, citas y fotos no lo necesitan en ningún lado.
 
-### Responder en Inicio y Perfil, y comentarios en las fotos (migraciones 032 y 033)
+### Comentar en Inicio y Perfil, y comentarios en las fotos (migraciones 032 y 033)
 
 Dos ampliaciones charladas después de construir lo de arriba.
 
-**Responder en Inicio y Perfil (032)** — hasta acá, "Responder" solo vivía en Comentarios del club. Se suma también donde se ven reseñas y citas fuera del club — no a comentarios de capítulo ni notas de voz, que ni siquiera aparecen ahí (o aparecen sin ese menú, ver migración 028).
+**Comentar en Inicio y Perfil (032)** — hasta acá, "Comentar" solo vivía en Comentarios del club. Se suma también donde se ven reseñas y citas fuera del club — no a comentarios de capítulo ni notas de voz, que ni siquiera aparecen ahí (o aparecen sin ese menú, ver migración 028).
 
 - `profile_activity` y `recent_activity` ahora devuelven una columna más, `replies` (`jsonb`) — el hilo completo de esa fila, armado con un `jsonb_agg` en un `left join lateral` (no hace falta una segunda consulta desde la pantalla). Mismas columnas que ya usaba `EngagementBlock` en Comentarios del club (`id`, `body`, `created_at`, `profiles.display_name`, `like_count`, `liked_by_me`), así que no hizo falta tocar ese componente — `ActivityCard` lo empezó a usar tal cual para reseñas y citas, pasándole `activity.replies`.
 - `postReply` (ya existía, migración 030) no necesitó ningún cambio — no le importa desde qué pantalla se llama, solo el id del comentario al que se responde.

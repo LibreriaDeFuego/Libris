@@ -51,10 +51,10 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 //
 // "Me gusta" (LikeButton) va en todo lo que aparece acá — lo ve y lo puede
 // tocar cualquiera, no solo isOwn. La reseña y la cita, además, tienen
-// "Responder" con su hilo (EngagementBlock, mismo componente que usa
+// "Comentar" con su hilo (EngagementBlock, mismo componente que usa
 // Comentarios del club — "replies" ya viene armado desde recent_activity/
 // profile_activity). Comentario de capítulo y nota de voz se quedan con
-// solo el corazón acá (Responder para esos dos sigue siendo solo del
+// solo el corazón acá (Comentar para esos dos sigue siendo solo del
 // club). Las fotos tienen su propia versión simplificada
 // (PhotoCommentsBlock): comentarios en lista plana, sin hilo ni su propio
 // "me gusta" — "Compartir" no aplica a ninguno de los tres, es solo para

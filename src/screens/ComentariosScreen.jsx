@@ -69,7 +69,7 @@ function CommentBody({ comment, book, clubName }) {
 // (BookReviewCard, mismo bloque que usa ActivityCard en Inicio y Perfil) —
 // tocar la tarjeta despliega el resto. En la propia reseña, el menú de 3
 // puntos junto al nombre ofrece editarla (abre FinalReviewModal, precargada)
-// o borrarla. Debajo, Me gusta + Responder y el hilo de respuestas — igual
+// o borrarla. Debajo, Me gusta + Comentar y el hilo de respuestas — igual
 // que en cualquier otro comentario (EngagementBlock).
 function ReviewCard({ review, book, isOwn, onEdit, replies }) {
   const [expanded, setExpanded] = useState(false);
@@ -123,7 +123,7 @@ function ReviewCard({ review, book, isOwn, onEdit, replies }) {
 // con confirmación.
 //
 // Debajo de cada uno (reseña, cita, comentario, nota de voz), EngagementBlock
-// pone Me gusta + Responder y el hilo de respuestas — cualquier miembro del
+// pone Me gusta + Comentar y el hilo de respuestas — cualquier miembro del
 // club los ve. "Compartir" es aparte: solo aparece en tus propios
 // comentarios de capítulo y notas de voz (reseñas/citas ya aparecen
 // siempre en Inicio, no necesitan esto) y solo vos lo ves.

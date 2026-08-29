@@ -5,7 +5,7 @@ import { Icon } from '@/design-system/components/core/Icon.jsx';
 
 // Compartir en Inicio: solo lo ve el dueño del comentario (lo decide quien
 // usa este componente, mostrándolo o no) — a diferencia de Me gusta y
-// Responder, que ve cualquier miembro del club. Por ahora solo tiene
+// Comentar, que ve cualquier miembro del club. Por ahora solo tiene
 // sentido en comentarios de capítulo y notas de voz: reseñas, citas y
 // fotos ya aparecen siempre en Inicio.
 export function ShareButton({ shared, onToggle }) {
