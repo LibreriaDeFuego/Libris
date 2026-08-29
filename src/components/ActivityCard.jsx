@@ -11,8 +11,10 @@ import { PostMenu } from '@/components/PostMenu';
 import { EditPostModal } from '@/components/EditPostModal';
 import { EditQuoteModal } from '@/components/EditQuoteModal';
 import { LikeButton } from '@/components/LikeButton';
+import { EngagementBlock } from '@/components/EngagementBlock';
+import { PhotoCommentsBlock } from '@/components/PhotoCommentsBlock';
 import { deleteBookReview, deleteQuote, toggleCommentLike } from '@/app/actions/clubs';
-import { deletePost, togglePostLike } from '@/app/actions/posts';
+import { deletePost } from '@/app/actions/posts';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
 // Una tarjeta de actividad, con el mismo orden que un posteo de Instagram:
@@ -48,8 +50,15 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 // pendientes a propósito (ver README).
 //
 // "Me gusta" (LikeButton) va en todo lo que aparece acá — lo ve y lo puede
-// tocar cualquiera, no solo isOwn. "Responder" y "Compartir" no viven acá
-// todavía: solo en Comentarios del club (ver README).
+// tocar cualquiera, no solo isOwn. La reseña y la cita, además, tienen
+// "Responder" con su hilo (EngagementBlock, mismo componente que usa
+// Comentarios del club — "replies" ya viene armado desde recent_activity/
+// profile_activity). Comentario de capítulo y nota de voz se quedan con
+// solo el corazón acá (Responder para esos dos sigue siendo solo del
+// club). Las fotos tienen su propia versión simplificada
+// (PhotoCommentsBlock): comentarios en lista plana, sin hilo ni su propio
+// "me gusta" — "Compartir" no aplica a ninguno de los tres, es solo para
+// comentarios de capítulo/notas de voz, y ese vive solo en el club.
 export function ActivityCard({ activity, canOpenClub, personName, author, isOwn }) {
   const [expanded, setExpanded] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState(false);
@@ -154,7 +163,12 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
         <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
           <BookReviewCard title={activity.title} body={activity.body} coverUrl={activity.book_cover_url} expanded={expanded} />
         </div>
-        <LikeButton liked={activity.liked_by_me} count={activity.like_count} onToggle={() => toggleCommentLike(activity.id)} />
+        <EngagementBlock
+          commentId={activity.id}
+          liked={activity.liked_by_me}
+          likeCount={activity.like_count}
+          replies={activity.replies ?? []}
+        />
         <div style={{ padding: '0 2px' }}>
           <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600 }}>
             {activity.club_name} · terminó {activity.book_title}
@@ -205,11 +219,23 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
         }}
       />
 
-      <LikeButton
-        liked={activity.liked_by_me}
-        count={activity.like_count}
-        onToggle={() => (isPhoto ? togglePostLike(activity.id) : toggleCommentLike(activity.id))}
-      />
+      {isPhoto ? (
+        <PhotoCommentsBlock
+          postId={activity.id}
+          liked={activity.liked_by_me}
+          likeCount={activity.like_count}
+          comments={activity.replies ?? []}
+        />
+      ) : isQuote ? (
+        <EngagementBlock
+          commentId={activity.id}
+          liked={activity.liked_by_me}
+          likeCount={activity.like_count}
+          replies={activity.replies ?? []}
+        />
+      ) : (
+        <LikeButton liked={activity.liked_by_me} count={activity.like_count} onToggle={() => toggleCommentLike(activity.id)} />
+      )}
 
       <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer', padding: '0 2px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 6 }}>

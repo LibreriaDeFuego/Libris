@@ -269,4 +269,14 @@ select 'Migración 030 — comments.parent_comment_id (Responder)',
 union all
 select 'Migración 031 — comments.shared_to_feed (Compartir)',
        case when exists (select 1 from information_schema.columns where table_name = 'comments' and column_name = 'shared_to_feed')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 032 — recent_activity trae el hilo de respuestas (replies)',
+       case when exists (
+              select 1 from pg_proc where proname = 'recent_activity' and prosrc like '%replies%'
+            )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 033 — tabla de comentarios de fotos (post_comments)',
+       case when exists (select 1 from information_schema.tables where table_name = 'post_comments')
             then 'OK' else 'FALTA' end;

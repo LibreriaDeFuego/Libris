@@ -130,7 +130,13 @@ supabase/
                              profile_activity excluye las respuestas),
                            031_compartir_en_inicio.sql (comments.
                              shared_to_feed, recent_activity trae texto/voz
-                             compartidos)
+                             compartidos),
+                           032_responder_en_inicio_y_perfil.sql (columna
+                             "replies" en profile_activity/recent_activity,
+                             el hilo de la reseña/cita),
+                           033_comentarios_en_fotos.sql (tabla post_comments,
+                             "replies" también lleva los comentarios de
+                             cada foto)
   verificar-setup.sql     # chequea que las migraciones estén aplicadas
 ```
 
@@ -312,14 +318,29 @@ Una fila de acciones bajo cada reseña, cita, comentario, nota de voz y foto —
 **Responder (030)** — una respuesta es un comentario más (`kind = 'text'`), con `parent_comment_id` apuntando al original; hereda su `club_book_id`/`chapter_id`. No hace falta una tabla ni una política nueva para publicarla — la política que ya deja comentar en el club no distingue por `kind`. Se excluye de `profile_activity` (con `parent_comment_id is null`) para que no aparezca como una actividad propia repetida en el perfil de quien respondió.
 
 - **Un solo nivel de anidamiento** — se puede responder a una reseña/cita/comentario/nota de voz, pero no a una respuesta (la UI no ofrece "Responder" ahí; no hay una restricción en la base que lo impida, es una convención de la propia interfaz, igual que "una reseña por persona por libro").
-- **Por ahora, solo en Comentarios del club** — ahí es donde ya está disponible el arreglo completo de comentarios de un libro para armar el hilo. Extenderlo a la reseña que se ve en Inicio/Perfil llevaría a `recent_activity`/`profile_activity` a devolver también las respuestas de cada fila, más trabajo que se dejó pendiente a propósito.
+- **Al principio solo vivía en Comentarios del club** — llevarlo también a Inicio y Perfil (reseñas y citas) fue la migración 032, más abajo.
 
 **Compartir (031)** — solo tiene sentido, y solo aparece, en tus propios comentarios de capítulo y notas de voz: reseñas, citas y fotos ya aparecen siempre en Inicio, no hay nada que "compartir" ahí. Retoma la idea charlada antes de construirla: los comentarios del club se sentían atrapados adentro, sin forma de que quien los escribió los hiciera más públicos.
 
 - `comments.shared_to_feed boolean not null default false` — todo lo que ya existe queda exactamente como estaba (nada se comparte solo). `recent_activity` ahora también trae comentarios y notas de voz, pero solo si `shared_to_feed = true` (y no son una respuesta).
 - **Solo lo ve el dueño** — `ShareButton` (`src/components/ShareButton.jsx`) se muestra condicionalmente desde quien usa el componente (`isOwn && kind en text/voice`), no hay nada del lado del botón que lo esconda por su cuenta.
 
-Los tres viven juntos en `EngagementBlock` (`src/components/EngagementBlock.jsx`): Me gusta + Responder siempre, Compartir opcional (prop `share`), y debajo, el hilo de respuestas — las que ya hay, anidadas con su propio `LikeButton` chico, y el campo para escribir una nueva si se tocó "Responder". Lo usan tanto `ReviewCard` como cada comentario de capítulo en `ComentariosScreen`; `ActivityCard` (Inicio y Perfil) usa `LikeButton` solo, sin Responder ni Compartir (ver más arriba).
+Los tres viven juntos en `EngagementBlock` (`src/components/EngagementBlock.jsx`): Me gusta + Responder siempre, Compartir opcional (prop `share`), y debajo, el hilo de respuestas — las que ya hay, anidadas con su propio `LikeButton` chico, y el campo para escribir una nueva si se tocó "Responder". Lo usan `ReviewCard`, cada comentario de capítulo en `ComentariosScreen`, y ahora también `ActivityCard` para reseñas y citas (ver migración 032). Compartir sigue siendo exclusivo de Comentarios del club — reseñas, citas y fotos no lo necesitan en ningún lado.
+
+### Responder en Inicio y Perfil, y comentarios en las fotos (migraciones 032 y 033)
+
+Dos ampliaciones charladas después de construir lo de arriba.
+
+**Responder en Inicio y Perfil (032)** — hasta acá, "Responder" solo vivía en Comentarios del club. Se suma también donde se ven reseñas y citas fuera del club — no a comentarios de capítulo ni notas de voz, que ni siquiera aparecen ahí (o aparecen sin ese menú, ver migración 028).
+
+- `profile_activity` y `recent_activity` ahora devuelven una columna más, `replies` (`jsonb`) — el hilo completo de esa fila, armado con un `jsonb_agg` en un `left join lateral` (no hace falta una segunda consulta desde la pantalla). Mismas columnas que ya usaba `EngagementBlock` en Comentarios del club (`id`, `body`, `created_at`, `profiles.display_name`, `like_count`, `liked_by_me`), así que no hizo falta tocar ese componente — `ActivityCard` lo empezó a usar tal cual para reseñas y citas, pasándole `activity.replies`.
+- `postReply` (ya existía, migración 030) no necesitó ningún cambio — no le importa desde qué pantalla se llama, solo el id del comentario al que se responde.
+
+**Comentarios en las fotos (033)** — las fotos nunca tuvieron dónde comentar, solo el texto que la propia persona escribe al publicarlas.
+
+- Tabla nueva, `post_comments` (no una fila más en `comments`, que exige un `club_book_id` que una foto no tiene). Más simple a propósito que el hilo de reseñas/citas: lista plana, sin responder a un comentario puntual ni su propio "me gusta" — se puede sumar después si hace falta.
+- La misma columna `replies` de `profile_activity`/`recent_activity` lleva, para las filas `kind = 'photo'`, los comentarios de esa foto en vez de un hilo de respuestas — mismo lugar, para que `ActivityCard` no tenga que distinguir de dónde vienen.
+- `PhotoCommentsBlock` (`src/components/PhotoCommentsBlock.jsx`) es el componente — mismo patrón visual que `EngagementBlock` (Me gusta + un botón que abre la lista y el campo para escribir) pero sin hilo anidado. `postPhotoComment` en `src/app/actions/posts.js`.
 
 ### Adelanto de Descubrir en "Mis clubes de lectura"
 

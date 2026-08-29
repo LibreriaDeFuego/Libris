@@ -123,3 +123,27 @@ export async function togglePostLike(postId) {
   revalidatePath('/', 'layout');
   return { error: null };
 }
+
+// Comenta una foto — migración 033. Tabla aparte ("post_comments"), no una
+// fila más en "comments": esa exige un club_book_id que una foto no tiene.
+// Lista plana, sin responder a un comentario puntual ni su propio "me
+// gusta" — más simple a propósito que el hilo de reseñas/citas.
+export async function postPhotoComment(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const postId = formData.get('postId')?.toString();
+  const body = formData.get('body')?.toString().trim();
+  if (!postId) return { error: 'Falta la foto.' };
+  if (!body) return { error: 'Escribe algo antes de comentar.' };
+
+  const { error } = await supabase.from('post_comments').insert({
+    post_id: postId,
+    profile_id: user.id,
+    body,
+  });
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
