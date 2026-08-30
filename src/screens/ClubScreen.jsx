@@ -89,7 +89,6 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
             chapters={orderedChapters}
             currentChapterId={myProgress?.chapter_id ?? null}
             streakCount={myProgress?.streak_count ?? 0}
-            onOpenFull={() => setShowModal(true)}
           />
 
           <ClubActivityFeed clubId={club.id} activity={activity} />
