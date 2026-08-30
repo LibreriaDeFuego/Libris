@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { updateProgress } from '@/app/actions/clubs';
 
@@ -19,12 +19,20 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
   const [error, setError] = useState(null);
+  const currentNodeRef = useRef(null);
 
   useEffect(() => {
     if (!toast) return undefined;
     const t = setTimeout(() => setToast(null), 2400);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // Centra el capítulo actual al abrir la pantalla, para no obligar a
+  // buscarlo scrolleando en libros largos — solo al montar: si después
+  // tocás otro capítulo, no te saca del lugar donde acabás de tocar.
+  useEffect(() => {
+    currentNodeRef.current?.scrollIntoView({ block: 'center' });
+  }, []);
 
   if (!chapters || chapters.length === 0) return null;
 
@@ -84,6 +92,7 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
                   </div>
                   <button
                     type="button"
+                    ref={isCurrent ? currentNodeRef : undefined}
                     onClick={() => handleTap(chapter)}
                     disabled={isCurrent || isSaving}
                     aria-label={`Cap. ${chapter.number}${isCurrent ? ' (tu capítulo actual)' : ''}`}
