@@ -356,6 +356,13 @@ Dos ampliaciones charladas después de construir lo de arriba.
 - `groupReplies` (adentro de `EngagementBlock.jsx`) resuelve la cadena completa (una respuesta que le contesta a otra respuesta) hasta encontrar la raíz, y agrupa todo bajo ese mismo nivel extra de sangría — no se sigue escalonando más profundo por cada respuesta-a-una-respuesta.
 - `postReply` guarda `reply_to_id` cuando llega (tocaste "Responder" en una respuesta puntual); queda `null` si tocaste el "Comentar" general. `profile_activity`/`recent_activity` ahora también devuelven `reply_to_id` dentro de cada objeto de `replies`, para que `ActivityCard` agrupe igual que `ComentariosScreen`.
 
+### Se sacó "Impresiones recientes" de la pantalla del club
+
+La pantalla de un club (`/club/[clubId]`, con el héroe de portada) ya no muestra, debajo, la lista de los últimos comentarios/citas/notas de voz del libro ("Impresiones recientes") — quedaba redundante con Comentarios del club, que ya es adonde se entra a comentar de verdad.
+
+- No hizo falta ninguna migración — es sacar una sección de `ClubScreen.jsx`, no un cambio de datos.
+- El puntito verde de actividad en el selector de club (`ClubSwitcher`, arriba del héroe) se mantuvo — es una señal aparte, no la lista en sí — pero pasó a calcularse con un conteo liviano (`{ count: 'exact', head: true }`) en vez de traer los 3 comentarios completos que ya no se muestran en ningún lado.
+
 ### Adelanto de Descubrir en "Mis clubes de lectura"
 
 La pantalla de Club (`/`) ya no termina en la lista de tus clubes: debajo, un adelanto de Descubrir con un acceso a la búsqueda (lleva a `/descubrir`, que es donde de verdad se puede tipear) y un par de clubes públicos que todavía no son tuyos — mismo criterio y misma función (`discover_public_clubs`) que la pestaña Descubrir, filtrando los que ya están en "Mis clubes". No hay pestaña nueva ni cambio en la barra de abajo: Descubrir sigue siendo su propia pestaña, esto es solo un adelanto para quien no piensa en tocarla por su cuenta.

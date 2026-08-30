@@ -31,10 +31,10 @@ export default async function Page({ params }) {
   };
 
   if (!clubBook) {
-    return <ClubScreen {...baseProps} book={null} clubBookId={null} chapters={[]} volumes={[]} myProgress={null} myReview={null} previews={[]} otherClubsCount={0} />;
+    return <ClubScreen {...baseProps} book={null} clubBookId={null} chapters={[]} volumes={[]} myProgress={null} myReview={null} hasActivity={false} otherClubsCount={0} />;
   }
 
-  const [{ data: chapters }, { data: volumes }, { data: myProgress }, { data: myReview }, { data: comments }, { data: otherClubsCount }] = await Promise.all([
+  const [{ data: chapters }, { data: volumes }, { data: myProgress }, { data: myReview }, { count: commentCount }, { data: otherClubsCount }] = await Promise.all([
     supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
     supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
     supabase
@@ -52,13 +52,13 @@ export default async function Page({ params }) {
       .eq('profile_id', user.id)
       .eq('kind', 'review')
       .maybeSingle(),
+    // Ya no se muestra la lista de comentarios acá ("Impresiones recientes"
+    // se sacó de esta pantalla) — solo un conteo, liviano, para el punto de
+    // actividad del selector de club (ClubSwitcher).
     supabase
       .from('comments')
-      .select('id, kind, body, is_spoiler, created_at, profiles(display_name)')
-      .eq('club_book_id', clubBook.id)
-      .neq('kind', 'review') // las reseñas tienen su propia sección, no van en "Impresiones recientes"
-      .order('created_at', { ascending: false })
-      .limit(3),
+      .select('id', { count: 'exact', head: true })
+      .eq('club_book_id', clubBook.id),
     // RLS solo expone los clubes propios; el conteo de "otros clubes leyendo
     // lo mismo" viene de una función security definer.
     supabase.rpc('other_clubs_reading_count', {
@@ -76,7 +76,7 @@ export default async function Page({ params }) {
       volumes={volumes ?? []}
       myProgress={myProgress ?? null}
       myReview={myReview ?? null}
-      previews={comments ?? []}
+      hasActivity={(commentCount ?? 0) > 0}
       otherClubsCount={Number(otherClubsCount ?? 0)}
     />
   );
