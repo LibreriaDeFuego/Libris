@@ -7,7 +7,9 @@ import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { InviteButton } from '@/components/InviteButton';
 import { CoverHero } from '@/components/CoverHero';
+import { MemberProgressStrip } from '@/components/MemberProgressStrip';
 import { ChapterProgressChips } from '@/components/ChapterProgressChips';
+import { ClubActivityFeed } from '@/components/ClubActivityFeed';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
 import { FinalReviewModal } from './FinalReviewModal.jsx';
 import { orderChapters } from '@/lib/orderChapters';
@@ -34,7 +36,7 @@ function PreferenciasIconButton({ clubId, pendingRequestCount, tone }) {
   );
 }
 
-export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, hasActivity, otherClubsCount, isAdmin, pendingRequestCount = 0 }) {
+export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, members, activity, currentUserId, hasActivity, otherClubsCount, isAdmin, pendingRequestCount = 0 }) {
   const [showModal, setShowModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const router = useRouter();
@@ -78,11 +80,19 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
             onPrimaryClick={() => setShowModal(true)}
           />
 
+          <MemberProgressStrip
+            members={members ?? []}
+            currentUserId={currentUserId}
+            myChapterId={myProgress?.chapter_id ?? null}
+          />
+
           <ChapterProgressChips
             clubBookId={clubBookId}
             chapters={orderedChapters}
             currentChapterId={myProgress?.chapter_id ?? null}
           />
+
+          <ClubActivityFeed clubId={club.id} activity={activity} />
 
           {otherClubsCount > 0 && (
             <div style={{ padding: '20px 18px 24px', background: 'var(--surface-page)' }}>
