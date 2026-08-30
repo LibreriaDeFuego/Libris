@@ -23,9 +23,9 @@ export function CoverUploader({ bookId, hasCover, tone = 'dark' }) {
     if (!file) return;
 
     startTransition(async () => {
-      // Achicamos la foto antes de subirla (sin recortarla — el encuadre lo
-      // define después EncuadreScreen, con la imagen ya liviana). Si algo
-      // falla en el navegador, subimos el archivo original igual.
+      // Achicamos la foto antes de subirla, sin recortarla — CoverHero la
+      // muestra completa, con su propia proporción. Si algo falla en el
+      // navegador, subimos el archivo original igual.
       const toUpload = await compressImage(file).catch(() => file);
 
       const formData = new FormData();

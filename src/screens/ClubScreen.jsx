@@ -66,8 +66,6 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
         <>
           <CoverHero
             book={book}
-            crop={book.cover_crop}
-            hasTitle={book.cover_has_title ?? true}
             clubs={clubs}
             activeClub={club}
             hasActivity={hasActivity}

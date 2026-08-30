@@ -78,34 +78,6 @@ export async function uploadAvatar(prevState, formData) {
   return { error: null };
 }
 
-// Guarda el encuadre de la portada (qué parte se ve en el héroe) y si esa
-// tapa ya trae el título impreso. Solo administradores (lo impone RLS).
-export async function updateCoverFrame(formData) {
-  const supabase = await createClient();
-  await requireUser(supabase);
-
-  const bookId = formData.get('bookId')?.toString();
-  const cropRaw = formData.get('crop')?.toString();
-  const hasTitle = formData.get('hasTitle') === 'on';
-  if (!bookId || !cropRaw) return { error: 'Falta el encuadre.' };
-
-  let crop;
-  try {
-    crop = JSON.parse(cropRaw);
-  } catch {
-    return { error: 'El encuadre no es válido.' };
-  }
-
-  const { error } = await supabase
-    .from('books')
-    .update({ cover_crop: crop, cover_has_title: hasTitle })
-    .eq('id', bookId);
-  if (error) return { error: friendlyDbError(error) };
-
-  revalidatePath('/', 'layout');
-  return { error: null };
-}
-
 // Publica una nota de voz. El audio va a un bucket privado bajo la carpeta del
 // libro del club: esa carpeta es lo que usa la política de Storage para
 // verificar que quien escucha sea miembro. Guardamos el path (no una URL),

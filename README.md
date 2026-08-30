@@ -413,20 +413,14 @@ Como no todos los miembros de un club leen la misma edición (cambia la paginaci
 
 El servidor es el que calcula el % siempre (antes lo elegía un slider que en realidad medía el avance dentro del capítulo, no el del libro entero — quedaba inconsistente con la barra).
 
-### Héroe de portada y encuadre
+### Héroe del club — la misma solución visual que la reseña final
 
-El detalle del club (`ClubScreen`) muestra la portada a pantalla completa ("a sangre"): título, autor, progreso y acciones se apoyan abajo sobre un scrim, en vez del layout viejo de una tarjeta chica de 46×66 px. Viene de un handoff de diseño (`design_handoff_hero_portada/`, hecho en Claude Design) — ver ese README para el detalle visual completo.
+El detalle del club (`ClubScreen`) mostró primero la portada a pantalla completa ("a sangre", ver `design_handoff_hero_portada/` para ese diseño original), con un editor de encuadre aparte para que el admin eligiera qué parte de la foto se veía. Se reemplazó por el mismo mecanismo visual que ya tenía `BookReviewCard` (la tarjeta de "Reseña final"): panel de color sólido (`accent-500`) con el kicker, título y autor arriba, y la portada flotando chica más abajo — con su proporción natural, sin recortar — con la sombra apilada en diagonal y el brillo por encima.
 
-Dos piezas nuevas:
+- **`CoverHero`** (`src/components/CoverHero.jsx`) — el héroe en sí, ahora un solo modo (antes tenía `variant='screen'`/`variant='preview'` para el editor de encuadre, que ya no existe). Al no recortar la portada, no hace falta saber "qué parte se ve" — la imagen se muestra completa, como en la reseña.
+- El **editor de encuadre** (`/club/[clubId]/portada`, arrastrar y hacer zoom) se sacó entero: sin recorte no tenía nada que definir. Con eso se fue `cover_crop` (deja de leerse y escribirse — la columna sigue en `books`, sin usar, no se borró) y `src/lib/coverFrame.js` deja de tener ese consumidor (lo sigue usando `PhotoCropModal`, que es un recorte genérico para fotos de lectura y de perfil — nada que ver con el héroe).
 
-- **`CoverHero`** (`src/components/CoverHero.jsx`) — el héroe en sí. Lo usan tanto `ClubScreen` (variant `screen`, llena el alto disponible) como la vista previa en vivo del editor de encuadre (variant `preview`, marco de teléfono fijo 390×844) — una sola función para los dos, así nunca pueden mostrar datos distintos.
-- **Editor de encuadre** (`/club/[clubId]/portada`, solo administradores) — arrastrar y hacer zoom sobre la portada para decidir qué parte se ve en el héroe, con vista previa en vivo. La matemática (escala "cubrir", clamp para no dejar huecos, los 4 presets, y la persistencia como 4 números normalizados 0–1 en vez de un transform en px) está en `src/lib/coverFrame.js`, portada casi literal del prototipo del handoff.
-
-**Título duplicado**: casi todas las portadas ya traen el título impreso, así que por defecto (`cover_has_title = true`) el héroe no lo repite — muestra el autor más grande y el kicker "Leyendo ahora" en su lugar. El admin lo puede desactivar desde el editor de encuadre si la tapa que subió no trae título. Se decidió *no* intentar detectar esto automáticamente analizando la imagen (se probó y da falsos positivos/negativos con portadas ilustradas o de mucho grano) — es un switch explícito.
-
-`cover_crop` (jsonb: `{x, y, w, h}` normalizados 0–1 respecto del tamaño natural de la imagen) y `cover_has_title` viven en `books`, no en `club_books` — igual que `cover_url`, se comparten entre todos los clubes que están leyendo ese mismo libro.
-
-**Pendiente, tal como lo dejó el handoff**: libros sin portada no tienen todavía un fallback tipográfico (por ahora solo se ve el degradé de fondo); y hoy un solo encuadre sirve para el héroe y para cualquier miniatura futura — si una miniatura cuadrada quedara mal recortada, va a hacer falta un segundo encuadre.
+**Título duplicado**: esto seguía necesitando resolverse en otro lado — el generador de citas para compartir (`src/lib/quoteCard.js`, estilo "cover") sigue dibujando la portada a pantalla completa detrás de la cita, y ahí sí hace falta saber si esa portada ya trae el título impreso para no repetirlo. Ese switch (`cover_has_title` en `books`) se movió de aquel editor a un toggle simple dentro de **Preferencias del club → El libro en curso** ("La portada ya trae el título"), guardado junto con el título/autor del libro en la misma Server Action (`updateClubPreferences`).
 
 ### Actualizar progreso tocando un capítulo
 
