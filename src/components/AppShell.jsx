@@ -41,7 +41,12 @@ export function AppShell({ children, me }) {
           boxShadow: 'var(--shadow-lg)',
         }}
       >
-        <main style={{ flex: 1 }}>{children}</main>
+        {/* El tab bar es sticky, no fijo aparte del flujo: si el contenido
+            mide apenas un poco más que la pantalla (p. ej. un club con
+            pocos capítulos), "sticky" no empuja lo de arriba — lo tapa. Este
+            padding reserva su alto real para que nunca oculte el último
+            tramo del contenido, en cualquier pantalla. */}
+        <main style={{ flex: 1, paddingBottom: showTabBar ? 'calc(70px + env(safe-area-inset-bottom, 8px))' : 0 }}>{children}</main>
 
         {showTabBar && (
         <nav

@@ -428,6 +428,16 @@ Dos piezas nuevas:
 
 **Pendiente, tal como lo dejó el handoff**: libros sin portada no tienen todavía un fallback tipográfico (por ahora solo se ve el degradé de fondo); y hoy un solo encuadre sirve para el héroe y para cualquier miniatura futura — si una miniatura cuadrada quedara mal recortada, va a hacer falta un segundo encuadre.
 
+### Actualizar progreso tocando un capítulo
+
+El héroe ya no tiene el botón grande "Actualizar progreso" ni el ícono cuadrado de comentarios al lado. En su lugar:
+
+- **`ChapterProgressChips`** (`src/components/ChapterProgressChips.jsx`) — debajo del héroe, una fila de chips horizontales con los capítulos del libro. Tocar uno actualiza el progreso al toque (misma Server Action `updateProgress`, `mode: 'chapter'`, que ya usaba el modal) — sin abrir ningún modal. El chip tocado se marca como propio al instante (estado optimista, antes de que vuelva la confirmación del servidor) y aparece un aviso breve ("Ahora vas por Cap. X") que se desvanece solo. Solo se muestra si el libro tiene capítulos cargados.
+- **Lápiz chico** junto al capítulo actual, dentro del héroe — sigue abriendo el modal completo de "Actualizar progreso", que es donde viven el progreso por página, las reacciones al capítulo y "Terminé el libro" (dispara la reseña final).
+- El acceso a "Comentarios del club" que antes vivía en ese ícono cuadrado se movió a la fila de íconos de arriba del héroe (junto a Invitar/Preferencias), para no perderlo.
+
+Este cambio dejó expuesto un bug de layout preexistente en `AppShell`: el tab bar de abajo es `position: sticky`, y cuando el contenido de una pantalla mide apenas un poco más que la pantalla del teléfono, "sticky" no empuja lo de arriba — lo tapa. Se corrigió reservándole su alto real como `padding-bottom` del contenido (`calc(70px + env(safe-area-inset-bottom, 8px))`), así el tab bar nunca vuelve a superponerse al final de ninguna pantalla.
+
 ### Contenido editorial
 
 `editorial_items` alimenta las solapas Guías/Cursos de **Recursos**. No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.

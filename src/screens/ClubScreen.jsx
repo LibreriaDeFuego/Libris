@@ -7,6 +7,7 @@ import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { InviteButton } from '@/components/InviteButton';
 import { CoverHero } from '@/components/CoverHero';
+import { ChapterProgressChips } from '@/components/ChapterProgressChips';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
 import { FinalReviewModal } from './FinalReviewModal.jsx';
 import { orderChapters } from '@/lib/orderChapters';
@@ -44,6 +45,9 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
 
   const headerRight = (
     <>
+      <Link href={`/club/${club.id}/comentarios`}>
+        <IconButton aria-label="Comentarios del club" tone="glass" size={36}><Icon name="message-circle" size={16} /></IconButton>
+      </Link>
       <InviteButton clubId={club.id} tone="glass" />
       {isAdmin && (
         <Link href={`/club/${club.id}/capitulos`}>
@@ -72,7 +76,12 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
             percent={percent}
             pips={pips}
             onPrimaryClick={() => setShowModal(true)}
-            commentsHref={`/club/${club.id}/comentarios`}
+          />
+
+          <ChapterProgressChips
+            clubBookId={clubBookId}
+            chapters={orderedChapters}
+            currentChapterId={myProgress?.chapter_id ?? null}
           />
 
           {otherClubsCount > 0 && (

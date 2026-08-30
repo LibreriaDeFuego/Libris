@@ -385,7 +385,6 @@ export function EncuadreScreen({ club, clubs, book, chapters, volumes, myProgres
           unit={unit}
           percent={myProgress?.percent ?? 0}
           pips={pips}
-          commentsHref={`/club/${club.id}/comentarios`}
         />
       </div>
     </div>

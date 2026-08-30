@@ -39,3 +39,9 @@ export function chapterDisplayLabel(chapter) {
   if (chapter.title) return `Cap. ${chapter.number}. ${chapter.title}`;
   return chapter.label ?? `Cap. ${chapter.number}`;
 }
+
+// Versión corta, sin el título propio — para los chips de navegación rápida
+// del héroe del club, donde el título completo no entra.
+export function chapterShortLabel(chapter) {
+  return chapter.label ?? `Cap. ${chapter.number}`;
+}

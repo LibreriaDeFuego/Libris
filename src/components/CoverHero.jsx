@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { ClubSwitcher } from '@/components/ClubSwitcher';
@@ -31,9 +30,6 @@ export function CoverHero({
   percent = 0,
   pips,
   onPrimaryClick,
-  primaryLabel = 'Actualizar progreso',
-  primaryDisabled = false,
-  commentsHref,
 }) {
   const isPreview = variant === 'preview';
 
@@ -128,7 +124,14 @@ export function CoverHero({
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 38, fontWeight: 800, letterSpacing: '-.03em', lineHeight: 0.9, color: CREAM }}>
             {percent}%
           </div>
-          <div style={{ fontSize: 12.5, color: 'rgba(255,248,236,.58)' }}>{progressMeta}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 12.5, color: 'rgba(255,248,236,.58)' }}>{progressMeta}</div>
+            {onPrimaryClick && (
+              <IconButton aria-label="Actualizar progreso" onClick={onPrimaryClick} tone="glass" size={24}>
+                <Icon name="pencil" size={11} />
+              </IconButton>
+            )}
+          </div>
         </div>
 
         <div style={{ marginTop: 13 }}>
@@ -149,34 +152,6 @@ export function CoverHero({
             <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,248,236,.16)', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${pips?.percent ?? percent}%`, borderRadius: 2, background: 'var(--accent-400)' }} />
             </div>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button
-            type="button"
-            onClick={onPrimaryClick}
-            disabled={primaryDisabled}
-            style={{
-              flex: 1, height: 52, borderRadius: 16, border: 0, background: 'var(--accent-500)', color: CREAM,
-              fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 700,
-              boxShadow: '0 10px 26px rgba(255,79,50,.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
-              cursor: primaryDisabled ? 'default' : 'pointer', opacity: primaryDisabled ? 0.6 : 1,
-            }}
-          >
-            <Icon name="book-open" size={17} color={CREAM} />
-            {primaryLabel}
-          </button>
-          {commentsHref && (
-            <Link
-              href={commentsHref}
-              style={{
-                flex: '0 0 52px', height: 52, borderRadius: 16, background: 'rgba(255,248,236,.10)',
-                border: '1px solid rgba(255,248,236,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <Icon name="message-circle" size={19} color={CREAM} />
-            </Link>
           )}
         </div>
       </div>
