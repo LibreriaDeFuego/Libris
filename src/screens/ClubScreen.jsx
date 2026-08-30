@@ -8,7 +8,7 @@ import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { InviteButton } from '@/components/InviteButton';
 import { CoverHero } from '@/components/CoverHero';
 import { MemberProgressStrip } from '@/components/MemberProgressStrip';
-import { ChapterProgressChips } from '@/components/ChapterProgressChips';
+import { ChapterPath } from '@/components/ChapterPath';
 import { ClubActivityFeed } from '@/components/ClubActivityFeed';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
 import { FinalReviewModal } from './FinalReviewModal.jsx';
@@ -84,10 +84,12 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
             myChapterId={myProgress?.chapter_id ?? null}
           />
 
-          <ChapterProgressChips
+          <ChapterPath
             clubBookId={clubBookId}
             chapters={orderedChapters}
             currentChapterId={myProgress?.chapter_id ?? null}
+            streakCount={myProgress?.streak_count ?? 0}
+            onOpenFull={() => setShowModal(true)}
           />
 
           <ClubActivityFeed clubId={club.id} activity={activity} />

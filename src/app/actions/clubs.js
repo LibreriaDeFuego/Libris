@@ -439,6 +439,30 @@ export async function updateClubPreferences(prevState, formData) {
   return { error: null, saved: true };
 }
 
+// "Hoy" y "ayer" en UTC, como 'YYYY-MM-DD' — mismo criterio que la columna
+// date de last_activity_date. Simplificación consciente: alguien que lee
+// pasada la medianoche en su huso horario puede ver la racha contarse un
+// día distinto al que espera; no vale la pena la complejidad de guardar el
+// huso de cada persona solo para esto.
+function utcDateString(date) {
+  return date.toISOString().slice(0, 10);
+}
+function utcYesterday(todayStr) {
+  const d = new Date(`${todayStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return utcDateString(d);
+}
+
+// Racha de días seguidos leyendo ESTE libro de ESTE club (no es una racha
+// global de la cuenta) — migración 035. Un mismo día puede actualizarse
+// progreso varias veces sin que la racha suba de más.
+function nextStreak(existing, today) {
+  const lastDate = existing?.last_activity_date;
+  if (lastDate === today) return existing.streak_count ?? 1;
+  if (lastDate === utcYesterday(today)) return (existing?.streak_count ?? 0) + 1;
+  return 1;
+}
+
 // Actualiza el progreso del usuario en el libro activo de un club. Tres
 // formas de registrarlo, porque cada quien puede tener una edición distinta
 // del mismo libro:
@@ -461,6 +485,13 @@ export async function updateProgress(formData) {
   const reaction = formData.get('reaction') || null;
   if (!clubBookId) return { error: 'Falta el libro del club.' };
 
+  const { data: existing } = await supabase
+    .from('reading_progress')
+    .select('total_pages, streak_count, last_activity_date')
+    .eq('club_book_id', clubBookId)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+
   let chapterId = null;
   let currentPage = null;
   let totalPages = null;
@@ -475,10 +506,9 @@ export async function updateProgress(formData) {
     if (currentPage > totalPages) return { error: 'La página no puede ser mayor que el total.' };
     percent = Math.round((currentPage / totalPages) * 100);
   } else if (mode === 'finished') {
-    const [{ data: chapters }, { data: volumes }, { data: existing }] = await Promise.all([
+    const [{ data: chapters }, { data: volumes }] = await Promise.all([
       supabase.from('chapters').select('id, number, volume_id').eq('club_book_id', clubBookId),
       supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBookId),
-      supabase.from('reading_progress').select('total_pages').eq('club_book_id', clubBookId).eq('profile_id', user.id).maybeSingle(),
     ]);
     const ordered = orderChapters(chapters ?? [], volumes ?? []);
     if (ordered.length > 0) {
@@ -505,7 +535,11 @@ export async function updateProgress(formData) {
     percent = Math.round(((index + 1) / ordered.length) * 100);
   }
 
-  const payload = { club_book_id: clubBookId, profile_id: user.id, chapter_id: chapterId, current_page: currentPage, total_pages: totalPages, percent, reaction };
+  const today = utcDateString(new Date());
+  const payload = {
+    club_book_id: clubBookId, profile_id: user.id, chapter_id: chapterId, current_page: currentPage, total_pages: totalPages, percent, reaction,
+    streak_count: nextStreak(existing, today), last_activity_date: today,
+  };
   if (finishedAt) payload.finished_at = finishedAt;
 
   const { error } = await supabase

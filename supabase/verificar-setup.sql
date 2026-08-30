@@ -283,4 +283,8 @@ select 'Migración 033 — tabla de comentarios de fotos (post_comments)',
 union all
 select 'Migración 034 — comments.reply_to_id (agrupar respuestas)',
        case when exists (select 1 from information_schema.columns where table_name = 'comments' and column_name = 'reply_to_id')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 035 — reading_progress.streak_count (racha de lectura)',
+       case when exists (select 1 from information_schema.columns where table_name = 'reading_progress' and column_name = 'streak_count')
             then 'OK' else 'FALTA' end;
