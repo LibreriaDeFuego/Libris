@@ -4,17 +4,19 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { updateProgress } from '@/app/actions/clubs';
 
+// Cuántos capítulos se muestran a cada lado del actual — para que el
+// camino no se vuelva eterno en libros largos. El resto queda afuera de
+// la ventana; "+N capítulos más" en cada punta abre el modal completo
+// (todos los capítulos) para saltar más lejos de una sola vez.
+const BEFORE = 2;
+const AFTER = 3;
+
 // El camino de capítulos del club, estilo Duolingo: sube (los que faltan
 // quedan arriba, los ya leídos abajo — subir = avanzar) y tocar un nodo
 // actualiza el progreso al toque, igual que hacían los chips que
 // reemplaza. La racha de lectura (migración 035) vive integrada en el
 // nodo actual, no aparte.
-//
-// Se muestra el camino completo, sin recortar — se llega a cualquier
-// capítulo scrolleando, no tocando un "+N capítulos más" (así estaba
-// antes; se sacó a pedido: quedaba raro tener que tocar algo para avanzar
-// en un camino que se supone que se recorre).
-export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCount = 0 }) {
+export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCount = 0, onOpenFull }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -38,8 +40,13 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
 
   const activeId = optimisticId != null && optimisticId !== currentChapterId ? optimisticId : currentChapterId;
   const currentIndex = chapters.findIndex((c) => c.id === activeId);
+
+  const start = currentIndex === -1 ? 0 : Math.max(0, currentIndex - BEFORE);
+  const end = currentIndex === -1 ? Math.min(chapters.length - 1, BEFORE + AFTER) : Math.min(chapters.length - 1, currentIndex + AFTER);
+  const hiddenBelow = start;
+  const hiddenAbove = chapters.length - 1 - end;
   // De futuro (arriba) a pasado (abajo) — el orden visual que pediste.
-  const path = chapters.slice().reverse();
+  const path = chapters.slice(start, end + 1).slice().reverse();
 
   function handleTap(chapter) {
     if (chapter.id === activeId || pending) return;
@@ -70,6 +77,19 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
       </div>
 
       <div style={{ position: 'relative', padding: '10px 24px 4px' }}>
+        {hiddenAbove > 0 && (
+          <button
+            type="button"
+            onClick={onOpenFull}
+            style={{
+              display: 'block', width: '100%', textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', padding: '2px 0 14px', fontFamily: 'var(--font-body)',
+            }}
+          >
+            + {hiddenAbove} {hiddenAbove === 1 ? 'capítulo más adelante' : 'capítulos más adelante'}
+          </button>
+        )}
+
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {path.map((chapter, i) => {
             const originalIndex = chapters.findIndex((c) => c.id === chapter.id);
@@ -138,6 +158,19 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
             );
           })}
         </div>
+
+        {hiddenBelow > 0 && (
+          <button
+            type="button"
+            onClick={onOpenFull}
+            style={{
+              display: 'block', width: '100%', textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', padding: '14px 0 2px', fontFamily: 'var(--font-body)',
+            }}
+          >
+            + {hiddenBelow} {hiddenBelow === 1 ? 'capítulo ya leído' : 'capítulos ya leídos'}
+          </button>
+        )}
       </div>
 
       {toast && (
