@@ -6,7 +6,7 @@ import { isValidUsername, normalizeUsername, USERNAME_HELP } from '@/lib/usernam
 import { Input } from '@/design-system/components/forms/Input.jsx';
 
 // Campo de nombre de usuario con chequeo de disponibilidad en vivo
-// (is_username_available) — se usa igual en el registro, en "Elegí tu
+// (is_username_available) — se usa igual en el registro, en "Elige tu
 // usuario" y en "Editar perfil". Con "currentUsername" (edición de un
 // perfil que ya tiene uno) no dispara la consulta si no cambió el valor —
 // si no, el propio usuario aparecería como "ya está en uso".

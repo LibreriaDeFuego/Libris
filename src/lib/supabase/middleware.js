@@ -39,7 +39,7 @@ export async function updateSession(request) {
 
   const { pathname } = request.nextUrl;
 
-  // "Elegí tu usuario" (migración 017) — obligatorio para cualquier cuenta
+  // "Elige tu usuario" (migración 017) — obligatorio para cualquier cuenta
   // sin username todavía: las creadas antes de que existiera este campo, o
   // por Google (que no lo pide). Una cookie evita consultar la base en cada
   // request una vez que ya se sabe que la cuenta tiene uno.

@@ -34,7 +34,7 @@ function Section({ title, description, children }) {
 
 // Una fila por miembro: nombre, insignia de "Administrador" si aplica, y —
 // solo si quien mira la pantalla es administrador — un botón para nombrar o
-// sacar administradores. Nunca se puede sacar el propio rol si sos el único
+// sacar administradores. Nunca se puede sacar el propio rol si eres el único
 // administrador que queda (lo impide el servidor con un mensaje claro).
 function MemberRow({ member, canManage, adminCount, currentUserId }) {
   const [pending, startTransition] = useTransition();

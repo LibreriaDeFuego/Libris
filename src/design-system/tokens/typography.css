@@ -1,7 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Karla:wght@400;500;600;700&display=swap');
 :root{
---font-display:'Bricolage Grotesque', -apple-system, 'Segoe UI', sans-serif;
---font-body:'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif;
+/* DM Serif Display solo trae la variante regular (no tiene un corte bold
+   propio) — a los títulos que pedían fontWeight 700/800 el navegador les
+   aplica un "bold falso" (engrosa el trazo sin usar una forma dibujada a
+   propósito), que en una serif se ve un poco embarrado. Quedó así por
+   ahora porque tocaba ~25 lugares del código para normalizarlo; si
+   molesta al verlo, el arreglo es bajar esos pesos a 400/500 uno por uno. */
+--font-display:'DM Serif Display', Georgia, serif;
+--font-body:'Karla', -apple-system, 'Segoe UI', sans-serif;
 
 --fs-2xs:12px;
 --fs-xs:13px;

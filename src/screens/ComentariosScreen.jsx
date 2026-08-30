@@ -126,7 +126,7 @@ function ReviewCard({ review, book, isOwn, onEdit, replies }) {
 // pone Me gusta + Comentar y el hilo de respuestas — cualquier miembro del
 // club los ve. "Compartir" es aparte: solo aparece en tus propios
 // comentarios de capítulo y notas de voz (reseñas/citas ya aparecen
-// siempre en Inicio, no necesitan esto) y solo vos lo ves.
+// siempre en Inicio, no necesitan esto) y solo tú lo ves.
 export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myDisplayName, myProfileId }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);

@@ -10,6 +10,10 @@ App social para clubes de lectura: progreso de lectura compartido, comentarios (
 - **Supabase** (Postgres + Auth + Realtime) como backend — ver `supabase/schema.sql` para el modelo de datos y la sección **Backend / Supabase** más abajo para configurarlo.
 - Todas las pantallas leen y escriben datos reales en Supabase (Server Components + Server Actions, sin API routes intermedias). **Supabase Storage** guarda las portadas de libros (bucket público) y las notas de voz (bucket privado, servidas con URLs firmadas).
 
+## Convenciones
+
+- **Todo el texto de la app va en español latinoamericano neutro — sin voseo** ("elige", no "elegí"; "tú", nunca "vos"/"sos"; sin modismos regionales como "che"). Esto ya se había establecido en la migración `012_espanol_neutro.sql`; se reafirma acá porque se volvió a colar voseo en features nuevas más de una vez. Antes de dar por terminado cualquier texto nuevo (UI, mensajes de error, copys de mail, comentarios que citen texto de pantalla), repasarlo contra esta regla.
+
 ## Estructura
 
 ```
@@ -23,7 +27,6 @@ src/
     club/[clubId]/comentarios/    # comentarios de ESE club, generales o por capítulo
     club/[clubId]/preferencias/   # nombre, visibilidad, libro, administradores y salir de ESE club
     club/[clubId]/capitulos/      # gestión de capítulos y volúmenes (solo administradores)
-    club/[clubId]/portada/        # editor de encuadre de la portada (solo administradores)
     club/nuevo/            # crear o unirse a otro club (multi-club)
     unirse/[clubId]/       # pantalla de invitación (link para compartir)
     auth/callback/         # aterrizaje de los links que manda Supabase por mail
@@ -32,7 +35,7 @@ src/
                            #   promoteAdmin, demoteAdmin, joinClubFromInvite,
                            #   selectClub, leaveClub, updateClubPreferences,
                            #   updateProgress, postComment
-    actions/media.js       # Server Actions: uploadBookCover, updateCoverFrame, postVoiceComment
+    actions/media.js       # Server Actions: uploadBookCover, postVoiceComment
     manifest.js            # genera /manifest.webmanifest (PWA)
   components/
     AppShell.jsx           # shell con tab bar inferior (Recursos / Club / Descubrir / Perfil)
@@ -191,7 +194,7 @@ Cada perfil tiene foto (bucket `avatars`, igual de público que las portadas de 
 
 - **`/perfil`** es el propio (con "Editar perfil": nombre, bio, foto). **`/perfil/[profileId]`** es el de cualquier otra persona — se llega tocando un nombre en la lista de miembros de **Preferencias**. Las dos rutas comparten las mismas cuatro consultas (`src/lib/profileData.js`).
 - **Seguir** es la tabla `follows` (quién sigue a quién), pública igual que en cualquier red social — no requiere aprobación, a diferencia de las postulaciones a clubes.
-- **La actividad respeta la privacidad de los clubes**, ya armada en las migraciones 007/014: la función `profile_activity` (`security definer`) solo muestra lo que comentaste en un club abierto o "con solicitud" a cualquiera; lo de un club privado (`invite`) solo se lo muestra a quien ya es miembro de ese club — o a vos mismo, mirando tu propio perfil, sin excepción. Los comentarios marcados spoiler no aparecen nunca acá. `profile_stats` (libros/seguidores/siguiendo) sigue el mismo criterio para el conteo de libros.
+- **La actividad respeta la privacidad de los clubes**, ya armada en las migraciones 007/014: la función `profile_activity` (`security definer`) solo muestra lo que comentaste en un club abierto o "con solicitud" a cualquiera; lo de un club privado (`invite`) solo se lo muestra a quien ya es miembro de ese club — o a ti mismo, mirando tu propio perfil, sin excepción. Los comentarios marcados spoiler no aparecen nunca acá. `profile_stats` (libros/seguidores/siguiendo) sigue el mismo criterio para el conteo de libros.
 - Las notas de voz aparecen en el feed como texto (la transcripción, si existe) — reproducir el audio real sigue restringido a los miembros del club por la política de Storage ya existente, así que no se intentó sortear eso acá.
 
 ### Fotos de lo que estás leyendo (migración 016)
@@ -436,7 +439,7 @@ Este cambio dejó expuesto un bug de layout preexistente en `AppShell`: el tab b
 
 Debajo de los chips de capítulo, la pantalla del club suma dos secciones más (completando la dirección de diseño "Centro del club" del handoff):
 
-- **`MemberProgressStrip`** (`src/components/MemberProgressStrip.jsx`) — la pila de avatares de los miembros del club y, si ya registraste algún capítulo, cuántos van exactamente por el mismo que vos. Se arma cruzando `club_members` (con `profiles` embebido) y `reading_progress` de **todos** los miembros para ese libro — no solo el propio, que es lo único que se traía hasta ahora. RLS ya dejaba ver ambas cosas a cualquier miembro del club (mismo alcance que la lista de Preferencias), así que no hizo falta ninguna política nueva.
+- **`MemberProgressStrip`** (`src/components/MemberProgressStrip.jsx`) — la pila de avatares de los miembros del club y, si ya registraste algún capítulo, cuántos van exactamente por el mismo que tú. Se arma cruzando `club_members` (con `profiles` embebido) y `reading_progress` de **todos** los miembros para ese libro — no solo el propio, que es lo único que se traía hasta ahora. RLS ya dejaba ver ambas cosas a cualquier miembro del club (mismo alcance que la lista de Preferencias), así que no hizo falta ninguna política nueva.
 - **`ClubActivityFeed`** (`src/components/ClubActivityFeed.jsx`) — tarjetas con lo último que pasó: comentarios recientes agrupados por capítulo ("Bruno y 2 más comentaron el Capítulo 4") y reseñas finales, cada una su propia tarjeta ("Sofía terminó el libro y dejó su reseña"). El agrupamiento vive en `src/lib/clubActivity.js`: junta por `chapter_id` los últimos comentarios (sin respuestas, sin reseñas) y arma reseñas aparte, ordenado todo por lo más reciente. Es una ventana de "lo más reciente" (últimos 24 comentarios / 8 reseñas), no un historial completo — con actividad muy espaciada en el tiempo puede juntar en una misma tarjeta comentarios de hace días si fueron los últimos en ese capítulo.
 
 Ninguna de las dos secciones necesitó migración: los datos y los permisos ya existían, solo faltaba consultarlos y mostrarlos.
@@ -458,10 +461,12 @@ El SQL Editor de Supabase corre cada script en **una sola transacción**: si una
 
 ## Sistema de diseño
 
-Paleta **Electric Coral** sobre fondo blanco (page y cards — el crema del brief original se descartó a pedido): coral (`--accent-500`) = progreso/acciones primarias, dorado (`--gold-500`) = citas destacadas/contenido editorial, verde (`--success`) = actividad social (otros clubes, feed). Tipografía Bricolage Grotesque (headlines) + Plus Jakarta Sans (UI/cuerpo). Íconos vía [Lucide](https://lucide.dev) (`lucide-react`).
+Paleta **Electric Coral** sobre fondo blanco (page y cards — el crema del brief original se descartó a pedido): coral (`--accent-500`) = progreso/acciones primarias, dorado (`--gold-500`) = citas destacadas/contenido editorial, verde (`--success`) = actividad social (otros clubes, feed). Tipografía **DM Serif Display** (headlines) + **Karla** (UI/cuerpo) — antes Bricolage Grotesque + Plus Jakarta Sans; se probaron 4 parejas nuevas sobre pantallas reales (héroe del club) y esta fue la elegida, por sentirse más "editorial, de club de lectura de verdad" que la geométrica de antes. Íconos vía [Lucide](https://lucide.dev) (`lucide-react`).
+
+DM Serif Display solo trae la variante regular (sin corte bold propio): los títulos que piden `fontWeight: 700`/`800` reciben un bold sintetizado por el navegador (engrosa el trazo, no usa formas dibujadas a propósito). Se probó en varias pantallas y se ve bien a los tamaños que usa la app — quedó así. Si en algún lugar puntual se ve "embarrado", el arreglo es bajar ese `fontWeight` a 400/500 en ese lugar.
 
 Ver `design-reference/readme.md` para el detalle completo de fundamentos visuales y contenido, y las notas de **sustitución** — este sistema de diseño se armó desde un brief sin logo, fuentes propias ni set de íconos, así que ningún wordmark/tipografía/ícono actual debe tratarse como marca final:
 
 - **Logo**: ya hay uno (`public/logo-libris.png`, wordmark "LiBRiS" en negro sobre transparente) — se usa en la pantalla de Login reemplazando el texto plano que había antes.
 - **Íconos PWA** (`public/icons/*.png`, `src/app/icon.png`): ya no son placeholders — es el isotipo "punto + S" (el punto de la "i" final del logo, sobre la "S", como un signo propio) en blanco sobre coral. Fuente en `design-reference/brand/` (`isotipo-punto-s.png` en negro, sin fondo, y `logo-libris-wordmark.png`) por si hace falta regenerar algún tamaño.
-- **Fuentes**: Bricolage Grotesque / Plus Jakarta Sans cargadas desde Google Fonts (`design-system/tokens/typography.css`) — swap directo si hay tipografías con licencia propia.
+- **Fuentes**: DM Serif Display / Karla cargadas desde Google Fonts (`design-system/tokens/typography.css`) — swap directo si hay tipografías con licencia propia.

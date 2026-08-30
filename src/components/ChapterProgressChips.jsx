@@ -84,7 +84,7 @@ export function ChapterProgressChips({ clubBookId, chapters, currentChapterId })
               }}
             >
               {active && <Icon name="check" size={11} color="var(--text-on-accent)" />}
-              {chapterShortLabel(chapter)}{active ? ' · vos' : ''}
+              {chapterShortLabel(chapter)}{active ? ' · Tú' : ''}
             </button>
           );
         })}

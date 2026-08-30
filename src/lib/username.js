@@ -1,5 +1,5 @@
 // Reglas del nombre de usuario, compartidas entre el registro, "Editar
-// perfil" y la pantalla de "Elegí tu usuario" — minúsculas, letras, números,
+// perfil" y la pantalla de "Elige tu usuario" — minúsculas, letras, números,
 // guion bajo y punto, 3 a 20 caracteres. No puede empezar ni terminar con
 // punto, ni tener dos seguidos (evita nombres como ".nico" o "nico..ferreyra").
 // Se normaliza siempre igual (recortado y en minúsculas) antes de comparar o guardar.

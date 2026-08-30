@@ -27,7 +27,7 @@ export function ElegirUsuarioScreen({ next }) {
         {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
         <img src="/logo-libris.png" alt="Libris" style={{ height: 40, width: 'auto', display: 'block' }} />
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 600, color: 'var(--text-primary)', marginTop: 16 }}>
-          Elegí tu nombre de usuario
+          Elige tu nombre de usuario
         </div>
         <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: 6, lineHeight: 'var(--lh-snug)' }}>
           Es nuevo en Libris: sirve para distinguirte de otras personas con un nombre parecido al tuyo en el buscador y en tu perfil. Se puede cambiar después desde &ldquo;Editar perfil&rdquo;.

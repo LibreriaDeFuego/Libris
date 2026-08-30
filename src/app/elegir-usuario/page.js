@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/requireUser';
 import { safeNext } from '@/lib/safeNext';
 import { ElegirUsuarioScreen } from '@/screens/ElegirUsuarioScreen.jsx';
 
-export const metadata = { title: 'Elegí tu usuario · Libris' };
+export const metadata = { title: 'Elige tu usuario · Libris' };
 
 // A donde llega cualquier cuenta sin username (ver el middleware) —
 // si por algún motivo entra acá teniendo uno ya, no tiene nada que hacer.
