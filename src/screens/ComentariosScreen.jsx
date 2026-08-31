@@ -147,10 +147,14 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   // Si se llega con ?capitulo=... (por ejemplo, desde la pastilla de
   // comentarios de Tu camino) arranca en ese capítulo; si no existe entre
   // los del libro, cae al de siempre (el primero).
-  const [chapterId, setChapterId] = useState(() => {
-    if (initialChapterId && orderedChapters.some((c) => c.id === initialChapterId)) return initialChapterId;
-    return orderedChapters[0]?.id ?? null;
-  });
+  const cameFromChapterLink = Boolean(initialChapterId && orderedChapters.some((c) => c.id === initialChapterId));
+  const [chapterId, setChapterId] = useState(() => (cameFromChapterLink ? initialChapterId : orderedChapters[0]?.id ?? null));
+  // Entrando desde un capítulo puntual, el objetivo es leer y comentar ESE
+  // capítulo — no hace falta abrir de entrada ni las reseñas finales (son
+  // del libro entero, casi siempre con spoilers del final) ni el selector
+  // con todos los demás capítulos. Entrando por el ícono de "Comentarios
+  // del club" (sin capítulo puntual) se sigue viendo todo, como siempre.
+  const [showChapterPicker, setShowChapterPicker] = useState(!cameFromChapterLink);
   const [editingReview, setEditingReview] = useState(null);
   const [editingQuote, setEditingQuote] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
@@ -187,7 +191,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>Comentarios</div>
       </div>
 
-      {reviews.length > 0 && (
+      {!cameFromChapterLink && reviews.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {reviews.map((review) => (
             <ReviewCard
@@ -204,11 +208,26 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
 
       {orderedChapters.length > 0 ? (
         <>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: 'auto' }}>
-            {orderedChapters.map((c) => (
-              <Chip key={c.id} selected={chapterId === c.id} onClick={() => setChapterId(c.id)}>{chapterDisplayLabel(c)}</Chip>
-            ))}
-          </div>
+          {showChapterPicker ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: 'auto' }}>
+              {orderedChapters.map((c) => (
+                <Chip key={c.id} selected={chapterId === c.id} onClick={() => setChapterId(c.id)}>{chapterDisplayLabel(c)}</Chip>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                {chapterDisplayLabel(orderedChapters.find((c) => c.id === chapterId))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowChapterPicker(true)}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-link)' }}
+              >
+                Ver otro capítulo
+              </button>
+            </div>
+          )}
 
           <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} clubName={clubName} personName={myDisplayName} />
           <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} />
