@@ -5,13 +5,6 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { updateProgress, getChapterCommentsPreview } from '@/app/actions/clubs';
 
-// Cuántos capítulos se muestran a cada lado del actual — para que el
-// camino no se vuelva eterno en libros largos. El resto queda afuera de
-// la ventana; "+N capítulos más" en cada punta abre el modal completo
-// (todos los capítulos) para saltar más lejos de una sola vez.
-const BEFORE = 2;
-const AFTER = 3;
-
 // Cuántos puntitos (de compañeros o de autores de comentarios) se apilan
 // antes de pasar a "+N" — así una pastilla mide lo mismo con 3 personas
 // que con 20.
@@ -31,8 +24,10 @@ function firstName(name) {
   return name.split(' ')[0];
 }
 
-// El camino de capítulos del club, estilo Duolingo: sube (los que faltan
-// quedan arriba, los ya leídos abajo — subir = avanzar) y tocar un nodo
+// El camino de capítulos del club, de punta a punta como una tabla de
+// contenidos: Cap. 1 arriba, el último abajo, en orden. (Se probó al
+// revés — estilo Duolingo, lo que falta arriba — pero se sintió menos
+// natural que simplemente leer el camino de corrido.) Tocar un nodo
 // actualiza el progreso al toque, igual que hacían los chips que
 // reemplaza. La racha de lectura (migración 035) vive integrada en el
 // nodo actual, no aparte.
@@ -51,9 +46,10 @@ function firstName(name) {
 // con los últimos comentarios de ESE capítulo (o la invitación a dejar el
 // primero) — sin tener que ir a la pantalla de Comentarios a buscarlos.
 //
-// Al llegar al último capítulo, arriba de su nodo aparece uno más —
-// libro cerrado + "FIN", con borde punteado — para marcar el libro
-// entero como terminado sin salir a buscar esa opción en el modal.
+// Al llegar al último capítulo, debajo de su nodo aparece uno más — un
+// libro cerrado con "FIN" como título abajo, con borde punteado — para
+// marcar el libro entero como terminado sin salir a buscar esa opción en
+// el modal.
 export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, streakCount = 0, members = [], currentUserId, commentCounts = {}, onOpenFull, onFinishBook }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
@@ -92,12 +88,10 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
   const activeId = optimisticId != null && optimisticId !== currentChapterId ? optimisticId : currentChapterId;
   const currentIndex = chapters.findIndex((c) => c.id === activeId);
 
-  const start = currentIndex === -1 ? 0 : Math.max(0, currentIndex - BEFORE);
-  const end = currentIndex === -1 ? Math.min(chapters.length - 1, BEFORE + AFTER) : Math.min(chapters.length - 1, currentIndex + AFTER);
-  const hiddenBelow = start;
-  const hiddenAbove = chapters.length - 1 - end;
-  // De futuro (arriba) a pasado (abajo) — el orden visual que pediste.
-  const path = chapters.slice(start, end + 1).slice().reverse();
+  // El camino completo, sin ventana — se probó recortarlo (2 atrás, 3
+  // adelante del actual, con "+N capítulos más" en las puntas) pero
+  // tapaba la ruta entera; ahora se ve toda, de principio a fin.
+  const path = chapters;
 
   function chapterLabel(chapter) {
     return chapter.title ? `Cap. ${chapter.number}` : (chapter.label ?? `Cap. ${chapter.number}`);
@@ -138,8 +132,7 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
   }
 
   // El nodo de "terminar el libro" solo aparece cuando ya estás en el
-  // último capítulo — ahí, arriba, donde antes iba "+N capítulos más
-  // adelante" (que ya no aplica: no queda nada más adelante).
+  // último capítulo — ahí, debajo de su nodo (el final del camino).
   const isLastChapter = currentIndex !== -1 && currentIndex === chapters.length - 1;
 
   function handleFinishTap() {
@@ -165,7 +158,21 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
   return (
     <div style={{ padding: '18px 0 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>Tu camino</div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>Tu camino</div>
+          {onOpenFull && (
+            <button
+              type="button"
+              onClick={onOpenFull}
+              style={{
+                flexShrink: 0, background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer',
+                fontSize: 11, fontWeight: 700, color: 'var(--text-link)', fontFamily: 'var(--font-body)',
+              }}
+            >
+              Actualizar por página
+            </button>
+          )}
+        </div>
         <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Tocá un capítulo para marcarlo como el tuyo</div>
 
         {hasCompanions && (
@@ -178,51 +185,6 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
       </div>
 
       <div style={{ position: 'relative', padding: '10px 24px 4px' }}>
-        {hiddenAbove > 0 && (
-          <button
-            type="button"
-            onClick={onOpenFull}
-            style={{
-              display: 'block', width: '100%', textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', padding: '2px 0 14px', fontFamily: 'var(--font-body)',
-            }}
-          >
-            + {hiddenAbove} {hiddenAbove === 1 ? 'capítulo más adelante' : 'capítulos más adelante'}
-          </button>
-        )}
-
-        {isLastChapter && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', alignItems: 'center', gap: 12 }}>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--accent-500)' }}>¡Ya casi!</div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Marcar como terminado</div>
-              </div>
-              <button
-                type="button"
-                onClick={handleFinishTap}
-                disabled={finishPending}
-                aria-label="Marcar el libro como terminado"
-                style={{
-                  width: 48, height: 48, borderRadius: '50%', background: 'var(--gold-500)',
-                  border: '3px dashed rgba(255,79,50,.4)', display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', gap: 1, justifySelf: 'center',
-                  cursor: finishPending ? 'default' : 'pointer', opacity: finishPending ? 0.7 : 1,
-                }}
-              >
-                <Icon name="book" size={15} color="#7A3E00" />
-                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 8.5, letterSpacing: '.03em', color: '#7A3E00' }}>FIN</span>
-              </button>
-              <div />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', height: 26 }}>
-              <div />
-              <div style={{ width: 3, borderLeft: '3px dashed var(--gold-500)', justifySelf: 'center' }} />
-              <div />
-            </div>
-          </div>
-        )}
-
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {path.map((chapter, i) => {
             const originalIndex = chapters.findIndex((c) => c.id === chapter.id);
@@ -316,17 +278,41 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
           })}
         </div>
 
-        {hiddenBelow > 0 && (
-          <button
-            type="button"
-            onClick={onOpenFull}
-            style={{
-              display: 'block', width: '100%', textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer',
-              fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', padding: '14px 0 2px', fontFamily: 'var(--font-body)',
-            }}
-          >
-            + {hiddenBelow} {hiddenBelow === 1 ? 'capítulo ya leído' : 'capítulos ya leídos'}
-          </button>
+        {isLastChapter && (
+          <div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', height: 26 }}>
+              <div />
+              <div style={{ width: 3, borderLeft: '3px dashed var(--gold-500)', justifySelf: 'center' }} />
+              <div />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', alignItems: 'center', gap: 12 }}>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--accent-500)' }}>¡Ya casi!</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Marcar como terminado</div>
+              </div>
+              <button
+                type="button"
+                onClick={handleFinishTap}
+                disabled={finishPending}
+                aria-label="Marcar el libro como terminado"
+                style={{
+                  width: 48, height: 48, borderRadius: '50%', background: 'var(--gold-500)',
+                  border: '3px dashed rgba(255,79,50,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  justifySelf: 'center', cursor: finishPending ? 'default' : 'pointer', opacity: finishPending ? 0.7 : 1,
+                }}
+              >
+                <Icon name="book" size={20} color="#7A3E00" />
+              </button>
+              <div />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr' }}>
+              <div />
+              <div style={{ textAlign: 'center', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: '#7A3E00', marginTop: 2 }}>
+                FIN
+              </div>
+              <div />
+            </div>
+          </div>
         )}
       </div>
 

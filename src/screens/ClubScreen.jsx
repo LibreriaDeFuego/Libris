@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
@@ -29,15 +28,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
 
   const headerRight = (
     <>
-      <Link href={`/club/${club.id}/comentarios`}>
-        <IconButton aria-label="Comentarios del club" size={36}><Icon name="message-circle" size={16} /></IconButton>
-      </Link>
       <InviteButton clubId={club.id} />
-      {isAdmin && (
-        <Link href={`/club/${club.id}/capitulos`}>
-          <IconButton aria-label="Gestionar capítulos" size={36}><Icon name="list" size={16} /></IconButton>
-        </Link>
-      )}
       <PreferenciasIconButton clubId={club.id} pendingRequestCount={isAdmin ? pendingRequestCount : 0} />
     </>
   );
