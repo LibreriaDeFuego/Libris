@@ -46,10 +46,12 @@ function firstName(name) {
 // con los últimos comentarios de ESE capítulo (o la invitación a dejar el
 // primero) — sin tener que ir a la pantalla de Comentarios a buscarlos.
 //
-// Al llegar al último capítulo, debajo de su nodo aparece uno más — un
-// libro cerrado con "FIN" como título abajo, con borde punteado — para
-// marcar el libro entero como terminado sin salir a buscar esa opción en
-// el modal.
+// El camino siempre termina en un nodo de "FIN" — un libro cerrado con
+// "FIN" como título abajo, con borde punteado — así se ve desde el
+// principio hasta dónde llega el libro, no solo al alcanzarlo. Mientras
+// no sea tu capítulo actual queda apagado (gris, sin tocar); al llegar
+// se enciende (dorado) y tocarlo marca el libro entero como terminado,
+// sin salir a buscar esa opción en el modal.
 export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, streakCount = 0, members = [], currentUserId, commentCounts = {}, onOpenFull, onFinishBook }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
@@ -131,8 +133,8 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
     setSpoilerWarning({ chapterId: chapter.id, label: chapterLabel(chapter) });
   }
 
-  // El nodo de "terminar el libro" solo aparece cuando ya estás en el
-  // último capítulo — ahí, debajo de su nodo (el final del camino).
+  // El nodo de FIN, al final del camino, siempre se ve — pero solo se
+  // "enciende" y se puede tocar cuando ya estás en el último capítulo.
   const isLastChapter = currentIndex !== -1 && currentIndex === chapters.length - 1;
 
   function handleFinishTap() {
@@ -278,42 +280,53 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
           })}
         </div>
 
-        {isLastChapter && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', height: 26 }}>
-              <div />
-              <div style={{ width: 3, borderLeft: '3px dashed var(--gold-500)', justifySelf: 'center' }} />
-              <div />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', alignItems: 'center', gap: 12 }}>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--accent-500)' }}>¡Ya casi!</div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Marcar como terminado</div>
-              </div>
-              <button
-                type="button"
-                onClick={handleFinishTap}
-                disabled={finishPending}
-                aria-label="Marcar el libro como terminado"
-                style={{
-                  width: 48, height: 48, borderRadius: '50%', background: 'var(--gold-500)',
-                  border: '3px dashed rgba(255,79,50,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  justifySelf: 'center', cursor: finishPending ? 'default' : 'pointer', opacity: finishPending ? 0.7 : 1,
-                }}
-              >
-                <Icon name="book" size={20} color="#7A3E00" />
-              </button>
-              <div />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr' }}>
-              <div />
-              <div style={{ textAlign: 'center', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: '#7A3E00', marginTop: 2 }}>
-                FIN
-              </div>
-              <div />
-            </div>
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', height: 26 }}>
+            <div />
+            <div style={{ width: 3, borderLeft: `3px dashed ${isLastChapter ? 'var(--gold-500)' : 'var(--neutral-200)'}`, justifySelf: 'center' }} />
+            <div />
           </div>
-        )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', alignItems: 'center', gap: 12 }}>
+            <div style={{ textAlign: 'right' }}>
+              {isLastChapter ? (
+                <>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--accent-500)' }}>¡Ya casi!</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Marcar como terminado</div>
+                </>
+              ) : (
+                <div style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>Fin del libro</div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={isLastChapter ? handleFinishTap : undefined}
+              disabled={!isLastChapter || finishPending}
+              aria-label={isLastChapter ? 'Marcar el libro como terminado' : 'Fin del libro — todavía no llegaste'}
+              style={{
+                width: 48, height: 48, borderRadius: '50%',
+                background: isLastChapter ? 'var(--gold-500)' : 'var(--surface-card)',
+                border: isLastChapter ? '3px dashed rgba(255,79,50,.4)' : '2px dashed var(--neutral-200)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', justifySelf: 'center',
+                cursor: isLastChapter && !finishPending ? 'pointer' : 'default', opacity: finishPending ? 0.7 : 1,
+              }}
+            >
+              <Icon name="book" size={20} color={isLastChapter ? '#7A3E00' : 'var(--text-tertiary)'} />
+            </button>
+            <div />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr' }}>
+            <div />
+            <div
+              style={{
+                textAlign: 'center', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, marginTop: 2,
+                color: isLastChapter ? '#7A3E00' : 'var(--text-tertiary)',
+              }}
+            >
+              FIN
+            </div>
+            <div />
+          </div>
+        </div>
       </div>
 
       {toast && (
