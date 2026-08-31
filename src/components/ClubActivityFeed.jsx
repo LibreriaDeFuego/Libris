@@ -16,7 +16,7 @@ export function ClubActivityFeed({ clubId, activity }) {
       {activity.map((item) => (
         <Link
           key={item.key}
-          href={`/club/${clubId}/comentarios`}
+          href={item.chapterId ? `/club/${clubId}/comentarios?capitulo=${item.chapterId}` : `/club/${clubId}/comentarios`}
           style={{
             display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface-card)',
             borderRadius: 'var(--radius-md)', padding: 14, boxShadow: 'var(--shadow-sm)',

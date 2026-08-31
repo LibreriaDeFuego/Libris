@@ -287,4 +287,10 @@ select 'Migración 034 — comments.reply_to_id (agrupar respuestas)',
 union all
 select 'Migración 035 — reading_progress.streak_count (racha de lectura)',
        case when exists (select 1 from information_schema.columns where table_name = 'reading_progress' and column_name = 'streak_count')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 036 — recent_activity trae chapter_id',
+       case when exists (
+              select 1 from pg_proc where proname = 'recent_activity' and prosrc like '%chapter_id%'
+            )
             then 'OK' else 'FALTA' end;

@@ -283,7 +283,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
         )}
         {expanded && canOpenClub && !isPhoto && (
           <Link
-            href={`/club/${activity.club_id}/comentarios`}
+            href={activity.chapter_id ? `/club/${activity.club_id}/comentarios?capitulo=${activity.chapter_id}` : `/club/${activity.club_id}/comentarios`}
             onClick={(e) => e.stopPropagation()}
             style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 10, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
           >

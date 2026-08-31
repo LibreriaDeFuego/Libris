@@ -31,7 +31,7 @@ export function buildClubActivity({ comments, reviews, chaptersById, limit = 4 }
     const label = authors.length === 1
       ? `${authors[0].name} comentó ${where}`
       : `${authors[0].name} y ${authors.length - 1} más comentaron ${where}`;
-    return { key: `comments-${group.chapterId ?? 'general'}`, label, createdAt: group.latest, authors: authors.slice(0, 2) };
+    return { key: `comments-${group.chapterId ?? 'general'}`, label, createdAt: group.latest, authors: authors.slice(0, 2), chapterId: group.chapterId ?? null };
   });
 
   const reviewItems = (reviews ?? []).map((r) => ({
