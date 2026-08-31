@@ -438,12 +438,13 @@ Este cambio dejó expuesto un bug de layout preexistente en `AppShell`: el tab b
 
 ### Quiénes están leyendo, y actividad del club
 
-Debajo de los chips de capítulo, la pantalla del club suma dos secciones más (completando la dirección de diseño "Centro del club" del handoff):
+Debajo del héroe, la pantalla del club suma estas piezas (completando la dirección de diseño "Centro del club" del handoff):
 
 - **`MemberProgressStrip`** (`src/components/MemberProgressStrip.jsx`) — la pila de avatares de los miembros del club y, si ya registraste algún capítulo, cuántos van exactamente por el mismo que tú. Se arma cruzando `club_members` (con `profiles` embebido) y `reading_progress` de **todos** los miembros para ese libro — no solo el propio, que es lo único que se traía hasta ahora. RLS ya dejaba ver ambas cosas a cualquier miembro del club (mismo alcance que la lista de Preferencias), así que no hizo falta ninguna política nueva.
+- **`SwipeableSections`** (`src/components/SwipeableSections.jsx`) — debajo de la franja de miembros, "Tu camino" y "Actividad del club" viven en un carrusel horizontal en vez de apiladas: arranca en "Tu camino", deslizar a la derecha lleva a "Actividad del club". Scroll nativo con `scroll-snap` (el gesto de deslizar de toda la vida, sin librería) más unos puntitos abajo del héroe — como los de Instagram Stories — que muestran en cuál estás y se pueden tocar para saltar directo. Componente genérico (recibe `sections: [{key, node}]`), hoy solo lo usa esta pantalla.
 - **`ClubActivityFeed`** (`src/components/ClubActivityFeed.jsx`) — tarjetas con lo último que pasó: comentarios recientes agrupados por capítulo ("Bruno y 2 más comentaron el Capítulo 4") y reseñas finales, cada una su propia tarjeta ("Sofía terminó el libro y dejó su reseña"). El agrupamiento vive en `src/lib/clubActivity.js`: junta por `chapter_id` los últimos comentarios (sin respuestas, sin reseñas) y arma reseñas aparte, ordenado todo por lo más reciente. Es una ventana de "lo más reciente" (últimos 24 comentarios / 8 reseñas), no un historial completo — con actividad muy espaciada en el tiempo puede juntar en una misma tarjeta comentarios de hace días si fueron los últimos en ese capítulo.
 
-Ninguna de las dos secciones necesitó migración: los datos y los permisos ya existían, solo faltaba consultarlos y mostrarlos.
+Ninguna de estas piezas necesitó migración: los datos y los permisos ya existían, solo faltaba consultarlos y mostrarlos.
 
 ### Contenido editorial
 

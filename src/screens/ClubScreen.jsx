@@ -10,6 +10,7 @@ import { CoverHero } from '@/components/CoverHero';
 import { MemberProgressStrip } from '@/components/MemberProgressStrip';
 import { ChapterPath } from '@/components/ChapterPath';
 import { ClubActivityFeed } from '@/components/ClubActivityFeed';
+import { SwipeableSections } from '@/components/SwipeableSections';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
 import { FinalReviewModal } from './FinalReviewModal.jsx';
 import { orderChapters } from '@/lib/orderChapters';
@@ -84,15 +85,23 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
             myChapterId={myProgress?.chapter_id ?? null}
           />
 
-          <ChapterPath
-            clubBookId={clubBookId}
-            chapters={orderedChapters}
-            currentChapterId={myProgress?.chapter_id ?? null}
-            streakCount={myProgress?.streak_count ?? 0}
-            onOpenFull={() => setShowModal(true)}
+          <SwipeableSections
+            sections={[
+              {
+                key: 'camino',
+                node: (
+                  <ChapterPath
+                    clubBookId={clubBookId}
+                    chapters={orderedChapters}
+                    currentChapterId={myProgress?.chapter_id ?? null}
+                    streakCount={myProgress?.streak_count ?? 0}
+                    onOpenFull={() => setShowModal(true)}
+                  />
+                ),
+              },
+              { key: 'actividad', node: <ClubActivityFeed clubId={club.id} activity={activity} /> },
+            ]}
           />
-
-          <ClubActivityFeed clubId={club.id} activity={activity} />
 
           {otherClubsCount > 0 && (
             <div style={{ padding: '20px 18px 24px', background: 'var(--surface-page)' }}>

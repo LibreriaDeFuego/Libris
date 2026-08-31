@@ -28,3 +28,12 @@ input,
 textarea {
   font-family: inherit;
 }
+
+/* Para el carrusel deslizable de "Tu camino"/"Actividad del club" — el
+   scroll horizontal sigue funcionando igual, solo se esconde la barra. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
