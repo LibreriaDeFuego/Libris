@@ -149,12 +149,6 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   // los del libro, cae al de siempre (el primero).
   const cameFromChapterLink = Boolean(initialChapterId && orderedChapters.some((c) => c.id === initialChapterId));
   const [chapterId, setChapterId] = useState(() => (cameFromChapterLink ? initialChapterId : orderedChapters[0]?.id ?? null));
-  // Entrando desde un capítulo puntual, el objetivo es leer y comentar ESE
-  // capítulo — no hace falta abrir de entrada ni las reseñas finales (son
-  // del libro entero, casi siempre con spoilers del final) ni el selector
-  // con todos los demás capítulos. Entrando por el ícono de "Comentarios
-  // del club" (sin capítulo puntual) se sigue viendo todo, como siempre.
-  const [showChapterPicker, setShowChapterPicker] = useState(!cameFromChapterLink);
   const [editingReview, setEditingReview] = useState(null);
   const [editingQuote, setEditingQuote] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
@@ -162,6 +156,20 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   const [, startDeleteTransition] = useTransition();
 
   const visibleComments = chapterId ? comments.filter((c) => c.chapter_id === chapterId && !c.parent_comment_id) : [];
+
+  // Entrando desde un capítulo puntual (pastilla de Tu camino), el objetivo
+  // es leer lo que ya se dijo de ESE capítulo y comentar si querés — nada
+  // de elegir otro capítulo (no hace falta ni el selector ni el link para
+  // desplegarlo) y el cuadro para comentar va DESPUÉS de los comentarios
+  // existentes, no antes. Entrando por el ícono de "Comentarios del club"
+  // (sin capítulo puntual) se sigue viendo todo como antes: selector
+  // completo arriba, cuadro para comentar antes que la lista.
+  const composeBlock = (
+    <>
+      <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} clubName={clubName} personName={myDisplayName} />
+      <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} />
+    </>
+  );
 
   function handleDeleteQuote(commentId) {
     if (!window.confirm('¿Eliminar esta cita? No se puede deshacer.')) return;
@@ -208,29 +216,19 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
 
       {orderedChapters.length > 0 ? (
         <>
-          {showChapterPicker ? (
+          {cameFromChapterLink ? (
+            <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {chapterDisplayLabel(orderedChapters.find((c) => c.id === chapterId))}
+            </div>
+          ) : (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: 'auto' }}>
               {orderedChapters.map((c) => (
                 <Chip key={c.id} selected={chapterId === c.id} onClick={() => setChapterId(c.id)}>{chapterDisplayLabel(c)}</Chip>
               ))}
             </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                {chapterDisplayLabel(orderedChapters.find((c) => c.id === chapterId))}
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowChapterPicker(true)}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-link)' }}
-              >
-                Ver otro capítulo
-              </button>
-            </div>
           )}
 
-          <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} clubName={clubName} personName={myDisplayName} />
-          <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} />
+          {!cameFromChapterLink && composeBlock}
 
           {visibleComments.map((comment) => {
             const name = comment.profiles?.display_name ?? 'Alguien';
@@ -298,6 +296,8 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
               Sé el primero en comentar este capítulo.
             </div>
           )}
+
+          {cameFromChapterLink && composeBlock}
         </>
       ) : (
         <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '20px 0', textAlign: 'center' }}>
