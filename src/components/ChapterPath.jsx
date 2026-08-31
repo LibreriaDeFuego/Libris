@@ -50,7 +50,11 @@ function firstName(name) {
 // Además, cada vez que marcás un capítulo como leído, aparece un panel
 // con los últimos comentarios de ESE capítulo (o la invitación a dejar el
 // primero) — sin tener que ir a la pantalla de Comentarios a buscarlos.
-export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, streakCount = 0, members = [], currentUserId, commentCounts = {}, onOpenFull }) {
+//
+// Al llegar al último capítulo, arriba de su nodo aparece uno más —
+// libro cerrado + "FIN", con borde punteado — para marcar el libro
+// entero como terminado sin salir a buscar esa opción en el modal.
+export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, streakCount = 0, members = [], currentUserId, commentCounts = {}, onOpenFull, onFinishBook }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -59,6 +63,7 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
   const [spoilerWarning, setSpoilerWarning] = useState(null); // { chapterId, label } | null
   const [preview, setPreview] = useState(null); // { chapterId, label, comments, total } | null
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [finishPending, setFinishPending] = useState(false);
   const currentNodeRef = useRef(null);
 
   useEffect(() => {
@@ -132,6 +137,31 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
     setSpoilerWarning({ chapterId: chapter.id, label: chapterLabel(chapter) });
   }
 
+  // El nodo de "terminar el libro" solo aparece cuando ya estás en el
+  // último capítulo — ahí, arriba, donde antes iba "+N capítulos más
+  // adelante" (que ya no aplica: no queda nada más adelante).
+  const isLastChapter = currentIndex !== -1 && currentIndex === chapters.length - 1;
+
+  function handleFinishTap() {
+    if (finishPending) return;
+    setFinishPending(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.set('clubBookId', clubBookId);
+    formData.set('mode', 'finished');
+
+    startTransition(async () => {
+      const result = await updateProgress(formData);
+      setFinishPending(false);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      onFinishBook?.();
+    });
+  }
+
   return (
     <div style={{ padding: '18px 0 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -159,6 +189,38 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
           >
             + {hiddenAbove} {hiddenAbove === 1 ? 'capítulo más adelante' : 'capítulos más adelante'}
           </button>
+        )}
+
+        {isLastChapter && (
+          <div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', alignItems: 'center', gap: 12 }}>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--accent-500)' }}>¡Ya casi!</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Marcar como terminado</div>
+              </div>
+              <button
+                type="button"
+                onClick={handleFinishTap}
+                disabled={finishPending}
+                aria-label="Marcar el libro como terminado"
+                style={{
+                  width: 48, height: 48, borderRadius: '50%', background: 'var(--gold-500)',
+                  border: '3px dashed rgba(255,79,50,.4)', display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: 1, justifySelf: 'center',
+                  cursor: finishPending ? 'default' : 'pointer', opacity: finishPending ? 0.7 : 1,
+                }}
+              >
+                <Icon name="book" size={15} color="#7A3E00" />
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 8.5, letterSpacing: '.03em', color: '#7A3E00' }}>FIN</span>
+              </button>
+              <div />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', height: 26 }}>
+              <div />
+              <div style={{ width: 3, borderLeft: '3px dashed var(--gold-500)', justifySelf: 'center' }} />
+              <div />
+            </div>
+          </div>
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>

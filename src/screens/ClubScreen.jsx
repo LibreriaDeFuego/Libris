@@ -88,6 +88,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
                     currentUserId={currentUserId}
                     commentCounts={commentCounts ?? {}}
                     onOpenFull={() => setShowModal(true)}
+                    onFinishBook={() => setShowReviewModal(true)}
                   />
                 ),
               },
