@@ -24,13 +24,39 @@ function firstName(name) {
   return name.split(' ')[0];
 }
 
+// Lo leído ya no es un color plano: el camino recorrido va de un gris
+// azulado frío (el capítulo más viejo) al coral de siempre — justo en
+// tu capítulo actual, siempre. Lo que falta se queda gris, sin degradé.
+const PATH_START = '#3B4B66';
+const PATH_END = '#FF4F32'; // = --accent-500 — así el capítulo actual siempre queda con el color de acento de toda la vida.
+function hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function lerpColor(hexA, hexB, t) {
+  const a = hexToRgb(hexA);
+  const b = hexToRgb(hexB);
+  return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+// El color de un capítulo ya leído (o el actual): 0 = el más viejo,
+// 1 = el actual. Con un solo capítulo leído (currentIndex 0) no hay
+// degradé posible — va directo al color del capítulo actual.
+function pathColor(originalIndex, currentIndex) {
+  return lerpColor(PATH_START, PATH_END, currentIndex <= 0 ? 1 : originalIndex / currentIndex);
+}
+
 // El camino de capítulos del club, de punta a punta como una tabla de
 // contenidos: Cap. 1 arriba, el último abajo, en orden. (Se probó al
 // revés — estilo Duolingo, lo que falta arriba — pero se sintió menos
-// natural que simplemente leer el camino de corrido.) Tocar un nodo
-// actualiza el progreso al toque, igual que hacían los chips que
-// reemplaza. La racha de lectura (migración 035) vive integrada en el
-// nodo actual, no aparte.
+// natural que simplemente leer el camino de corrido.) Una sola columna
+// recta — el nombre del capítulo siempre del mismo lado, sin zigzag
+// (se probó alternando izquierda/derecha capítulo por capítulo, pero
+// esta versión se lee más tranquila). Lo ya leído no es un solo color
+// plano: va de un gris azulado frío en el capítulo más viejo al coral
+// de siempre justo en tu capítulo actual — un degradé, no un color fijo
+// (`pathColor`, arriba). Tocar un nodo actualiza el progreso al toque,
+// igual que hacían los chips que reemplaza. La racha de lectura
+// (migración 035) vive integrada en el nodo actual, no aparte.
 //
 // Junto a cada capítulo, quién anduvo por ahí:
 // - Cuántos comentarios tiene, siempre a la vista (sin botón — antes había
@@ -194,10 +220,10 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
             const isDone = currentIndex !== -1 && originalIndex < currentIndex;
             const isAhead = currentIndex !== -1 && originalIndex > currentIndex;
             const isSaving = pending && optimisticId === chapter.id;
-            const alignRight = i % 2 === 1;
             const showFlame = isCurrent && streakCount >= 2;
             const companions = showCompanions ? companionsByChapter.get(chapter.id) : null;
             const commentCount = commentCounts[chapter.id] ?? 0;
+            const nodeColor = isDone || isCurrent ? pathColor(originalIndex, currentIndex) : null;
 
             const nextChapter = path[i + 1];
             const nextOriginalIndex = nextChapter ? chapters.findIndex((c) => c.id === nextChapter.id) : null;
@@ -211,7 +237,7 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
                 isAhead={isAhead}
                 onCommentTap={() => handleSpoilerTap(chapter)}
                 href={!isAhead ? `/club/${clubId}/comentarios?capitulo=${chapter.id}` : null}
-                align={alignRight ? 'right' : 'left'}
+                align="right"
               />
             );
 
@@ -219,8 +245,7 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
               <div key={chapter.id}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', alignItems: 'center', gap: 12 }}>
                   <div style={{ textAlign: 'right' }}>
-                    {!alignRight && <NodeLabel chapter={chapter} isCurrent={isCurrent} isDone={isDone} align="right" />}
-                    {alignRight && extras}
+                    {extras}
                   </div>
                   <button
                     type="button"
@@ -231,7 +256,7 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
                     style={{
                       position: 'relative', width: isCurrent ? 48 : 40, height: isCurrent ? 48 : 40, borderRadius: '50%',
                       border: isDone || isCurrent ? 'none' : '2px solid var(--neutral-200)',
-                      background: isDone || isCurrent ? 'var(--accent-500)' : 'var(--surface-card)',
+                      background: nodeColor ?? 'var(--surface-card)',
                       boxShadow: isCurrent ? '0 0 0 5px rgba(255,79,50,.18)' : 'none',
                       color: isDone || isCurrent ? 'var(--text-on-accent)' : 'var(--text-tertiary)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -255,8 +280,7 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
                     )}
                   </button>
                   <div style={{ textAlign: 'left' }}>
-                    {alignRight && <NodeLabel chapter={chapter} isCurrent={isCurrent} isDone={isDone} align="left" />}
-                    {!alignRight && extras}
+                    <NodeLabel chapter={chapter} isCurrent={isCurrent} isDone={isDone} align="left" />
                   </div>
                 </div>
 
@@ -271,7 +295,14 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
                 {showSegmentAfter && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', height: 26 }}>
                     <div />
-                    <div style={{ width: 3, borderRadius: 2, background: segmentColored ? 'var(--accent-500)' : 'var(--neutral-200)', justifySelf: 'center' }} />
+                    <div
+                      style={{
+                        width: 3, borderRadius: 2, justifySelf: 'center',
+                        background: segmentColored
+                          ? `linear-gradient(${nodeColor}, ${pathColor(nextOriginalIndex, currentIndex)})`
+                          : 'var(--neutral-200)',
+                      }}
+                    />
                     <div />
                   </div>
                 )}
