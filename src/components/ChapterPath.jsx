@@ -37,14 +37,15 @@ function firstName(name) {
 // reemplaza. La racha de lectura (migración 035) vive integrada en el
 // nodo actual, no aparte.
 //
-// Dos botones apagados por defecto agregan, junto a cada capítulo, quién
-// anduvo por ahí:
+// Junto a cada capítulo, quién anduvo por ahí:
+// - Cuántos comentarios tiene, siempre a la vista (sin botón — antes había
+//   que prenderlo, pero es información útil de entrada). Si el capítulo
+//   queda MÁS ADELANTE de tu propio progreso, tocar la pastilla no lleva a
+//   los comentarios directo: avisa que podría haber spoilers primero. Al
+//   día o atrás, es un link directo.
 // - "Mostrar quién está leyendo" — compañeros del club en ese capítulo
-//   (mismos datos que MemberProgressStrip).
-// - "Comentarios" — cuántos comentarios tiene ese capítulo. Si el
-//   capítulo queda MÁS ADELANTE de tu propio progreso, tocar la pastilla
-//   no lleva a los comentarios directo: avisa que podría haber spoilers
-//   primero.
+//   (mismos datos que MemberProgressStrip), este sí apagado por defecto:
+//   es una curiosidad, no algo que se necesite ver de entrada.
 //
 // Además, cada vez que marcás un capítulo como leído, aparece un panel
 // con los últimos comentarios de ESE capítulo (o la invitación a dejar el
@@ -55,7 +56,6 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
   const [toast, setToast] = useState(null);
   const [error, setError] = useState(null);
   const [showCompanions, setShowCompanions] = useState(false);
-  const [showComments, setShowComments] = useState(false);
   const [spoilerWarning, setSpoilerWarning] = useState(null); // { chapterId, label } | null
   const [preview, setPreview] = useState(null); // { chapterId, label, comments, total } | null
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -83,7 +83,6 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
     companionsByChapter.get(m.chapterId).push(m);
   }
   const hasCompanions = companionsByChapter.size > 0;
-  const hasComments = Object.keys(commentCounts).length > 0;
 
   const activeId = optimisticId != null && optimisticId !== currentChapterId ? optimisticId : currentChapterId;
   const currentIndex = chapters.findIndex((c) => c.id === activeId);
@@ -139,18 +138,11 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>Tu camino</div>
         <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Tocá un capítulo para marcarlo como el tuyo</div>
 
-        {(hasCompanions || hasComments) && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-            {hasCompanions && (
-              <ToggleChip active={showCompanions} onClick={() => setShowCompanions((v) => !v)} iconOn="eye-off" iconOff="eye">
-                {showCompanions ? 'Ocultar quién está leyendo' : 'Mostrar quién está leyendo'}
-              </ToggleChip>
-            )}
-            {hasComments && (
-              <ToggleChip active={showComments} onClick={() => { setShowComments((v) => !v); setSpoilerWarning(null); }} iconOn="message-circle" iconOff="message-circle">
-                Comentarios
-              </ToggleChip>
-            )}
+        {hasCompanions && (
+          <div style={{ marginTop: 8 }}>
+            <ToggleChip active={showCompanions} onClick={() => setShowCompanions((v) => !v)} iconOn="eye-off" iconOff="eye">
+              {showCompanions ? 'Ocultar quién está leyendo' : 'Mostrar quién está leyendo'}
+            </ToggleChip>
           </div>
         )}
       </div>
@@ -179,7 +171,7 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
             const alignRight = i % 2 === 1;
             const showFlame = isCurrent && streakCount >= 2;
             const companions = showCompanions ? companionsByChapter.get(chapter.id) : null;
-            const commentCount = showComments ? (commentCounts[chapter.id] ?? 0) : 0;
+            const commentCount = commentCounts[chapter.id] ?? 0;
 
             const nextChapter = path[i + 1];
             const nextOriginalIndex = nextChapter ? chapters.findIndex((c) => c.id === nextChapter.id) : null;
