@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs, getActiveClubBook } from '@/lib/activeClub';
-import { buildClubActivity } from '@/lib/clubActivity';
+import { getClubHeroExtras } from '@/lib/clubDetail';
 import { ClubScreen } from '@/screens/ClubScreen.jsx';
 
 export default async function Page({ params }) {
@@ -16,61 +16,39 @@ export default async function Page({ params }) {
 
   const isAdmin = club.role === 'admin';
 
-  const [{ count: memberCount }, clubBook, { count: pendingRequestCount }] = await Promise.all([
+  const [{ count: memberCount }, clubBook] = await Promise.all([
     supabase.from('club_members').select('*', { count: 'exact', head: true }).eq('club_id', clubId),
     getActiveClubBook(supabase, clubId),
-    isAdmin
-      ? supabase.from('club_join_requests').select('*', { count: 'exact', head: true }).eq('club_id', clubId).eq('status', 'pending')
-      : Promise.resolve({ count: 0 }),
   ]);
 
   const baseProps = {
     club: { ...club, memberCount: memberCount ?? 0 },
     clubs,
     isAdmin,
-    pendingRequestCount: pendingRequestCount ?? 0,
   };
 
   if (!clubBook) {
-    return <ClubScreen {...baseProps} book={null} clubBookId={null} chapters={[]} volumes={[]} myProgress={null} myReview={null} hasActivity={false} otherClubsCount={0} />;
+    return (
+      <ClubScreen
+        {...baseProps}
+        pendingRequestCount={0}
+        book={null}
+        clubBookId={null}
+        chapters={[]}
+        volumes={[]}
+        myProgress={null}
+        myReview={null}
+        hasActivity={false}
+        otherClubsCount={0}
+      />
+    );
   }
 
-  const [
-    { data: chapters },
-    { data: volumes },
-    { data: myProgress },
-    { data: myReview },
-    { count: commentCount },
-    { data: otherClubsCount },
-    { data: members },
-    { data: memberProgress },
-    { data: recentComments },
-    { data: recentReviews },
-  ] = await Promise.all([
-    supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
-    supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
-    supabase
-      .from('reading_progress')
-      .select('chapter_id, percent, reaction, current_page, total_pages, streak_count')
-      .eq('club_book_id', clubBook.id)
-      .eq('profile_id', user.id)
-      .maybeSingle(),
-    // La reseña que esta persona ya haya publicado para este libro (si hay),
-    // para precargar el formulario al editarla en vez de duplicarla.
-    supabase
-      .from('comments')
-      .select('id, title, body, is_spoiler')
-      .eq('club_book_id', clubBook.id)
-      .eq('profile_id', user.id)
-      .eq('kind', 'review')
-      .maybeSingle(),
-    // Ya no se muestra la lista de comentarios acá ("Impresiones recientes"
-    // se sacó de esta pantalla) — solo un conteo, liviano, para el punto de
-    // actividad del selector de club (ClubSwitcher).
-    supabase
-      .from('comments')
-      .select('id', { count: 'exact', head: true })
-      .eq('club_book_id', clubBook.id),
+  const [heroExtras, { data: otherClubsCount }, { data: members }, { data: memberProgress }] = await Promise.all([
+    // Chapters, volumes, mi progreso, mi reseña, actividad reciente y
+    // solicitudes pendientes: mismos datos que usa el héroe en "Mis clubes
+    // de lectura" para este mismo club — ver src/lib/clubDetail.js.
+    getClubHeroExtras(supabase, { clubId, clubBookId: clubBook.id, userId: user.id, isAdmin }),
     // RLS solo expone los clubes propios; el conteo de "otros clubes leyendo
     // lo mismo" viene de una función security definer.
     supabase.rpc('other_clubs_reading_count', {
@@ -84,23 +62,6 @@ export default async function Page({ params }) {
     // quién va por qué capítulo. reading_progress no tiene FK a club_members,
     // así que se trae aparte y se cruza acá abajo por profile_id.
     supabase.from('reading_progress').select('profile_id, chapter_id').eq('club_book_id', clubBook.id),
-    // "Actividad del club": los comentarios más recientes (sin respuestas,
-    // sin reseñas) para agrupar por capítulo — ver src/lib/clubActivity.js.
-    supabase
-      .from('comments')
-      .select('id, chapter_id, created_at, profile_id, profiles(display_name, avatar_url)')
-      .eq('club_book_id', clubBook.id)
-      .is('parent_comment_id', null)
-      .neq('kind', 'review')
-      .order('created_at', { ascending: false })
-      .limit(24),
-    supabase
-      .from('comments')
-      .select('id, created_at, profile_id, profiles(display_name, avatar_url)')
-      .eq('club_book_id', clubBook.id)
-      .eq('kind', 'review')
-      .order('created_at', { ascending: false })
-      .limit(8),
   ]);
 
   const progressByProfile = new Map((memberProgress ?? []).map((p) => [p.profile_id, p.chapter_id]));
@@ -111,22 +72,20 @@ export default async function Page({ params }) {
     chapterId: progressByProfile.get(m.profile_id) ?? null,
   }));
 
-  const chaptersById = new Map((chapters ?? []).map((c) => [c.id, c]));
-  const activity = buildClubActivity({ comments: recentComments, reviews: recentReviews, chaptersById });
-
   return (
     <ClubScreen
       {...baseProps}
+      pendingRequestCount={heroExtras.pendingRequestCount}
       book={clubBook.books}
       clubBookId={clubBook.id}
-      chapters={chapters ?? []}
-      volumes={volumes ?? []}
-      myProgress={myProgress ?? null}
-      myReview={myReview ?? null}
+      chapters={heroExtras.chapters}
+      volumes={heroExtras.volumes}
+      myProgress={heroExtras.myProgress}
+      myReview={heroExtras.myReview}
       members={membersWithProgress}
-      activity={activity}
+      activity={heroExtras.activity}
       currentUserId={user.id}
-      hasActivity={(commentCount ?? 0) > 0}
+      hasActivity={heroExtras.hasActivity}
       otherClubsCount={Number(otherClubsCount ?? 0)}
     />
   );

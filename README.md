@@ -395,7 +395,7 @@ En **Preferencias del club** los administradores ven una sección "Solicitudes p
 
 ### Multi-club
 
-Un usuario puede pertenecer a varios clubes (`getMyClubs` en `src/lib/activeClub.js`). El "club activo" (cookie `libris_club`) ya no determina qué se ve en `/` — ahora es solo un atajo para recordar, al entrar a un club desde la lista, cuál se está viendo. **`/club/[clubId]/comentarios` y `/club/[clubId]/preferencias` leen el id de la URL, no la cookie** — evita el bug de mostrar el club equivocado si se entra por un link directo en vez de por la lista.
+Un usuario puede pertenecer a varios clubes (`getMyClubs` en `src/lib/activeClub.js`). El "club activo" (cookie `libris_club`, `getActiveClub`) es el que se elige al entrar a un club desde la lista — y es el que determina qué se muestra en el héroe de `/` (ver "El héroe vive en Mis clubes de lectura" más abajo). **`/club/[clubId]/comentarios` y `/club/[clubId]/preferencias` leen el id de la URL, no la cookie** — evita el bug de mostrar el club equivocado si se entra por un link directo en vez de por la lista.
 
 ### Administradores, capítulos y volúmenes
 
@@ -445,6 +445,18 @@ Debajo del héroe, la pantalla del club suma estas piezas (completando la direcc
 - **`ClubActivityFeed`** (`src/components/ClubActivityFeed.jsx`) — tarjetas con lo último que pasó: comentarios recientes agrupados por capítulo ("Bruno y 2 más comentaron el Capítulo 4") y reseñas finales, cada una su propia tarjeta ("Sofía terminó el libro y dejó su reseña"). El agrupamiento vive en `src/lib/clubActivity.js`: junta por `chapter_id` los últimos comentarios (sin respuestas, sin reseñas) y arma reseñas aparte, ordenado todo por lo más reciente. Es una ventana de "lo más reciente" (últimos 24 comentarios / 8 reseñas), no un historial completo — con actividad muy espaciada en el tiempo puede juntar en una misma tarjeta comentarios de hace días si fueron los últimos en ese capítulo.
 
 Ninguna de estas piezas necesitó migración: los datos y los permisos ya existían, solo faltaba consultarlos y mostrarlos.
+
+### El héroe vive en "Mis clubes de lectura"
+
+El héroe (`CoverHero`), "Tu camino" (`ChapterPath`) y "Actividad del club" se mudaron de `/club/[clubId]` a `/` — al entrar a la app ya se ve el club activo leyendo, sin tocar nada. Los tres viven ahora en un mismo `SwipeableSections` de **3 páginas** (antes eran 2, solo camino/actividad, y el héroe quedaba fijo arriba): entrás y ves el héroe, deslizás una vez a la derecha y aparece "Tu camino", otra vez y aparece "Actividad del club" — un solo carrusel, los mismos puntitos arriba sirven para las tres paradas.
+
+- **`/club/[clubId]` sigue existiendo tal cual** (mismo héroe, mismo camino, misma actividad, más `MemberProgressStrip` y el aviso de "otros clubes leyendo esto", que no se llevaron a `/`) — es la vista para entrar a un club que no es el activo, desde la lista de abajo. No se sacó nada de ahí.
+- El club activo es el mismo de siempre (cookie `libris_club`, `getActiveClub`); si todavía no tiene un libro activo, `/` no muestra el carrusel — directo a la lista de clubes, como antes de este cambio.
+- La lista de "Mis clubes de lectura" marca con un borde y "Estás viendo este club arriba" la tarjeta del club activo, para que quede claro de cuál es el héroe de más arriba.
+- **`getClubHeroExtras`** (`src/lib/clubDetail.js`) junta la consulta de capítulos/volúmenes/mi progreso/mi reseña/actividad reciente/solicitudes pendientes que necesitan el héroe y sus dos páginas — la usan tanto `/` (para el club activo) como `/club/[clubId]` (para el club de la URL), en vez de tener la misma consulta duplicada en los dos lados.
+- El ícono de Preferencias con el punto de solicitudes pendientes se separó a su propio componente (`src/components/PreferenciasIconButton.jsx`) por el mismo motivo: lo usan los íconos de arriba del héroe en las dos pantallas.
+
+No hizo falta ninguna migración — los datos y RLS ya alcanzaban para el club activo, igual que ya alcanzaban para el de la URL.
 
 ### Contenido editorial
 

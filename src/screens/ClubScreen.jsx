@@ -11,31 +11,11 @@ import { MemberProgressStrip } from '@/components/MemberProgressStrip';
 import { ChapterPath } from '@/components/ChapterPath';
 import { ClubActivityFeed } from '@/components/ClubActivityFeed';
 import { SwipeableSections } from '@/components/SwipeableSections';
+import { PreferenciasIconButton } from '@/components/PreferenciasIconButton';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
 import { FinalReviewModal } from './FinalReviewModal.jsx';
 import { orderChapters } from '@/lib/orderChapters';
 import { computeHeroProgress } from '@/lib/heroProgress';
-
-function PreferenciasIconButton({ clubId, pendingRequestCount, tone }) {
-  return (
-    <Link href={`/club/${clubId}/preferencias`} style={{ position: 'relative' }}>
-      <IconButton aria-label="Preferencias del club" tone={tone} size={36}><Icon name="settings" size={16} /></IconButton>
-      {pendingRequestCount > 0 && (
-        <span
-          aria-hidden
-          style={{
-            position: 'absolute', top: -2, right: -2, minWidth: 16, height: 16, borderRadius: 999,
-            background: 'var(--accent-500)', color: '#fff', fontSize: 10, fontWeight: 800,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px',
-            border: `2px solid ${tone === 'glass' ? 'var(--hero-bg)' : 'var(--surface-page)'}`,
-          }}
-        >
-          {pendingRequestCount}
-        </span>
-      )}
-    </Link>
-  );
-}
 
 export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, members, activity, currentUserId, hasActivity, otherClubsCount, isAdmin, pendingRequestCount = 0 }) {
   const [showModal, setShowModal] = useState(false);
