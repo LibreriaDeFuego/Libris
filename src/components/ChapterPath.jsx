@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
-import { updateProgress } from '@/app/actions/clubs';
+import { updateProgress, getChapterCommentsPreview } from '@/app/actions/clubs';
 
 // Cuántos capítulos se muestran a cada lado del actual — para que el
 // camino no se vuelva eterno en libros largos. El resto queda afuera de
@@ -11,15 +12,16 @@ import { updateProgress } from '@/app/actions/clubs';
 const BEFORE = 2;
 const AFTER = 3;
 
-// Cuántos puntitos de compañeros se apilan antes de pasar a "+N" — así la
-// pastilla de un capítulo mide lo mismo con 3 personas que con 20.
-const COMPANION_DOTS = 3;
+// Cuántos puntitos (de compañeros o de autores de comentarios) se apilan
+// antes de pasar a "+N" — así una pastilla mide lo mismo con 3 personas
+// que con 20.
+const STACK_DOTS = 3;
 
 // Mismo criterio de color que Avatar.jsx (core del design system), para que
 // el puntito de acá y el avatar de "Quiénes están leyendo" sean la misma
 // persona con el mismo color.
 const PALETTE = ['var(--accent-500)', 'var(--gold-500)', 'var(--success)', 'var(--neutral-600)'];
-function companionColor(name) {
+function dotColor(name) {
   return PALETTE[name.length % PALETTE.length];
 }
 function initials(name) {
@@ -33,16 +35,30 @@ function firstName(name) {
 // quedan arriba, los ya leídos abajo — subir = avanzar) y tocar un nodo
 // actualiza el progreso al toque, igual que hacían los chips que
 // reemplaza. La racha de lectura (migración 035) vive integrada en el
-// nodo actual, no aparte. "Mostrar quién está leyendo" (apagado por
-// defecto) suma, junto a cada capítulo, quiénes de tus compañeros van por
-// ahí — mismos datos que ya trae "Quiénes están leyendo" arriba, solo que
-// puestos en el lugar donde de verdad importan: al lado del capítulo.
-export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCount = 0, members = [], currentUserId, onOpenFull }) {
+// nodo actual, no aparte.
+//
+// Dos botones apagados por defecto agregan, junto a cada capítulo, quién
+// anduvo por ahí:
+// - "Mostrar quién está leyendo" — compañeros del club en ese capítulo
+//   (mismos datos que MemberProgressStrip).
+// - "Comentarios" — cuántos comentarios tiene ese capítulo. Si el
+//   capítulo queda MÁS ADELANTE de tu propio progreso, tocar la pastilla
+//   no lleva a los comentarios directo: avisa que podría haber spoilers
+//   primero.
+//
+// Además, cada vez que marcás un capítulo como leído, aparece un panel
+// con los últimos comentarios de ESE capítulo (o la invitación a dejar el
+// primero) — sin tener que ir a la pantalla de Comentarios a buscarlos.
+export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, streakCount = 0, members = [], currentUserId, commentCounts = {}, onOpenFull }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
   const [error, setError] = useState(null);
   const [showCompanions, setShowCompanions] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [spoilerWarning, setSpoilerWarning] = useState(null); // { chapterId, label } | null
+  const [preview, setPreview] = useState(null); // { chapterId, label, comments, total } | null
+  const [loadingPreview, setLoadingPreview] = useState(false);
   const currentNodeRef = useRef(null);
 
   useEffect(() => {
@@ -67,6 +83,7 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
     companionsByChapter.get(m.chapterId).push(m);
   }
   const hasCompanions = companionsByChapter.size > 0;
+  const hasComments = Object.keys(commentCounts).length > 0;
 
   const activeId = optimisticId != null && optimisticId !== currentChapterId ? optimisticId : currentChapterId;
   const currentIndex = chapters.findIndex((c) => c.id === activeId);
@@ -78,11 +95,17 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
   // De futuro (arriba) a pasado (abajo) — el orden visual que pediste.
   const path = chapters.slice(start, end + 1).slice().reverse();
 
+  function chapterLabel(chapter) {
+    return chapter.title ? `Cap. ${chapter.number}` : (chapter.label ?? `Cap. ${chapter.number}`);
+  }
+
   function handleTap(chapter) {
     if (chapter.id === activeId || pending) return;
     setError(null);
     setOptimisticId(chapter.id);
-    setToast(`Ahora vas por ${chapter.title ? `Cap. ${chapter.number}` : (chapter.label ?? `Cap. ${chapter.number}`)}`);
+    setToast(`Ahora vas por ${chapterLabel(chapter)}`);
+    setPreview(null);
+    setSpoilerWarning(null);
 
     const formData = new FormData();
     formData.set('clubBookId', clubBookId);
@@ -95,8 +118,19 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
         setError(result.error);
         setOptimisticId(null);
         setToast(null);
+        return;
       }
+      setLoadingPreview(true);
+      const data = await getChapterCommentsPreview(clubBookId, chapter.id);
+      setPreview({ chapterId: chapter.id, label: chapterLabel(chapter), ...data });
+      setLoadingPreview(false);
     });
+  }
+
+  // Solo se llama para capítulos más adelante de tu progreso — para los
+  // otros, la pastilla es directamente un link (ver SideExtras).
+  function handleSpoilerTap(chapter) {
+    setSpoilerWarning({ chapterId: chapter.id, label: chapterLabel(chapter) });
   }
 
   return (
@@ -104,22 +138,20 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
       <div style={{ padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>Tu camino</div>
         <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Tocá un capítulo para marcarlo como el tuyo</div>
-        {hasCompanions && (
-          <button
-            type="button"
-            onClick={() => setShowCompanions((v) => !v)}
-            style={{
-              marginTop: 8, alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6,
-              borderRadius: 'var(--radius-pill)', padding: '6px 12px 6px 10px', fontSize: 11, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'var(--font-body)',
-              border: showCompanions ? '1px solid var(--neutral-900)' : '1px solid var(--border-default)',
-              background: showCompanions ? 'var(--neutral-900)' : 'var(--surface-card)',
-              color: showCompanions ? 'var(--hero-cream)' : 'var(--text-secondary)',
-            }}
-          >
-            <Icon name={showCompanions ? 'eye-off' : 'eye'} size={13} />
-            {showCompanions ? 'Ocultar quién está leyendo' : 'Mostrar quién está leyendo'}
-          </button>
+
+        {(hasCompanions || hasComments) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+            {hasCompanions && (
+              <ToggleChip active={showCompanions} onClick={() => setShowCompanions((v) => !v)} iconOn="eye-off" iconOff="eye">
+                {showCompanions ? 'Ocultar quién está leyendo' : 'Mostrar quién está leyendo'}
+              </ToggleChip>
+            )}
+            {hasComments && (
+              <ToggleChip active={showComments} onClick={() => { setShowComments((v) => !v); setSpoilerWarning(null); }} iconOn="message-circle" iconOff="message-circle">
+                Comentarios
+              </ToggleChip>
+            )}
+          </div>
         )}
       </div>
 
@@ -142,22 +174,35 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
             const originalIndex = chapters.findIndex((c) => c.id === chapter.id);
             const isCurrent = chapter.id === activeId;
             const isDone = currentIndex !== -1 && originalIndex < currentIndex;
+            const isAhead = currentIndex !== -1 && originalIndex > currentIndex;
             const isSaving = pending && optimisticId === chapter.id;
             const alignRight = i % 2 === 1;
             const showFlame = isCurrent && streakCount >= 2;
             const companions = showCompanions ? companionsByChapter.get(chapter.id) : null;
+            const commentCount = showComments ? (commentCounts[chapter.id] ?? 0) : 0;
 
             const nextChapter = path[i + 1];
             const nextOriginalIndex = nextChapter ? chapters.findIndex((c) => c.id === nextChapter.id) : null;
             const showSegmentAfter = i < path.length - 1;
             const segmentColored = showSegmentAfter && currentIndex !== -1 && nextOriginalIndex <= currentIndex;
 
+            const extras = (
+              <SideExtras
+                companions={companions}
+                commentCount={commentCount}
+                isAhead={isAhead}
+                onCommentTap={() => handleSpoilerTap(chapter)}
+                href={!isAhead ? `/club/${clubId}/comentarios?capitulo=${chapter.id}` : null}
+                align={alignRight ? 'right' : 'left'}
+              />
+            );
+
             return (
               <div key={chapter.id}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', alignItems: 'center', gap: 12 }}>
                   <div style={{ textAlign: 'right' }}>
                     {!alignRight && <NodeLabel chapter={chapter} isCurrent={isCurrent} isDone={isDone} align="right" />}
-                    {alignRight && companions?.length > 0 && <CompanionChip companions={companions} />}
+                    {alignRight && extras}
                   </div>
                   <button
                     type="button"
@@ -193,9 +238,17 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
                   </button>
                   <div style={{ textAlign: 'left' }}>
                     {alignRight && <NodeLabel chapter={chapter} isCurrent={isCurrent} isDone={isDone} align="left" />}
-                    {!alignRight && companions?.length > 0 && <CompanionChip companions={companions} />}
+                    {!alignRight && extras}
                   </div>
                 </div>
+
+                {spoilerWarning?.chapterId === chapter.id && (
+                  <SpoilerWarning
+                    label={spoilerWarning.label}
+                    href={`/club/${clubId}/comentarios?capitulo=${chapter.id}`}
+                    onDismiss={() => setSpoilerWarning(null)}
+                  />
+                )}
 
                 {showSegmentAfter && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', height: 26 }}>
@@ -239,6 +292,15 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
       {error && (
         <div style={{ margin: '2px 18px 0', color: 'var(--danger)', fontSize: 'var(--fs-xs)' }}>{error}</div>
       )}
+
+      {(preview || loadingPreview) && (
+        <ChapterCommentsPanel
+          clubId={clubId}
+          preview={preview}
+          loading={loadingPreview}
+          onDismiss={() => setPreview(null)}
+        />
+      )}
     </div>
   );
 }
@@ -251,6 +313,7 @@ function NodeLabel({ chapter, isCurrent, isDone, align }) {
     return (
       <div style={style}>
         <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>Cap. {chapter.number}</div>
+        {chapter.title && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>{chapter.title}</div>}
         <div style={{ fontSize: 11, color: 'var(--accent-500)', fontWeight: 700, marginTop: 1, letterSpacing: '.02em' }}>TU CAPÍTULO</div>
       </div>
     );
@@ -263,17 +326,79 @@ function NodeLabel({ chapter, isCurrent, isDone, align }) {
   );
 }
 
-// Pastilla de compañeros: puntitos apilados (hasta COMPANION_DOTS, con
-// "+N" si sobran) más "Fulano" o "Fulano y N más" — mismo patrón de texto
-// que ya usa "Actividad del club" para agrupar comentarios, solo que con
-// el primer nombre nomás (la pastilla es angosta).
-function CompanionChip({ companions }) {
-  const shown = companions.slice(0, COMPANION_DOTS);
-  const extra = companions.length - shown.length;
-  const label = companions.length === 1
-    ? firstName(companions[0].displayName)
-    : `${firstName(companions[0].displayName)} y ${companions.length - 1} más`;
+// Botón chico apagado/encendido — mismo look para "Mostrar quién está
+// leyendo" y "Comentarios", solo cambia el ícono y el texto.
+function ToggleChip({ active, onClick, children, iconOn, iconOff }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 'var(--radius-pill)',
+        padding: '6px 12px 6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
+        border: active ? '1px solid var(--neutral-900)' : '1px solid var(--border-default)',
+        background: active ? 'var(--neutral-900)' : 'var(--surface-card)',
+        color: active ? 'var(--hero-cream)' : 'var(--text-secondary)',
+      }}
+    >
+      <Icon name={active ? iconOn : iconOff} size={13} />
+      {children}
+    </button>
+  );
+}
 
+// Lo que va del lado libre de cada nodo (opuesto a la etiqueta del
+// capítulo): la pastilla de compañeros arriba, la de comentarios abajo —
+// si están las dos prendidas y el capítulo tiene ambas cosas, se apilan.
+function SideExtras({ companions, commentCount, isAhead, onCommentTap, href, align }) {
+  if (!(companions?.length > 0) && !commentCount) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: align === 'right' ? 'flex-end' : 'flex-start' }}>
+      {companions?.length > 0 && (
+        <Pill dots={companions.map((c) => ({ key: c.profileId, name: c.displayName }))} label={peopleLabel(companions)} />
+      )}
+      {commentCount > 0 && (
+        isAhead ? (
+          <button
+            type="button"
+            onClick={onCommentTap}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--neutral-100)',
+              border: '1px solid var(--neutral-200)', borderRadius: 'var(--radius-pill)', padding: '3px 10px 3px 8px', cursor: 'pointer',
+            }}
+          >
+            <Icon name="triangle-alert" size={11} color="var(--text-tertiary)" />
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{commentCount} {commentCount === 1 ? 'comentario' : 'comentarios'}</span>
+          </button>
+        ) : (
+          <Link
+            href={href}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--surface-card)',
+              border: '1px solid var(--border-default)', borderRadius: 'var(--radius-pill)', padding: '3px 10px 3px 8px', textDecoration: 'none',
+            }}
+          >
+            <Icon name="message-circle" size={11} color="var(--text-secondary)" />
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{commentCount} {commentCount === 1 ? 'comentario' : 'comentarios'}</span>
+          </Link>
+        )
+      )}
+    </div>
+  );
+}
+
+function peopleLabel(people) {
+  return people.length === 1
+    ? firstName(people[0].displayName)
+    : `${firstName(people[0].displayName)} y ${people.length - 1} más`;
+}
+
+// Puntitos apilados (hasta STACK_DOTS, "+N" si sobran) + nombre — la usa la
+// pastilla de compañeros. Mismo mecanismo de apilado para cualquier lista
+// de personas, si en el futuro hace falta en otro lado.
+function Pill({ dots, label }) {
+  const shown = dots.slice(0, STACK_DOTS);
+  const extra = dots.length - shown.length;
   return (
     <span
       style={{
@@ -282,17 +407,17 @@ function CompanionChip({ companions }) {
       }}
     >
       <span style={{ display: 'flex' }}>
-        {shown.map((m, i) => (
+        {shown.map((d, i) => (
           <span
-            key={m.profileId}
+            key={d.key}
             style={{
               width: 14, height: 14, borderRadius: '50%', marginLeft: i === 0 ? 0 : -5,
-              border: '1.5px solid var(--surface-page)', background: companionColor(m.displayName),
+              border: '1.5px solid var(--surface-page)', background: dotColor(d.name),
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: '#fff', fontSize: 6.5, fontWeight: 800, flexShrink: 0,
             }}
           >
-            {initials(m.displayName)}
+            {initials(d.name)}
           </span>
         ))}
         {extra > 0 && (
@@ -309,5 +434,79 @@ function CompanionChip({ companions }) {
       </span>
       <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{label}</span>
     </span>
+  );
+}
+
+// El aviso de spoiler — pedido tal cual: avisa que de acá para allá todavía
+// no marcaste como leído, así que puede haber spoilers, y deja elegir si
+// igual querés ver los comentarios.
+function SpoilerWarning({ label, href, onDismiss }) {
+  return (
+    <div
+      style={{
+        margin: '2px 18px 10px', padding: 12, borderRadius: 'var(--radius-md)',
+        background: 'var(--gold-50, #FFF8E1)', border: '1px solid var(--gold-500)',
+        display: 'flex', flexDirection: 'column', gap: 8,
+      }}
+    >
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+        <Icon name="triangle-alert" size={15} color="#8A5A00" />
+        <div style={{ fontSize: 12.5, color: '#5A3D00', lineHeight: 1.4 }}>
+          De acá para allá no has marcado como leído — puede que encuentres spoilers de {label}.
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 14 }}>
+        <Link href={href} onClick={onDismiss} style={{ fontSize: 12, fontWeight: 700, color: '#5A3D00', textDecoration: 'none' }}>
+          Ver de todas formas
+        </Link>
+        <button
+          type="button"
+          onClick={onDismiss}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#8A5A00' }}
+        >
+          Mejor no
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// El panel que aparece apenas marcás un capítulo como leído: lo que se dijo
+// ahí, o la invitación a dejar el primer comentario si todavía no hay nada.
+function ChapterCommentsPanel({ clubId, preview, loading, onDismiss }) {
+  const href = preview ? `/club/${clubId}/comentarios?capitulo=${preview.chapterId}` : null;
+
+  return (
+    <div style={{ margin: '2px 18px 0', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px 8px' }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+          Comentarios{preview ? ` · ${preview.label}` : ''}
+        </div>
+        <button type="button" onClick={onDismiss} aria-label="Cerrar" style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--text-tertiary)' }}>
+          <Icon name="x" size={14} />
+        </button>
+      </div>
+
+      {loading ? (
+        <div style={{ padding: '4px 14px 14px', fontSize: 12, color: 'var(--text-tertiary)' }}>Buscando comentarios…</div>
+      ) : preview.total === 0 ? (
+        <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>Todavía no hay comentarios en este capítulo.</div>
+          <Link href={href} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}>Dejar el primero</Link>
+        </div>
+      ) : (
+        <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {preview.comments.map((c) => (
+            <div key={c.id} style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+              <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{c.authorName}</span>{' '}
+              {c.preview}
+            </div>
+          ))}
+          <Link href={href} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}>
+            {preview.total > preview.comments.length ? `Ver los ${preview.total} comentarios` : 'Ver y responder'}
+          </Link>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs, getActiveClubBook } from '@/lib/activeClub';
-import { getClubHeroExtras } from '@/lib/clubDetail';
+import { getClubHeroExtras, getChapterCommentCounts } from '@/lib/clubDetail';
 import { ClubScreen } from '@/screens/ClubScreen.jsx';
 
 export default async function Page({ params }) {
@@ -37,12 +37,13 @@ export default async function Page({ params }) {
         volumes={[]}
         myProgress={null}
         myReview={null}
+        commentCounts={{}}
         otherClubsCount={0}
       />
     );
   }
 
-  const [heroExtras, { data: otherClubsCount }, { data: members }, { data: memberProgress }] = await Promise.all([
+  const [heroExtras, { data: otherClubsCount }, { data: members }, { data: memberProgress }, commentCounts] = await Promise.all([
     // Chapters, volumes, mi progreso, mi reseña, actividad reciente y
     // solicitudes pendientes — ver src/lib/clubDetail.js.
     getClubHeroExtras(supabase, { clubId, clubBookId: clubBook.id, userId: user.id, isAdmin }),
@@ -59,6 +60,9 @@ export default async function Page({ params }) {
     // quién va por qué capítulo. reading_progress no tiene FK a club_members,
     // así que se trae aparte y se cruza acá abajo por profile_id.
     supabase.from('reading_progress').select('profile_id, chapter_id').eq('club_book_id', clubBook.id),
+    // Cuántos comentarios tiene cada capítulo, para la pastilla de
+    // "Comentarios" en Tu camino.
+    getChapterCommentCounts(supabase, clubBook.id),
   ]);
 
   const progressByProfile = new Map((memberProgress ?? []).map((p) => [p.profile_id, p.chapter_id]));
@@ -82,6 +86,7 @@ export default async function Page({ params }) {
       members={membersWithProgress}
       activity={heroExtras.activity}
       currentUserId={user.id}
+      commentCounts={commentCounts}
       otherClubsCount={Number(otherClubsCount ?? 0)}
     />
   );

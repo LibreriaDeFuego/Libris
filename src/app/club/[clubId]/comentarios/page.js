@@ -5,8 +5,9 @@ import { ComentariosScreen } from '@/screens/ComentariosScreen.jsx';
 
 export const metadata = { title: 'Comentarios · Libris' };
 
-export default async function Page({ params }) {
+export default async function Page({ params, searchParams }) {
   const { clubId } = await params;
+  const { capitulo } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
@@ -74,6 +75,7 @@ export default async function Page({ params }) {
       clubName={club.name}
       myDisplayName={me?.display_name ?? null}
       myProfileId={user.id}
+      initialChapterId={capitulo ?? null}
     />
   );
 }

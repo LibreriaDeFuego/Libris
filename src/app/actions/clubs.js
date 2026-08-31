@@ -529,6 +529,50 @@ export async function updateProgress(formData) {
   return { error: null, finished: mode === 'finished' };
 }
 
+// Comentarios de un capítulo puntual (los últimos 3, más el total) — la usa
+// ChapterPath para mostrar "qué se dijo acá" apenas marcás ese capítulo
+// como leído, sin tener que ir a Comentarios. No trae reseñas (son del
+// libro entero, no de un capítulo) ni respuestas (quedarían sin contexto
+// sin ver el comentario original).
+export async function getChapterCommentsPreview(clubBookId, chapterId) {
+  const supabase = await createClient();
+  await requireUser(supabase);
+  if (!clubBookId || !chapterId) return { comments: [], total: 0 };
+
+  const [{ data: recent }, { count }] = await Promise.all([
+    supabase
+      .from('comments')
+      .select('id, kind, body, voice_transcript, created_at, profiles(display_name)')
+      .eq('club_book_id', clubBookId)
+      .eq('chapter_id', chapterId)
+      .is('parent_comment_id', null)
+      .neq('kind', 'review')
+      .order('created_at', { ascending: false })
+      .limit(3),
+    supabase
+      .from('comments')
+      .select('id', { count: 'exact', head: true })
+      .eq('club_book_id', clubBookId)
+      .eq('chapter_id', chapterId)
+      .is('parent_comment_id', null)
+      .neq('kind', 'review'),
+  ]);
+
+  const comments = (recent ?? []).map((c) => ({
+    id: c.id,
+    authorName: c.profiles?.display_name ?? 'Alguien',
+    preview: chapterCommentPreviewText(c),
+  }));
+
+  return { comments, total: count ?? 0 };
+}
+
+function chapterCommentPreviewText(comment) {
+  if (comment.kind === 'voice') return comment.voice_transcript || 'Dejó una nota de voz.';
+  if (comment.kind === 'quote') return `«${comment.body}»`;
+  return comment.body;
+}
+
 // Estilos válidos para la tarjeta de una cita — deben coincidir con el
 // CHECK de comments.quote_style (migración 019) y con QUOTE_STYLES en
 // src/lib/quoteCard.js.

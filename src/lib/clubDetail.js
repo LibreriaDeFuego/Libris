@@ -85,3 +85,25 @@ export async function getClubProgressSummary(supabase, { clubBookId, userId }) {
 
   return { chapters: chapters ?? [], volumes: volumes ?? [], myProgress: myProgress ?? null };
 }
+
+// Cuántos comentarios (sin contar reseñas) tiene cada capítulo — para la
+// pastilla de "Comentarios" en Tu camino (ChapterPath). Trae solo el
+// chapter_id de cada fila y cuenta acá mismo: no hay forma de pedirle a
+// Supabase un GROUP BY sin una función RPC aparte, y para un libro esto es
+// liviano (unas pocas columnas, sin texto ni joins).
+export async function getChapterCommentCounts(supabase, clubBookId) {
+  if (!clubBookId) return {};
+
+  const { data } = await supabase
+    .from('comments')
+    .select('chapter_id')
+    .eq('club_book_id', clubBookId)
+    .not('chapter_id', 'is', null)
+    .neq('kind', 'review');
+
+  const counts = {};
+  for (const row of data ?? []) {
+    counts[row.chapter_id] = (counts[row.chapter_id] ?? 0) + 1;
+  }
+  return counts;
+}

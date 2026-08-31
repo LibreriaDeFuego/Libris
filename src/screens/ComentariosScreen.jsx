@@ -127,7 +127,7 @@ function ReviewCard({ review, book, isOwn, onEdit, replies }) {
 // club los ve. "Compartir" es aparte: solo aparece en tus propios
 // comentarios de capítulo y notas de voz (reseñas/citas ya aparecen
 // siempre en Inicio, no necesitan esto) y solo tú lo ves.
-export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myDisplayName, myProfileId }) {
+export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myDisplayName, myProfileId, initialChapterId }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
   // Las respuestas (parent_comment_id no nulo) no son "un comentario más" en
@@ -144,7 +144,13 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
     for (const list of map.values()) list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     return map;
   }, [comments]);
-  const [chapterId, setChapterId] = useState(orderedChapters[0]?.id ?? null);
+  // Si se llega con ?capitulo=... (por ejemplo, desde la pastilla de
+  // comentarios de Tu camino) arranca en ese capítulo; si no existe entre
+  // los del libro, cae al de siempre (el primero).
+  const [chapterId, setChapterId] = useState(() => {
+    if (initialChapterId && orderedChapters.some((c) => c.id === initialChapterId)) return initialChapterId;
+    return orderedChapters[0]?.id ?? null;
+  });
   const [editingReview, setEditingReview] = useState(null);
   const [editingQuote, setEditingQuote] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
