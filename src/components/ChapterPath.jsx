@@ -11,16 +11,38 @@ import { updateProgress } from '@/app/actions/clubs';
 const BEFORE = 2;
 const AFTER = 3;
 
+// Cuántos puntitos de compañeros se apilan antes de pasar a "+N" — así la
+// pastilla de un capítulo mide lo mismo con 3 personas que con 20.
+const COMPANION_DOTS = 3;
+
+// Mismo criterio de color que Avatar.jsx (core del design system), para que
+// el puntito de acá y el avatar de "Quiénes están leyendo" sean la misma
+// persona con el mismo color.
+const PALETTE = ['var(--accent-500)', 'var(--gold-500)', 'var(--success)', 'var(--neutral-600)'];
+function companionColor(name) {
+  return PALETTE[name.length % PALETTE.length];
+}
+function initials(name) {
+  return name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+}
+function firstName(name) {
+  return name.split(' ')[0];
+}
+
 // El camino de capítulos del club, estilo Duolingo: sube (los que faltan
 // quedan arriba, los ya leídos abajo — subir = avanzar) y tocar un nodo
 // actualiza el progreso al toque, igual que hacían los chips que
 // reemplaza. La racha de lectura (migración 035) vive integrada en el
-// nodo actual, no aparte.
-export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCount = 0, onOpenFull }) {
+// nodo actual, no aparte. "Mostrar quién está leyendo" (apagado por
+// defecto) suma, junto a cada capítulo, quiénes de tus compañeros van por
+// ahí — mismos datos que ya trae "Quiénes están leyendo" arriba, solo que
+// puestos en el lugar donde de verdad importan: al lado del capítulo.
+export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCount = 0, members = [], currentUserId, onOpenFull }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
   const [error, setError] = useState(null);
+  const [showCompanions, setShowCompanions] = useState(false);
   const currentNodeRef = useRef(null);
 
   useEffect(() => {
@@ -37,6 +59,14 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
   }, []);
 
   if (!chapters || chapters.length === 0) return null;
+
+  const companionsByChapter = new Map();
+  for (const m of members) {
+    if (!m.chapterId || m.profileId === currentUserId) continue;
+    if (!companionsByChapter.has(m.chapterId)) companionsByChapter.set(m.chapterId, []);
+    companionsByChapter.get(m.chapterId).push(m);
+  }
+  const hasCompanions = companionsByChapter.size > 0;
 
   const activeId = optimisticId != null && optimisticId !== currentChapterId ? optimisticId : currentChapterId;
   const currentIndex = chapters.findIndex((c) => c.id === activeId);
@@ -74,6 +104,23 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
       <div style={{ padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>Tu camino</div>
         <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Tocá un capítulo para marcarlo como el tuyo</div>
+        {hasCompanions && (
+          <button
+            type="button"
+            onClick={() => setShowCompanions((v) => !v)}
+            style={{
+              marginTop: 8, alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6,
+              borderRadius: 'var(--radius-pill)', padding: '6px 12px 6px 10px', fontSize: 11, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'var(--font-body)',
+              border: showCompanions ? '1px solid var(--neutral-900)' : '1px solid var(--border-default)',
+              background: showCompanions ? 'var(--neutral-900)' : 'var(--surface-card)',
+              color: showCompanions ? 'var(--hero-cream)' : 'var(--text-secondary)',
+            }}
+          >
+            <Icon name={showCompanions ? 'eye-off' : 'eye'} size={13} />
+            {showCompanions ? 'Ocultar quién está leyendo' : 'Mostrar quién está leyendo'}
+          </button>
+        )}
       </div>
 
       <div style={{ position: 'relative', padding: '10px 24px 4px' }}>
@@ -98,6 +145,7 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
             const isSaving = pending && optimisticId === chapter.id;
             const alignRight = i % 2 === 1;
             const showFlame = isCurrent && streakCount >= 2;
+            const companions = showCompanions ? companionsByChapter.get(chapter.id) : null;
 
             const nextChapter = path[i + 1];
             const nextOriginalIndex = nextChapter ? chapters.findIndex((c) => c.id === nextChapter.id) : null;
@@ -109,6 +157,7 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', alignItems: 'center', gap: 12 }}>
                   <div style={{ textAlign: 'right' }}>
                     {!alignRight && <NodeLabel chapter={chapter} isCurrent={isCurrent} isDone={isDone} align="right" />}
+                    {alignRight && companions?.length > 0 && <CompanionChip companions={companions} />}
                   </div>
                   <button
                     type="button"
@@ -144,6 +193,7 @@ export function ChapterPath({ clubBookId, chapters, currentChapterId, streakCoun
                   </button>
                   <div style={{ textAlign: 'left' }}>
                     {alignRight && <NodeLabel chapter={chapter} isCurrent={isCurrent} isDone={isDone} align="left" />}
+                    {!alignRight && companions?.length > 0 && <CompanionChip companions={companions} />}
                   </div>
                 </div>
 
@@ -210,5 +260,54 @@ function NodeLabel({ chapter, isCurrent, isDone, align }) {
       Cap. {chapter.number}
       {chapter.title && <><br />{chapter.title}</>}
     </div>
+  );
+}
+
+// Pastilla de compañeros: puntitos apilados (hasta COMPANION_DOTS, con
+// "+N" si sobran) más "Fulano" o "Fulano y N más" — mismo patrón de texto
+// que ya usa "Actividad del club" para agrupar comentarios, solo que con
+// el primer nombre nomás (la pastilla es angosta).
+function CompanionChip({ companions }) {
+  const shown = companions.slice(0, COMPANION_DOTS);
+  const extra = companions.length - shown.length;
+  const label = companions.length === 1
+    ? firstName(companions[0].displayName)
+    : `${firstName(companions[0].displayName)} y ${companions.length - 1} más`;
+
+  return (
+    <span
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--surface-card)',
+        border: '1px solid var(--border-default)', borderRadius: 'var(--radius-pill)', padding: '3px 10px 3px 3px',
+      }}
+    >
+      <span style={{ display: 'flex' }}>
+        {shown.map((m, i) => (
+          <span
+            key={m.profileId}
+            style={{
+              width: 14, height: 14, borderRadius: '50%', marginLeft: i === 0 ? 0 : -5,
+              border: '1.5px solid var(--surface-page)', background: companionColor(m.displayName),
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontSize: 6.5, fontWeight: 800, flexShrink: 0,
+            }}
+          >
+            {initials(m.displayName)}
+          </span>
+        ))}
+        {extra > 0 && (
+          <span
+            style={{
+              width: 14, height: 14, borderRadius: '50%', marginLeft: -5, border: '1.5px solid var(--surface-page)',
+              background: 'var(--neutral-200)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--text-secondary)', fontSize: 6, fontWeight: 800, flexShrink: 0,
+            }}
+          >
+            +{extra}
+          </span>
+        )}
+      </span>
+      <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{label}</span>
+    </span>
   );
 }
