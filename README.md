@@ -425,6 +425,8 @@ El detalle del club (`ClubScreen`) mostró primero la portada a pantalla complet
 
 **Título duplicado**: esto seguía necesitando resolverse en otro lado — el generador de citas para compartir (`src/lib/quoteCard.js`, estilo "cover") sigue dibujando la portada a pantalla completa detrás de la cita, y ahí sí hace falta saber si esa portada ya trae el título impreso para no repetirlo. Ese switch (`cover_has_title` en `books`) se movió de aquel editor a un toggle simple dentro de **Preferencias del club → El libro en curso** ("La portada ya trae el título"), guardado junto con el título/autor del libro en la misma Server Action (`updateClubPreferences`).
 
+**El héroe a la mitad de alto**: portada, kicker/título/autor/capítulos y el % pasaron de estar apilados (portada abajo del texto, progreso abajo de la portada) a ir todos en **una sola fila** — portada chica a la izquierda, título/autor/capítulos al medio (una línea cada uno, con puntos suspensivos si no entran), % y capítulo actual a la derecha — con la barra de progreso ocupando el ancho completo debajo. Bajó de ~525px a ~225px sin sacar ningún elemento. Se probaron mockups con la portada al lado del texto, superpuesta en una esquina, y en una fila más chica; el resultado es una mezcla de las últimas dos (la fila, pero con el tamaño/aire de la versión de al lado). El chrome de arriba (volver, selector de club, íconos de acciones) no cambió.
+
 ### Actualizar progreso tocando un capítulo
 
 El héroe ya no tiene el botón grande "Actualizar progreso" ni el ícono cuadrado de comentarios al lado. En su lugar:
