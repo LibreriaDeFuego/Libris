@@ -458,6 +458,8 @@ El héroe (`CoverHero`), "Tu camino" (`ChapterPath`) y "Actividad del club" se m
 
 No hizo falta ninguna migración — los datos y RLS ya alcanzaban para el club activo, igual que ya alcanzaban para el de la URL.
 
+**Solo con el héroe (página 1) se ve el resto de la pantalla** — el logo de Libris arriba, el botón de sumar club, la lista de "Mis clubes de lectura" y el adelanto de Descubrir. Al deslizar a "Tu camino" o "Actividad del club" (páginas 2 y 3) esas piezas se sacan de encima, así esas dos páginas quedan con foco total en la lectura del club activo, sin la pantalla de siempre pegada abajo. `SwipeableSections` ganó un `onActiveIndexChange` opcional (avisa al padre en qué página quedó, vía `useEffect`) para que `MisClubesScreen` sepa cuándo mostrar u ocultar ese resto — sigue siendo genérico, `ClubScreen` no lo usa y no cambia en nada.
+
 ### Contenido editorial
 
 `editorial_items` alimenta las solapas Guías/Cursos de **Recursos**. No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.

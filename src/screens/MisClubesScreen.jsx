@@ -82,6 +82,13 @@ export function MisClubesScreen({ clubs, discoverClubs = [], hero }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  // En qué página del carrusel está el héroe: 0 = el héroe en sí. El logo,
+  // el botón de sumar club y la lista de "Mis clubes de lectura"/Descubrir
+  // solo tienen sentido ahí — al deslizar a "Tu camino" o "Actividad del
+  // club" se sacan de encima, para que esas dos páginas queden con foco
+  // total en la lectura del club activo, sin la pantalla de siempre debajo.
+  const [activeIndex, setActiveIndex] = useState(0);
+  const showChrome = !hero || activeIndex === 0;
 
   const orderedChapters = hero ? orderChapters(hero.chapters, hero.volumes ?? []) : [];
   const percent = hero?.myProgress?.percent ?? 0;
@@ -106,13 +113,15 @@ export function MisClubesScreen({ clubs, discoverClubs = [], hero }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 18px 14px' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
-        <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block' }} />
-        <IconButton aria-label="Sumar un club" size={36} onClick={() => setSheetOpen(true)}>
-          <Icon name="plus" size={16} />
-        </IconButton>
-      </div>
+      {showChrome && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 18px 14px' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
+          <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block' }} />
+          <IconButton aria-label="Sumar un club" size={36} onClick={() => setSheetOpen(true)}>
+            <Icon name="plus" size={16} />
+          </IconButton>
+        </div>
+      )}
 
       {/* El héroe se muda acá desde /club/[clubId]: es la primera página de
           un carrusel de 3 (mismo mecanismo que ya usaba camino/actividad
@@ -122,6 +131,7 @@ export function MisClubesScreen({ clubs, discoverClubs = [], hero }) {
           quiere ver un club que no es el activo. */}
       {hero && (
         <SwipeableSections
+          onActiveIndexChange={setActiveIndex}
           sections={[
             {
               key: 'heroe',
@@ -157,71 +167,73 @@ export function MisClubesScreen({ clubs, discoverClubs = [], hero }) {
         />
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '24px 18px 24px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
-            Mis clubes de lectura
+      {showChrome && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '24px 18px 24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Mis clubes de lectura
+            </div>
+
+            {clubs.length === 0 ? (
+              <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '12px 0' }}>
+                Todavía no estás en ningún club.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {clubs.map((club) => <ClubCard key={club.id} club={club} isActive={hero != null && club.id === hero.club.id} />)}
+              </div>
+            )}
           </div>
 
-          {clubs.length === 0 ? (
-            <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '12px 0' }}>
-              Todavía no estás en ningún club.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {clubs.map((club) => <ClubCard key={club.id} club={club} isActive={hero != null && club.id === hero.club.id} />)}
-            </div>
-          )}
-        </div>
+          <div style={{ height: 1, background: 'var(--border-subtle)' }} />
 
-        <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+              Descubrir más clubes
+            </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
-            Descubrir más clubes
+            {/* No es un buscador en vivo: lleva a Descubrir, donde sí se puede
+                tipear y buscar clubes y personas. Evita duplicar esa búsqueda acá. */}
+            <Link
+              href="/descubrir"
+              style={{
+                display: 'flex', alignItems: 'center', width: '100%', padding: '12px 16px',
+                borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
+                background: 'var(--surface-card)', color: 'var(--text-tertiary)', fontFamily: 'var(--font-body)',
+                fontSize: 'var(--fs-base)', textDecoration: 'none',
+              }}
+            >
+              Buscar clubes o personas
+            </Link>
+
+            {discoverClubs.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {discoverClubs.map((club) => <ClubRow key={club.id} club={club} />)}
+              </div>
+            )}
+
+            <Link
+              href="/descubrir"
+              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}
+            >
+              Ver todo en Descubrir
+              <Icon name="arrow-right" size={12} color="var(--text-link)" />
+            </Link>
           </div>
 
-          {/* No es un buscador en vivo: lleva a Descubrir, donde sí se puede
-              tipear y buscar clubes y personas. Evita duplicar esa búsqueda acá. */}
-          <Link
-            href="/descubrir"
-            style={{
-              display: 'flex', alignItems: 'center', width: '100%', padding: '12px 16px',
-              borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
-              background: 'var(--surface-card)', color: 'var(--text-tertiary)', fontFamily: 'var(--font-body)',
-              fontSize: 'var(--fs-base)', textDecoration: 'none',
-            }}
-          >
-            Buscar clubes o personas
-          </Link>
+          <div style={{ height: 1, background: 'var(--border-subtle)' }} />
 
-          {discoverClubs.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {discoverClubs.map((club) => <ClubRow key={club.id} club={club} />)}
-            </div>
-          )}
-
-          <Link
-            href="/descubrir"
-            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}
-          >
-            Ver todo en Descubrir
-            <Icon name="arrow-right" size={12} color="var(--text-link)" />
-          </Link>
+          <div style={{ textAlign: 'center', padding: '2px 0 6px' }}>
+            <button
+              type="button"
+              onClick={() => setSheetOpen(true)}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}
+            >
+              ¿No encontraste tu club? Crear uno o unirme con un link
+            </button>
+          </div>
         </div>
-
-        <div style={{ height: 1, background: 'var(--border-subtle)' }} />
-
-        <div style={{ textAlign: 'center', padding: '2px 0 6px' }}>
-          <button
-            type="button"
-            onClick={() => setSheetOpen(true)}
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}
-          >
-            ¿No encontraste tu club? Crear uno o unirme con un link
-          </button>
-        </div>
-      </div>
+      )}
 
       {sheetOpen && <AddClubSheet onClose={() => setSheetOpen(false)} />}
 
