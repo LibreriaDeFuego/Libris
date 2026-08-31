@@ -1,267 +1,154 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
-import { selectClub } from '@/app/actions/clubs';
+import { useState } from 'react';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
-import { InviteButton } from '@/components/InviteButton';
-import { CoverHero } from '@/components/CoverHero';
-import { ChapterPath } from '@/components/ChapterPath';
-import { ClubActivityFeed } from '@/components/ClubActivityFeed';
-import { SwipeableSections } from '@/components/SwipeableSections';
-import { PreferenciasIconButton } from '@/components/PreferenciasIconButton';
 import { AddClubSheet } from '@/components/AddClubSheet';
-import { ClubRow } from '@/screens/OtrosClubesScreen.jsx';
-import { UpdateProgressModal } from './UpdateProgressModal.jsx';
-import { FinalReviewModal } from './FinalReviewModal.jsx';
-import { formatRelativeTime } from '@/lib/formatRelativeTime';
-import { orderChapters } from '@/lib/orderChapters';
-import { computeHeroProgress } from '@/lib/heroProgress';
 
-function ClubCard({ club, isActive }) {
-  const [pending, startTransition] = useTransition();
+const CREAM = 'var(--hero-cream)';
 
-  // Al entrar a un club lo dejamos marcado como activo (cookie), para que
-  // Comentarios y Preferencias — que todavía se basan en "el club activo" —
-  // apunten al que se acaba de abrir.
-  function handleClick() {
-    const formData = new FormData();
-    formData.set('clubId', club.id);
-    startTransition(() => selectClub(formData));
-  }
+// La misma solución visual y los mismos datos que mostraba el héroe grande
+// (portada sin recortar, título/autor, capítulos, % y barra de progreso) —
+// pero como tarjeta chica dentro de la lista: sin el chrome de arriba
+// (volver, selector de club, íconos de acciones), porque acá cada tarjeta
+// YA es un club distinto, no hace falta elegir entre ellos adentro de una.
+// Tocar la tarjeta entra directo a "Progreso y Actividad" de ese club
+// (/club/[clubId], que ya no muestra un héroe grande — ver README).
+const CARD_SHADOW = [
+  '-1px 2px 0 rgba(20,16,4,0.32)',
+  '-3px 5px 2px rgba(20,16,4,0.26)',
+  '-7px 11px 5px rgba(20,16,4,0.18)',
+].join(', ');
+
+const CARD_LIGHT = 'linear-gradient(210deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.06) 30%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.42) 100%)';
+
+function ClubHeroCard({ club }) {
+  const book = club.book;
 
   return (
-    <Link
-      href={`/club/${club.id}`}
-      onClick={handleClick}
-      style={{
-        display: 'flex', gap: 12, alignItems: 'center', background: 'var(--surface-card)',
-        border: isActive ? '1.5px solid var(--accent-500)' : '1px solid var(--border-subtle)',
-        borderRadius: 'var(--radius-lg)', padding: 14,
-        boxShadow: 'var(--shadow-sm)', opacity: pending ? 0.7 : 1,
-      }}
-    >
-      <div
-        style={{
-          width: 46, height: 66, borderRadius: 'var(--radius-sm)', flexShrink: 0,
-          background: club.book?.cover_url ? `center/cover no-repeat url(${club.book.cover_url})` : 'var(--accent-500)',
-        }}
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+    <Link href={`/club/${club.id}`} style={{ display: 'block', background: 'var(--accent-500)', borderRadius: 18, padding: '14px 16px', textDecoration: 'none' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: CREAM, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {club.name}
         </div>
-        <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 1 }}>
-          {club.memberCount} {club.memberCount === 1 ? 'miembro' : 'miembros'}
-          {club.book ? ` · leyendo ${club.book.title}` : ' · sin libro activo'}
-        </div>
-        {isActive ? (
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 4 }}>
-            Estás viendo este club arriba
-          </div>
-        ) : club.activity ? (
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 'var(--lh-snug)' }}>
-            {club.activity.text} · {formatRelativeTime(club.activity.time)}
-          </div>
-        ) : (
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>
-            Sin novedades todavía
-          </div>
-        )}
+        <Icon name="chevron-right" size={14} color={CREAM} />
       </div>
-      <Icon name="chevron-right" size={18} color="var(--text-tertiary)" />
+
+      {book ? (
+        <>
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+            {book.cover_url ? (
+              <div style={{ position: 'relative', lineHeight: 0, flexShrink: 0 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- proporción propia que solo se conoce en el navegador. */}
+                <img
+                  src={book.cover_url}
+                  alt=""
+                  style={{ display: 'block', width: 'auto', height: 'auto', maxWidth: 56, maxHeight: 76, borderRadius: '0 3px 3px 0', boxShadow: CARD_SHADOW }}
+                />
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '0 3px 3px 0', mixBlendMode: 'soft-light', pointerEvents: 'none', background: CARD_LIGHT }} />
+              </div>
+            ) : (
+              <div style={{ width: 56, height: 76, borderRadius: '0 3px 3px 0', background: CREAM, opacity: 0.35, flexShrink: 0 }} />
+            )}
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 8.5, letterSpacing: '.1em', textTransform: 'uppercase', color: CREAM, opacity: 0.7, fontWeight: 800 }}>
+                Leyendo ahora
+              </div>
+              <div
+                style={{
+                  fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, lineHeight: 1.2, color: CREAM, marginTop: 3,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}
+              >
+                {book.title}
+              </div>
+              <div style={{ fontSize: 10.5, color: CREAM, opacity: 0.72, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {[book.author, club.unit].filter(Boolean).join(' · ')}
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 800, letterSpacing: '-.02em', color: CREAM }}>
+                {club.percent}%
+              </div>
+              {club.progressMeta && (
+                <div style={{ fontSize: 9.5, color: CREAM, opacity: 0.7, marginTop: 1 }}>{club.progressMeta}</div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            {club.pips?.type === 'pips' ? (
+              <div style={{ display: 'flex', gap: 3 }}>
+                {Array.from({ length: club.pips.total }, (_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      flex: 1, height: 4, borderRadius: 2,
+                      background: i <= club.pips.nowIndex ? CREAM : 'rgba(255,248,236,.22)',
+                      opacity: i === club.pips.nowIndex ? 0.6 : 1,
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,248,236,.22)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${club.pips?.percent ?? club.percent}%`, borderRadius: 2, background: CREAM }} />
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div style={{ marginTop: 10, fontSize: 12, color: CREAM, opacity: 0.75 }}>
+          Todavía no tiene un libro activo.
+        </div>
+      )}
     </Link>
   );
 }
 
-// hero trae todo lo que necesitan CoverHero + ChapterPath + ClubActivityFeed
-// para el club activo (ver getClubHeroExtras) — null si ese club todavía no
-// tiene un libro activo, en cuyo caso simplemente no hay carrusel arriba.
-export function MisClubesScreen({ clubs, discoverClubs = [], hero }) {
+export function MisClubesScreen({ clubs }) {
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  // En qué página del carrusel está el héroe: 0 = el héroe en sí. El logo,
-  // el botón de sumar club y la lista de "Mis clubes de lectura"/Descubrir
-  // solo tienen sentido ahí — al deslizar a "Tu camino" o "Actividad del
-  // club" se sacan de encima, para que esas dos páginas queden con foco
-  // total en la lectura del club activo, sin la pantalla de siempre debajo.
-  const [activeIndex, setActiveIndex] = useState(0);
-  const showChrome = !hero || activeIndex === 0;
-
-  const orderedChapters = hero ? orderChapters(hero.chapters, hero.volumes ?? []) : [];
-  const percent = hero?.myProgress?.percent ?? 0;
-  const { progressMeta, unit, pips } = hero
-    ? computeHeroProgress({ chapters: hero.chapters, volumes: hero.volumes, myProgress: hero.myProgress, percent })
-    : {};
-
-  const headerRight = hero && (
-    <>
-      <Link href={`/club/${hero.club.id}/comentarios`}>
-        <IconButton aria-label="Comentarios del club" tone="glass" size={36}><Icon name="message-circle" size={16} /></IconButton>
-      </Link>
-      <InviteButton clubId={hero.club.id} tone="glass" />
-      {hero.isAdmin && (
-        <Link href={`/club/${hero.club.id}/capitulos`}>
-          <IconButton aria-label="Gestionar capítulos" tone="glass" size={36}><Icon name="list" size={16} /></IconButton>
-        </Link>
-      )}
-      <PreferenciasIconButton clubId={hero.club.id} pendingRequestCount={hero.isAdmin ? hero.pendingRequestCount : 0} tone="glass" />
-    </>
-  );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      {showChrome && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 18px 14px' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
-          <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block' }} />
-          <IconButton aria-label="Sumar un club" size={36} onClick={() => setSheetOpen(true)}>
-            <Icon name="plus" size={16} />
-          </IconButton>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: '20px 18px 24px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
+        <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block' }} />
+        <IconButton aria-label="Sumar un club" size={36} onClick={() => setSheetOpen(true)}>
+          <Icon name="plus" size={16} />
+        </IconButton>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
+          Mis clubes de lectura
         </div>
-      )}
 
-      {/* El héroe se muda acá desde /club/[clubId]: es la primera página de
-          un carrusel de 3 (mismo mecanismo que ya usaba camino/actividad
-          adentro del club) — entrás y ya ves tu lectura actual, deslizás
-          para "Tu camino" y de nuevo para "Actividad del club". La pantalla
-          de un club puntual sigue existiendo tal cual, para cuando alguien
-          quiere ver un club que no es el activo. */}
-      {hero && (
-        <SwipeableSections
-          onActiveIndexChange={setActiveIndex}
-          sections={[
-            {
-              key: 'heroe',
-              node: (
-                <CoverHero
-                  book={hero.book}
-                  clubs={hero.clubs}
-                  activeClub={hero.club}
-                  hasActivity={hero.hasActivity}
-                  headerRight={headerRight}
-                  progressMeta={progressMeta}
-                  unit={unit}
-                  percent={percent}
-                  pips={pips}
-                  onPrimaryClick={() => setShowModal(true)}
-                />
-              ),
-            },
-            {
-              key: 'camino',
-              node: (
-                <ChapterPath
-                  clubBookId={hero.clubBookId}
-                  chapters={orderedChapters}
-                  currentChapterId={hero.myProgress?.chapter_id ?? null}
-                  streakCount={hero.myProgress?.streak_count ?? 0}
-                  onOpenFull={() => setShowModal(true)}
-                />
-              ),
-            },
-            { key: 'actividad', node: <ClubActivityFeed clubId={hero.club.id} activity={hero.activity} /> },
-          ]}
-        />
-      )}
-
-      {showChrome && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 28, padding: '24px 18px 24px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>
-              Mis clubes de lectura
-            </div>
-
-            {clubs.length === 0 ? (
-              <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '12px 0' }}>
-                Todavía no estás en ningún club.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {clubs.map((club) => <ClubCard key={club.id} club={club} isActive={hero != null && club.id === hero.club.id} />)}
-              </div>
-            )}
+        {clubs.length === 0 ? (
+          <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '12px 0' }}>
+            Todavía no estás en ningún club.
           </div>
-
-          <div style={{ height: 1, background: 'var(--border-subtle)' }} />
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
-              Descubrir más clubes
-            </div>
-
-            {/* No es un buscador en vivo: lleva a Descubrir, donde sí se puede
-                tipear y buscar clubes y personas. Evita duplicar esa búsqueda acá. */}
-            <Link
-              href="/descubrir"
-              style={{
-                display: 'flex', alignItems: 'center', width: '100%', padding: '12px 16px',
-                borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
-                background: 'var(--surface-card)', color: 'var(--text-tertiary)', fontFamily: 'var(--font-body)',
-                fontSize: 'var(--fs-base)', textDecoration: 'none',
-              }}
-            >
-              Buscar clubes o personas
-            </Link>
-
-            {discoverClubs.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {discoverClubs.map((club) => <ClubRow key={club.id} club={club} />)}
-              </div>
-            )}
-
-            <Link
-              href="/descubrir"
-              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}
-            >
-              Ver todo en Descubrir
-              <Icon name="arrow-right" size={12} color="var(--text-link)" />
-            </Link>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {clubs.map((club) => <ClubHeroCard key={club.id} club={club} />)}
           </div>
+        )}
+      </div>
 
-          <div style={{ height: 1, background: 'var(--border-subtle)' }} />
-
-          <div style={{ textAlign: 'center', padding: '2px 0 6px' }}>
-            <button
-              type="button"
-              onClick={() => setSheetOpen(true)}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}
-            >
-              ¿No encontraste tu club? Crear uno o unirme con un link
-            </button>
-          </div>
-        </div>
-      )}
+      <div style={{ textAlign: 'center', padding: '6px 0 2px' }}>
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}
+        >
+          ¿No encontraste tu club? Crear uno o unirme con un link
+        </button>
+      </div>
 
       {sheetOpen && <AddClubSheet onClose={() => setSheetOpen(false)} />}
-
-      {hero && showModal && (
-        <UpdateProgressModal
-          clubBookId={hero.clubBookId}
-          chapters={orderedChapters}
-          isAdmin={hero.isAdmin}
-          initialChapterId={hero.myProgress?.chapter_id ?? null}
-          initialCurrentPage={hero.myProgress?.current_page ?? null}
-          initialTotalPages={hero.myProgress?.total_pages ?? null}
-          initialReaction={hero.myProgress?.reaction ?? null}
-          onClose={() => setShowModal(false)}
-          onFinished={() => {
-            setShowModal(false);
-            setShowReviewModal(true);
-          }}
-        />
-      )}
-
-      {hero && showReviewModal && (
-        <FinalReviewModal
-          clubBookId={hero.clubBookId}
-          book={hero.book}
-          myReview={hero.myReview}
-          onClose={() => setShowReviewModal(false)}
-        />
-      )}
     </div>
   );
 }

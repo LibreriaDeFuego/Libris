@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { InviteButton } from '@/components/InviteButton';
-import { CoverHero } from '@/components/CoverHero';
 import { MemberProgressStrip } from '@/components/MemberProgressStrip';
 import { ChapterPath } from '@/components/ChapterPath';
 import { ClubActivityFeed } from '@/components/ClubActivityFeed';
@@ -15,50 +14,59 @@ import { PreferenciasIconButton } from '@/components/PreferenciasIconButton';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
 import { FinalReviewModal } from './FinalReviewModal.jsx';
 import { orderChapters } from '@/lib/orderChapters';
-import { computeHeroProgress } from '@/lib/heroProgress';
 
-export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, members, activity, currentUserId, hasActivity, otherClubsCount, isAdmin, pendingRequestCount = 0 }) {
+// El héroe grande ya no vive acá — se ve como tarjeta chica en "Mis clubes
+// de lectura", y tocarla entra directo a esta pantalla en "Tu camino"
+// (ver README). Lo que queda acá es un encabezado liviano (volver + nombre
+// del club + las mismas acciones de siempre) y, debajo, el camino y la
+// actividad del club — el contenido real de "Progreso y Actividad".
+export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, members, activity, currentUserId, otherClubsCount, isAdmin, pendingRequestCount = 0 }) {
   const [showModal, setShowModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const router = useRouter();
 
   const orderedChapters = orderChapters(chapters, volumes ?? []);
-  const percent = myProgress?.percent ?? 0;
-  const { progressMeta, unit, pips } = computeHeroProgress({ chapters, volumes, myProgress, percent });
 
   const headerRight = (
     <>
       <Link href={`/club/${club.id}/comentarios`}>
-        <IconButton aria-label="Comentarios del club" tone="glass" size={36}><Icon name="message-circle" size={16} /></IconButton>
+        <IconButton aria-label="Comentarios del club" size={36}><Icon name="message-circle" size={16} /></IconButton>
       </Link>
-      <InviteButton clubId={club.id} tone="glass" />
+      <InviteButton clubId={club.id} />
       {isAdmin && (
         <Link href={`/club/${club.id}/capitulos`}>
-          <IconButton aria-label="Gestionar capítulos" tone="glass" size={36}><Icon name="list" size={16} /></IconButton>
+          <IconButton aria-label="Gestionar capítulos" size={36}><Icon name="list" size={16} /></IconButton>
         </Link>
       )}
-      <PreferenciasIconButton clubId={club.id} pendingRequestCount={isAdmin ? pendingRequestCount : 0} tone="glass" />
+      <PreferenciasIconButton clubId={club.id} pendingRequestCount={isAdmin ? pendingRequestCount : 0} />
     </>
+  );
+
+  const header = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px 14px', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        <IconButton aria-label="Volver a mis clubes" onClick={() => router.push('/')} size={34}>
+          <Icon name="arrow-left" size={15} />
+        </IconButton>
+        <div
+          style={{
+            fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)',
+            minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}
+        >
+          {club.name}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>{headerRight}</div>
+    </div>
   );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {header}
+
       {book ? (
         <>
-          <CoverHero
-            book={book}
-            clubs={clubs}
-            activeClub={club}
-            hasActivity={hasActivity}
-            onBack={() => router.push('/')}
-            headerRight={headerRight}
-            progressMeta={progressMeta}
-            unit={unit}
-            percent={percent}
-            pips={pips}
-            onPrimaryClick={() => setShowModal(true)}
-          />
-
           <MemberProgressStrip
             members={members ?? []}
             currentUserId={currentUserId}
@@ -121,19 +129,8 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
           )}
         </>
       ) : (
-        <div style={{ padding: '20px 18px 24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-            <IconButton aria-label="Volver a mis clubes" onClick={() => router.push('/')}>
-              <Icon name="arrow-left" size={16} />
-            </IconButton>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <InviteButton clubId={club.id} />
-              <PreferenciasIconButton clubId={club.id} pendingRequestCount={isAdmin ? pendingRequestCount : 0} tone="light" />
-            </div>
-          </div>
-          <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '24px 0', textAlign: 'center' }}>
-            Este club todavía no tiene un libro activo.
-          </div>
+        <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '24px 18px', textAlign: 'center' }}>
+          Este club todavía no tiene un libro activo.
         </div>
       )}
     </div>

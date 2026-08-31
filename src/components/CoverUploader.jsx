@@ -23,7 +23,7 @@ export function CoverUploader({ bookId, hasCover, tone = 'dark' }) {
     if (!file) return;
 
     startTransition(async () => {
-      // Achicamos la foto antes de subirla, sin recortarla — CoverHero la
+      // Achicamos la foto antes de subirla, sin recortarla — la tarjeta del club la
       // muestra completa, con su propia proporción. Si algo falla en el
       // navegador, subimos el archivo original igual.
       const toUpload = await compressImage(file).catch(() => file);

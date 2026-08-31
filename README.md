@@ -33,7 +33,7 @@ src/
     actions/clubs.js       # Server Actions: createClub, joinClub, addChapter,
                            #   renameChapter, createVolume, renameVolume,
                            #   promoteAdmin, demoteAdmin, joinClubFromInvite,
-                           #   selectClub, leaveClub, updateClubPreferences,
+                           #   leaveClub, updateClubPreferences,
                            #   updateProgress, postComment
     actions/media.js       # Server Actions: uploadBookCover, postVoiceComment
     manifest.js            # genera /manifest.webmanifest (PWA)
@@ -42,17 +42,23 @@ src/
     AvatarUploader.jsx     # subir/cambiar la foto de perfil (mismo patrón que CoverUploader)
     LoginForm.jsx, SignOutButton.jsx, NewCommentForm.jsx, InviteButton.jsx,
     GoogleSignInButton.jsx, VoiceRecorder.jsx, CoverUploader.jsx,
-    ClubSwitcher.jsx (menú para cambiar de club; tone="chip" para el héroe),
-    CoverHero.jsx (héroe de portada a sangre — lo usan ClubScreen y la vista
-      previa en vivo del editor de encuadre, una sola función para los dos),
-    CoverImage.jsx (posiciona la portada según cover_crop, mide el tamaño natural)
+    ChapterPath.jsx (camino de capítulos ascendente + racha de lectura),
+    MemberProgressStrip.jsx, ClubActivityFeed.jsx, SwipeableSections.jsx
+      (carrusel deslizable entre Tu camino y Actividad del club),
+    PreferenciasIconButton.jsx (ícono con el punto de solicitudes pendientes,
+      lo usan /club/[clubId] y la hoja de Preferencias),
+    AddClubSheet.jsx (hoja de "Crear un club nuevo" / "Unirme con un link")
     ServiceWorkerRegistration.jsx
   screens/                # pantallas de producto (usan el design system + props con datos reales)
   lib/
     supabase/               client.js, server.js, middleware.js (@supabase/ssr)
-    activeClub.js (multi-club: clubes del usuario + club activo por cookie),
+    activeClub.js (multi-club: clubes del usuario + libro activo de un club),
+    clubDetail.js (capítulos/progreso de un club — getClubHeroExtras para
+      /club/[clubId] completo, getClubProgressSummary para la tarjeta chica
+      de cada club en "Mis clubes de lectura"),
     orderChapters.js (orden y nombre de capítulos, agrupados por volumen),
-    heroProgress.js (% / etiqueta / pips del héroe, a partir de capítulos o página),
+    heroProgress.js (% / etiqueta / pips, a partir de capítulos o página —
+      lo usan la tarjeta de cada club y el camino de capítulos),
     coverFrame.js (matemática del encuadre de portada — escala, clamp, presets,
       persistencia como 4 números normalizados; portada de cover-framer.js),
     friendlyError.js (traduce errores de Postgres/RLS a mensajes en español),
@@ -364,13 +370,10 @@ Dos ampliaciones charladas después de construir lo de arriba.
 La pantalla de un club (`/club/[clubId]`, con el héroe de portada) ya no muestra, debajo, la lista de los últimos comentarios/citas/notas de voz del libro ("Impresiones recientes") — quedaba redundante con Comentarios del club, que ya es adonde se entra a comentar de verdad.
 
 - No hizo falta ninguna migración — es sacar una sección de `ClubScreen.jsx`, no un cambio de datos.
-- El puntito verde de actividad en el selector de club (`ClubSwitcher`, arriba del héroe) se mantuvo — es una señal aparte, no la lista en sí — pero pasó a calcularse con un conteo liviano (`{ count: 'exact', head: true }`) en vez de traer los 3 comentarios completos que ya no se muestran en ningún lado.
 
-### Adelanto de Descubrir en "Mis clubes de lectura"
+### "Crear o unirme a un club" en "Mis clubes de lectura"
 
-La pantalla de Club (`/`) ya no termina en la lista de tus clubes: debajo, un adelanto de Descubrir con un acceso a la búsqueda (lleva a `/descubrir`, que es donde de verdad se puede tipear) y un par de clubes públicos que todavía no son tuyos — mismo criterio y misma función (`discover_public_clubs`) que la pestaña Descubrir, filtrando los que ya están en "Mis clubes". No hay pestaña nueva ni cambio en la barra de abajo: Descubrir sigue siendo su propia pestaña, esto es solo un adelanto para quien no piensa en tocarla por su cuenta.
-
-**Crear o unirme a un club** pasó de ser un botón fijo en el medio del contenido a dos accesos que abren la misma hoja ("Sumar un club", `src/components/AddClubSheet.jsx`, con las opciones "Crear un club nuevo" / "Unirme con un link"):
+**Crear o unirme a un club** es dos accesos que abren la misma hoja ("Sumar un club", `src/components/AddClubSheet.jsx`, con las opciones "Crear un club nuevo" / "Unirme con un link"):
 
 - Un ícono "+" junto al logo, arriba de todo — el acceso rápido, disponible sin bajar el scroll.
 - Un link de texto al final de la pantalla ("¿No encontraste tu club?") — de contención para quien llegó leyendo todo hasta abajo sin usar el ícono.
@@ -395,7 +398,7 @@ En **Preferencias del club** los administradores ven una sección "Solicitudes p
 
 ### Multi-club
 
-Un usuario puede pertenecer a varios clubes (`getMyClubs` en `src/lib/activeClub.js`). El "club activo" (cookie `libris_club`, `getActiveClub`) es el que se elige al entrar a un club desde la lista — y es el que determina qué se muestra en el héroe de `/` (ver "El héroe vive en Mis clubes de lectura" más abajo). **`/club/[clubId]/comentarios` y `/club/[clubId]/preferencias` leen el id de la URL, no la cookie** — evita el bug de mostrar el club equivocado si se entra por un link directo en vez de por la lista.
+Un usuario puede pertenecer a varios clubes (`getMyClubs` en `src/lib/activeClub.js`). No hay noción de "club activo": `/` (Mis clubes de lectura) muestra una tarjeta de héroe por cada club, con su propio progreso, y `/club/[clubId]/comentarios`/`preferencias` siempre leyeron el id de la URL — así que no hacía falta recordar en qué club estabas parado en ningún lado. (Hasta antes de esto existía una cookie, `libris_club`, para esa noción de club activo; se sacó entera al dejar de tener uso — ver "'Mis clubes de lectura' — una tarjeta de héroe por club" más abajo.)
 
 ### Administradores, capítulos y volúmenes
 
@@ -416,51 +419,47 @@ Como no todos los miembros de un club leen la misma edición (cambia la paginaci
 
 El servidor es el que calcula el % siempre (antes lo elegía un slider que en realidad medía el avance dentro del capítulo, no el del libro entero — quedaba inconsistente con la barra).
 
-### Héroe del club — la misma solución visual que la reseña final
+### El héroe del club, ahora como tarjeta en "Mis clubes de lectura"
 
-El detalle del club (`ClubScreen`) mostró primero la portada a pantalla completa ("a sangre", ver `design_handoff_hero_portada/` para ese diseño original), con un editor de encuadre aparte para que el admin eligiera qué parte de la foto se veía. Se reemplazó por el mismo mecanismo visual que ya tenía `BookReviewCard` (la tarjeta de "Reseña final"): panel de color sólido (`accent-500`) con el kicker, título y autor arriba, y la portada flotando chica más abajo — con su proporción natural, sin recortar — con la sombra apilada en diagonal y el brillo por encima.
+El detalle del club (`ClubScreen`) mostró primero la portada a pantalla completa ("a sangre", ver `design_handoff_hero_portada/` para ese diseño original), con un editor de encuadre aparte para que el admin eligiera qué parte de la foto se veía. Después fue un héroe grande de color sólido (mismo mecanismo visual que `BookReviewCard`, la tarjeta de "Reseña final": panel `accent-500`, kicker/título/autor arriba, portada flotando sin recortar, sombra apilada en diagonal y brillo por encima), primero en `/club/[clubId]` y después arriba de "Mis clubes de lectura". **Ese héroe grande, como bloque fijo de una pantalla, ya no existe**: se convirtió en la tarjeta de cada club en `/` (ver la sección siguiente), y `/club/[clubId]` pasó a arrancar directo en "Tu camino" (dos secciones más abajo) — la misma solución visual, solo que ahora vive en la lista en vez de arriba de una pantalla propia.
 
-- **`CoverHero`** (`src/components/CoverHero.jsx`) — el héroe en sí, ahora un solo modo (antes tenía `variant='screen'`/`variant='preview'` para el editor de encuadre, que ya no existe). Al no recortar la portada, no hace falta saber "qué parte se ve" — la imagen se muestra completa, como en la reseña.
-- El **editor de encuadre** (`/club/[clubId]/portada`, arrastrar y hacer zoom) se sacó entero: sin recorte no tenía nada que definir. Con eso se fue `cover_crop` (deja de leerse y escribirse — la columna sigue en `books`, sin usar, no se borró) y `src/lib/coverFrame.js` deja de tener ese consumidor (lo sigue usando `PhotoCropModal`, que es un recorte genérico para fotos de lectura y de perfil — nada que ver con el héroe).
+- El **editor de encuadre** (`/club/[clubId]/portada`, arrastrar y hacer zoom) se sacó entero, desde el principio de todo esto: la portada nunca se recorta, se muestra completa con su proporción natural. Con eso se fue `cover_crop` (deja de leerse y escribirse — la columna sigue en `books`, sin usar, no se borró) y `src/lib/coverFrame.js` quedó sin ese consumidor (lo sigue usando `PhotoCropModal`, que es un recorte genérico para fotos de lectura y de perfil — nada que ver con esto).
+- **Título duplicado**: el generador de citas para compartir (`src/lib/quoteCard.js`, estilo "cover") sigue dibujando la portada a pantalla completa detrás de la cita, y ahí sí hace falta saber si esa portada ya trae el título impreso para no repetirlo. Ese switch (`cover_has_title` en `books`) vive en **Preferencias del club → El libro en curso** ("La portada ya trae el título"), guardado junto con el título/autor del libro en la misma Server Action (`updateClubPreferences`).
 
-**Título duplicado**: esto seguía necesitando resolverse en otro lado — el generador de citas para compartir (`src/lib/quoteCard.js`, estilo "cover") sigue dibujando la portada a pantalla completa detrás de la cita, y ahí sí hace falta saber si esa portada ya trae el título impreso para no repetirlo. Ese switch (`cover_has_title` en `books`) se movió de aquel editor a un toggle simple dentro de **Preferencias del club → El libro en curso** ("La portada ya trae el título"), guardado junto con el título/autor del libro en la misma Server Action (`updateClubPreferences`).
+### "Mis clubes de lectura" — una tarjeta de héroe por club
 
-**El héroe a la mitad de alto**: portada, kicker/título/autor/capítulos y el % pasaron de estar apilados (portada abajo del texto, progreso abajo de la portada) a ir todos en **una sola fila** — portada chica a la izquierda, título/autor/capítulos al medio (una línea cada uno, con puntos suspensivos si no entran), % y capítulo actual a la derecha — con la barra de progreso ocupando el ancho completo debajo. Bajó de ~525px a ~225px sin sacar ningún elemento. Se probaron mockups con la portada al lado del texto, superpuesta en una esquina, y en una fila más chica; el resultado es una mezcla de las últimas dos (la fila, pero con el tamaño/aire de la versión de al lado). El chrome de arriba (volver, selector de club, íconos de acciones) no cambió.
+En vez de una fila angosta por club, cada club en `/` es una tarjeta de color sólido con el mecanismo visual del héroe, a la mitad de su alto: portada chica a la izquierda (sin recortar, con la sombra apilada en diagonal), kicker "Leyendo ahora"/título/autor/capítulos al medio (una línea cada uno, con puntos suspensivos si no entran), % y capítulo actual a la derecha, y la barra de progreso (pips o continua, según `computeHeroProgress`) ocupando el ancho completo debajo — todo en una sola fila, sin el chrome que tenía el héroe grande (no hace falta selector de club ni íconos de acciones acá, cada tarjeta ya es un club distinto). Si un club todavía no tiene libro activo, su tarjeta muestra solo el nombre y "Todavía no tiene un libro activo".
+
+- **`ClubHeroCard`** (componente local de `src/screens/MisClubesScreen.jsx`) — una tarjeta por cada club del usuario, no solo la de "el club activo" (esa noción ya no existe en esta pantalla): cada una trae su propio progreso, con **`getClubProgressSummary`** (`src/lib/clubDetail.js`) — una versión liviana de la consulta que usa `/club/[clubId]`, solo capítulos/volúmenes/mi progreso, sin reseña, actividad ni solicitudes pendientes, que acá no se muestran.
+- Tocar una tarjeta entra directo a `/club/[clubId]`, que ahora arranca en "Tu camino" — no hace falta pasar primero por un héroe grande, ya se vio en la tarjeta.
+- Se sacó el adelanto de Descubrir que vivía debajo de la lista de clubes: quedaba raro debajo de las tarjetas grandes, y Descubrir ya tiene su propia pestaña, así que repetirlo acá no sumaba.
+- **La cookie de "club activo" se sacó entera** — `ACTIVE_CLUB_COOKIE`, `getActiveClub` y la Server Action `selectClub` ya no existen (`src/lib/activeClub.js` quedó solo con `getMyClubs`/`getActiveClubBook`). No le quedaba ningún lector: `/club/[clubId]/comentarios` y `/club/[clubId]/preferencias` siempre leyeron el id de la URL, no la cookie, así que perdió su único propósito al dejar de existir un héroe único que mostrar en `/`.
+
+No hizo falta ninguna migración — los datos y RLS ya alcanzaban.
+
+### `/club/[clubId]` — directo a "Tu camino"
+
+Al tocar una tarjeta de "Mis clubes de lectura", esta pantalla ya no muestra un héroe grande arriba (ya se vio como tarjeta): empieza con un encabezado liviano — flecha para volver + nombre del club a la izquierda, y a la derecha los mismos íconos de siempre (Comentarios, Invitar, Gestionar capítulos si sos admin, Preferencias con su punto de solicitudes pendientes) — y debajo, directo, "Tu camino" y "Actividad del club" (sección siguiente), sin nada en el medio.
+
+El **selector de club** (`ClubSwitcher`, el menú que dejaba saltar de un club a otro desde arriba del héroe) se sacó entero — ya no hace falta: "Mis clubes de lectura" es ahora el lugar rápido y visual para elegir con qué club seguir, así que volver (flecha atrás) y tocar otra tarjeta cumple el mismo rol.
 
 ### Actualizar progreso tocando un capítulo
 
-El héroe ya no tiene el botón grande "Actualizar progreso" ni el ícono cuadrado de comentarios al lado. En su lugar:
-
-- **`ChapterPath`** (`src/components/ChapterPath.jsx`, reemplaza a `ChapterProgressChips`) — debajo del héroe, un camino vertical **ascendente**: los capítulos que faltan quedan arriba, los ya leídos abajo (subir = avanzar, como en Duolingo — se probaron mockups en ambas direcciones y esta se sintió mejor, entre otras cosas porque deja mucho más espacio para los capítulos que tienen nombre propio, no solo número, que una fila horizontal de chips). Tocar un capítulo lo marca como propio al toque (misma Server Action `updateProgress`, `mode: 'chapter'`, sin abrir modal) — mismo patrón optimista + aviso breve que ya tenían los chips. Solo se muestra una ventana del camino (2 capítulos atrás, 3 adelante del actual) para que no se vuelva eterno en libros largos; "+N capítulos más adelante/ya leídos" arriba y abajo de esa ventana abre el modal completo (todos los capítulos) para saltar más lejos de una sola vez. Al abrir la pantalla, el camino se centra solo en tu capítulo actual (`scrollIntoView`, una vez al montar) — así no hay que buscarlo a mano; si después tocás otro capítulo, no te saca del lugar donde acabás de tocar.
+- **`ChapterPath`** (`src/components/ChapterPath.jsx`, reemplaza a `ChapterProgressChips`) — un camino vertical **ascendente**: los capítulos que faltan quedan arriba, los ya leídos abajo (subir = avanzar, como en Duolingo — se probaron mockups en ambas direcciones y esta se sintió mejor, entre otras cosas porque deja mucho más espacio para los capítulos que tienen nombre propio, no solo número, que una fila horizontal de chips). Tocar un capítulo lo marca como propio al toque (misma Server Action `updateProgress`, `mode: 'chapter'`, sin abrir modal) — mismo patrón optimista + aviso breve que ya tenían los chips. Solo se muestra una ventana del camino (2 capítulos atrás, 3 adelante del actual) para que no se vuelva eterno en libros largos; "+N capítulos más adelante/ya leídos" arriba y abajo de esa ventana abre el modal completo (todos los capítulos, y también el progreso por página, las reacciones al capítulo y "Terminé el libro") para saltar más lejos de una sola vez. Al abrir la pantalla, el camino se centra solo en tu capítulo actual (`scrollIntoView`, una vez al montar) — así no hay que buscarlo a mano; si después tocás otro capítulo, no te saca del lugar donde acabás de tocar.
 - **Racha de lectura** (`streak_count`/`last_activity_date` en `reading_progress`, migración 035) — días seguidos marcando progreso en ESE libro de ESE club (no es una racha global de la cuenta). Se calcula en el servidor, dentro del propio `updateProgress`: mismo día no suma de nuevo, al día siguiente suma uno, con un salto de 2+ días se reinicia en 1. Vive integrada en el nodo del capítulo actual del camino — un halo cálido y una insignia con llama, sin tarjeta aparte — y solo se muestra a partir de 2 días (con 1 no es realmente una racha todavía).
-- **Lápiz chico** junto al capítulo actual, dentro del héroe — sigue abriendo el modal completo de "Actualizar progreso", que es donde viven el progreso por página, las reacciones al capítulo y "Terminé el libro" (dispara la reseña final).
-- El acceso a "Comentarios del club" que antes vivía en ese ícono cuadrado se movió a la fila de íconos de arriba del héroe (junto a Invitar/Preferencias), para no perderlo.
+- El acceso a "Comentarios del club" vive en la fila de íconos del encabezado (junto a Invitar/Preferencias).
 
 Este cambio dejó expuesto un bug de layout preexistente en `AppShell`: el tab bar de abajo es `position: sticky`, y cuando el contenido de una pantalla mide apenas un poco más que la pantalla del teléfono, "sticky" no empuja lo de arriba — lo tapa. Se corrigió reservándole su alto real como `padding-bottom` del contenido (`calc(70px + env(safe-area-inset-bottom, 8px))`), así el tab bar nunca vuelve a superponerse al final de ninguna pantalla.
 
 ### Quiénes están leyendo, y actividad del club
 
-Debajo del héroe, la pantalla del club suma estas piezas (completando la dirección de diseño "Centro del club" del handoff):
+Debajo del encabezado, la pantalla del club sigue con estas piezas (completando la dirección de diseño "Centro del club" del handoff):
 
 - **`MemberProgressStrip`** (`src/components/MemberProgressStrip.jsx`) — la pila de avatares de los miembros del club y, si ya registraste algún capítulo, cuántos van exactamente por el mismo que tú. Se arma cruzando `club_members` (con `profiles` embebido) y `reading_progress` de **todos** los miembros para ese libro — no solo el propio, que es lo único que se traía hasta ahora. RLS ya dejaba ver ambas cosas a cualquier miembro del club (mismo alcance que la lista de Preferencias), así que no hizo falta ninguna política nueva.
-- **`SwipeableSections`** (`src/components/SwipeableSections.jsx`) — debajo de la franja de miembros, "Tu camino" y "Actividad del club" viven en un carrusel horizontal en vez de apiladas: arranca en "Tu camino", deslizar a la derecha lleva a "Actividad del club". Scroll nativo con `scroll-snap` (el gesto de deslizar de toda la vida, sin librería) más unos puntitos abajo del héroe — como los de Instagram Stories — que muestran en cuál estás y se pueden tocar para saltar directo. Componente genérico (recibe `sections: [{key, node}]`), hoy solo lo usa esta pantalla.
+- **`SwipeableSections`** (`src/components/SwipeableSections.jsx`) — debajo de la franja de miembros, "Tu camino" y "Actividad del club" viven en un carrusel horizontal en vez de apiladas: arranca en "Tu camino", deslizar a la derecha lleva a "Actividad del club". Scroll nativo con `scroll-snap` (el gesto de deslizar de toda la vida, sin librería) más unos puntitos abajo del encabezado — como los de Instagram Stories — que muestran en cuál estás y se pueden tocar para saltar directo. Componente genérico (recibe `sections: [{key, node}]`), hoy solo lo usa esta pantalla.
 - **`ClubActivityFeed`** (`src/components/ClubActivityFeed.jsx`) — tarjetas con lo último que pasó: comentarios recientes agrupados por capítulo ("Bruno y 2 más comentaron el Capítulo 4") y reseñas finales, cada una su propia tarjeta ("Sofía terminó el libro y dejó su reseña"). El agrupamiento vive en `src/lib/clubActivity.js`: junta por `chapter_id` los últimos comentarios (sin respuestas, sin reseñas) y arma reseñas aparte, ordenado todo por lo más reciente. Es una ventana de "lo más reciente" (últimos 24 comentarios / 8 reseñas), no un historial completo — con actividad muy espaciada en el tiempo puede juntar en una misma tarjeta comentarios de hace días si fueron los últimos en ese capítulo.
 
 Ninguna de estas piezas necesitó migración: los datos y los permisos ya existían, solo faltaba consultarlos y mostrarlos.
-
-### El héroe vive en "Mis clubes de lectura"
-
-El héroe (`CoverHero`), "Tu camino" (`ChapterPath`) y "Actividad del club" se mudaron de `/club/[clubId]` a `/` — al entrar a la app ya se ve el club activo leyendo, sin tocar nada. Los tres viven ahora en un mismo `SwipeableSections` de **3 páginas** (antes eran 2, solo camino/actividad, y el héroe quedaba fijo arriba): entrás y ves el héroe, deslizás una vez a la derecha y aparece "Tu camino", otra vez y aparece "Actividad del club" — un solo carrusel, los mismos puntitos arriba sirven para las tres paradas.
-
-- **`/club/[clubId]` sigue existiendo tal cual** (mismo héroe, mismo camino, misma actividad, más `MemberProgressStrip` y el aviso de "otros clubes leyendo esto", que no se llevaron a `/`) — es la vista para entrar a un club que no es el activo, desde la lista de abajo. No se sacó nada de ahí.
-- El club activo es el mismo de siempre (cookie `libris_club`, `getActiveClub`); si todavía no tiene un libro activo, `/` no muestra el carrusel — directo a la lista de clubes, como antes de este cambio.
-- La lista de "Mis clubes de lectura" marca con un borde y "Estás viendo este club arriba" la tarjeta del club activo, para que quede claro de cuál es el héroe de más arriba.
-- **`getClubHeroExtras`** (`src/lib/clubDetail.js`) junta la consulta de capítulos/volúmenes/mi progreso/mi reseña/actividad reciente/solicitudes pendientes que necesitan el héroe y sus dos páginas — la usan tanto `/` (para el club activo) como `/club/[clubId]` (para el club de la URL), en vez de tener la misma consulta duplicada en los dos lados.
-- El ícono de Preferencias con el punto de solicitudes pendientes se separó a su propio componente (`src/components/PreferenciasIconButton.jsx`) por el mismo motivo: lo usan los íconos de arriba del héroe en las dos pantallas.
-
-No hizo falta ninguna migración — los datos y RLS ya alcanzaban para el club activo, igual que ya alcanzaban para el de la URL.
-
-**Solo con el héroe (página 1) se ve el resto de la pantalla** — el logo de Libris arriba, el botón de sumar club, la lista de "Mis clubes de lectura" y el adelanto de Descubrir. Al deslizar a "Tu camino" o "Actividad del club" (páginas 2 y 3) esas piezas se sacan de encima, así esas dos páginas quedan con foco total en la lectura del club activo, sin la pantalla de siempre pegada abajo. `SwipeableSections` ganó un `onActiveIndexChange` opcional (avisa al padre en qué página quedó, vía `useEffect`) para que `MisClubesScreen` sepa cuándo mostrar u ocultar ese resto — sigue siendo genérico, `ClubScreen` no lo usa y no cambia en nada.
 
 ### Contenido editorial
 

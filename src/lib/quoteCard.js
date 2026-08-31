@@ -165,7 +165,7 @@ async function renderCover(ctx, { quoteText, book, clubName, personName }) {
     weight: 700, italic: true, family: 'Bricolage Grotesque',
   });
 
-  // Igual que CoverHero: si la portada ya trae el título impreso
+  // Igual que la tarjeta del club en Mis clubes: si la portada ya trae el título impreso
   // (cover_has_title), no lo repetimos acá — evita que el título dibujado
   // choque visualmente con el que ya está en la propia imagen.
   const showTitle = Boolean(book?.title) && !book?.cover_has_title;

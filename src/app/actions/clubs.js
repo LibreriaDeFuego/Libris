@@ -6,8 +6,6 @@ import { createClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/requireUser';
 import { friendlyDbError } from '@/lib/friendlyError';
 import { orderChapters } from '@/lib/orderChapters';
-import { cookies } from 'next/headers';
-import { ACTIVE_CLUB_COOKIE } from '@/lib/activeClub';
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const MAX_CHAPTERS = 300;
@@ -100,7 +98,6 @@ export async function createClub(prevState, formData) {
     .insert(chapterRows(clubBook.id, 1, chapterCount));
   if (chapterError) return { error: chapterError.message };
 
-  await setActiveClubCookie(club.id);
   revalidatePath('/', 'layout');
   redirect('/');
 }
@@ -284,25 +281,7 @@ export async function joinClubFromInvite(prevState, formData) {
   return joinClubId(clubId);
 }
 
-async function setActiveClubCookie(clubId) {
-  const store = await cookies();
-  store.set(ACTIVE_CLUB_COOKIE, clubId, {
-    path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax',
-  });
-}
-
-// Cambia el club que se está viendo. Con multi-club, la elección se guarda en
-// una cookie para que las tres pestañas muestren el mismo club.
-export async function selectClub(formData) {
-  const clubId = formData.get('clubId')?.toString();
-  if (!clubId) return { error: 'Falta el club.' };
-  await setActiveClubCookie(clubId);
-  revalidatePath('/', 'layout');
-  return { error: null };
-}
-
-// Salir de un club. Si era el club activo, la cookie queda apuntando a uno
-// inexistente y getActiveClub cae al primero que quede.
+// Salir de un club.
 export async function leaveClub(formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
@@ -339,7 +318,6 @@ async function joinClubId(clubId) {
     if (error) return { error: 'No pudimos unirte — revisa que el link o el ID sean correctos.' };
   }
 
-  await setActiveClubCookie(clubId);
   revalidatePath('/', 'layout');
   redirect('/');
 }

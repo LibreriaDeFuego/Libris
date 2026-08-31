@@ -22,7 +22,7 @@ export function canvasToBlob(canvas, quality = 0.85) {
 }
 
 // Achica una foto completa (sin recortarla) a un ancho máximo, manteniendo
-// la proporción original. Se usa para la portada de un libro — CoverHero
+// la proporción original. Se usa para la portada de un libro — la tarjeta del club en Mis clubes
 // muestra esa imagen tal cual, con su propia proporción, así que solo hace
 // falta bajarle el peso antes de subirla.
 export async function compressImage(file, { maxWidth = 1600, quality = 0.85 } = {}) {

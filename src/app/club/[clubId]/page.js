@@ -23,7 +23,6 @@ export default async function Page({ params }) {
 
   const baseProps = {
     club: { ...club, memberCount: memberCount ?? 0 },
-    clubs,
     isAdmin,
   };
 
@@ -38,7 +37,6 @@ export default async function Page({ params }) {
         volumes={[]}
         myProgress={null}
         myReview={null}
-        hasActivity={false}
         otherClubsCount={0}
       />
     );
@@ -46,8 +44,7 @@ export default async function Page({ params }) {
 
   const [heroExtras, { data: otherClubsCount }, { data: members }, { data: memberProgress }] = await Promise.all([
     // Chapters, volumes, mi progreso, mi reseña, actividad reciente y
-    // solicitudes pendientes: mismos datos que usa el héroe en "Mis clubes
-    // de lectura" para este mismo club — ver src/lib/clubDetail.js.
+    // solicitudes pendientes — ver src/lib/clubDetail.js.
     getClubHeroExtras(supabase, { clubId, clubBookId: clubBook.id, userId: user.id, isAdmin }),
     // RLS solo expone los clubes propios; el conteo de "otros clubes leyendo
     // lo mismo" viene de una función security definer.
@@ -85,7 +82,6 @@ export default async function Page({ params }) {
       members={membersWithProgress}
       activity={heroExtras.activity}
       currentUserId={user.id}
-      hasActivity={heroExtras.hasActivity}
       otherClubsCount={Number(otherClubsCount ?? 0)}
     />
   );

@@ -1,24 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
-// Carrusel horizontal entre secciones — el héroe, "Tu camino" y "Actividad
-// del club" en Mis clubes de lectura (o solo camino/actividad, debajo del
-// héroe, en la pantalla de un club puntual). Scroll nativo con snap
-// (funciona con el gesto de deslizar de toda la vida, sin librería), más
-// los puntitos de abajo por si alguien no descubre que se puede deslizar —
-// se pueden tocar para saltar directo a esa sección. `onActiveIndexChange`
-// (opcional) avisa al padre en cuál quedó, por si necesita mostrar u
-// ocultar algo alrededor del carrusel según cuál sección está activa.
-export function SwipeableSections({ sections, onActiveIndexChange }) {
+// Carrusel horizontal entre secciones — "Tu camino" y "Actividad del club",
+// debajo del encabezado de un club puntual. Scroll nativo con snap (funciona
+// con el gesto de deslizar de toda la vida, sin librería), más los puntitos
+// de abajo por si alguien no descubre que se puede deslizar — se pueden
+// tocar para saltar directo a esa sección.
+export function SwipeableSections({ sections }) {
   const containerRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const programmatic = useRef(false);
   const releaseTimer = useRef(null);
-
-  useEffect(() => {
-    onActiveIndexChange?.(activeIndex);
-  }, [activeIndex, onActiveIndexChange]);
 
   function handleScroll() {
     if (programmatic.current) return;
