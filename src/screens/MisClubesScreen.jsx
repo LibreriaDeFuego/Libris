@@ -4,9 +4,25 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
+import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { AddClubSheet } from '@/components/AddClubSheet';
+import { ClubMembersModal } from '@/components/ClubMembersModal';
 
 const CREAM = 'var(--hero-cream)';
+const STACK_LIMIT = 3;
+
+function firstName(name) {
+  return name.split(' ')[0];
+}
+
+// "Fulano" (1 integrante) o "Fulano y N más" (2+) — mismo patrón de texto
+// que ya usa el resto de la app para agrupar personas (comentarios,
+// compañeros de capítulo).
+function peopleLabel(members) {
+  return members.length === 1
+    ? firstName(members[0].displayName)
+    : `${firstName(members[0].displayName)} y ${members.length - 1} más`;
+}
 
 // La misma solución visual y los mismos datos que mostraba el héroe grande
 // (portada sin recortar, título/autor, capítulos, % y barra de progreso) —
@@ -23,11 +39,25 @@ const CARD_SHADOW = [
 
 const CARD_LIGHT = 'linear-gradient(210deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.06) 30%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.42) 100%)';
 
-function ClubHeroCard({ club }) {
+function ClubHeroCard({ club, currentUserId }) {
   const book = club.book;
+  const [membersOpen, setMembersOpen] = useState(false);
+  const members = club.members ?? [];
+  const shown = members.slice(0, STACK_LIMIT);
+  const extra = members.length - shown.length;
+
+  // La tarjeta entera es un link al club — esto abre la lista de
+  // integrantes en su lugar, así que no puede dejar que el toque le
+  // llegue al link de abajo.
+  function openMembers(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setMembersOpen(true);
+  }
 
   return (
-    <Link href={`/club/${club.id}`} style={{ display: 'block', background: 'var(--accent-500)', borderRadius: 18, padding: '14px 16px', textDecoration: 'none' }}>
+    <>
+      <Link href={`/club/${club.id}`} style={{ display: 'block', background: 'var(--accent-500)', borderRadius: 18, padding: '14px 16px', textDecoration: 'none' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: CREAM, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {club.name}
@@ -105,11 +135,52 @@ function ClubHeroCard({ club }) {
           Todavía no tiene un libro activo.
         </div>
       )}
-    </Link>
+
+      {members.length > 0 && (
+        <button
+          type="button"
+          onClick={openMembers}
+          style={{ marginTop: 11, display: 'flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+        >
+          <div style={{ display: 'flex' }}>
+            {shown.map((m, i) => (
+              <div
+                key={m.profileId}
+                style={{ marginLeft: i === 0 ? 0 : -7, border: '2px solid var(--accent-500)', borderRadius: 'var(--radius-round)', lineHeight: 0 }}
+              >
+                <Avatar name={m.displayName} src={m.avatarUrl} size={22} />
+              </div>
+            ))}
+            {extra > 0 && (
+              <div
+                style={{
+                  marginLeft: -7, width: 22, height: 22, borderRadius: 'var(--radius-round)', border: '2px solid var(--accent-500)',
+                  background: 'rgba(255,248,236,.24)', color: CREAM, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 8, fontWeight: 800,
+                }}
+              >
+                +{extra}
+              </div>
+            )}
+          </div>
+          <div style={{ marginLeft: 8, fontSize: 10.5, color: CREAM, opacity: 0.75 }}>{peopleLabel(members)}</div>
+        </button>
+      )}
+      </Link>
+
+      {membersOpen && (
+        <ClubMembersModal
+          clubName={club.name}
+          members={members}
+          currentUserId={currentUserId}
+          onClose={() => setMembersOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
-export function MisClubesScreen({ clubs }) {
+export function MisClubesScreen({ clubs, currentUserId }) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
@@ -133,7 +204,7 @@ export function MisClubesScreen({ clubs }) {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {clubs.map((club) => <ClubHeroCard key={club.id} club={club} />)}
+            {clubs.map((club) => <ClubHeroCard key={club.id} club={club} currentUserId={currentUserId} />)}
           </div>
         )}
       </div>

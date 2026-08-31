@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useTransition, useActionState } from 'react';
+import { useState, useEffect, useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { followProfile, unfollowProfile, updateProfile } from '@/app/actions/profile';
+import { updateProfile } from '@/app/actions/profile';
 import { signOut } from '@/app/login/actions';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
@@ -11,85 +11,13 @@ import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Input } from '@/design-system/components/forms/Input.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
-import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { AvatarUploader } from '@/components/AvatarUploader';
 import { PostComposer } from '@/components/PostComposer';
 import { UsernameField } from '@/components/UsernameField';
 import { ActivityCard } from '@/components/ActivityCard';
+import { FollowButton } from '@/components/FollowButton';
 
 const initialState = { error: null };
-
-// Seguir, con el toggle de verdad (followProfile/unfollowProfile). Dejar de
-// seguir no pasa con un solo toque — abre un menú desde abajo a confirmar,
-// para que no se le escape a nadie sin querer.
-function FollowButton({ profileId, initialFollowing }) {
-  const [following, setFollowing] = useState(initialFollowing);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState(null);
-
-  function follow() {
-    const formData = new FormData();
-    formData.set('profileId', profileId);
-    setError(null);
-    startTransition(async () => {
-      const result = await followProfile(formData);
-      if (result?.error) setError(result.error);
-      else setFollowing(true);
-    });
-  }
-
-  function confirmUnfollow() {
-    const formData = new FormData();
-    formData.set('profileId', profileId);
-    setError(null);
-    startTransition(async () => {
-      const result = await unfollowProfile(formData);
-      if (result?.error) setError(result.error);
-      else {
-        setFollowing(false);
-        setConfirmOpen(false);
-      }
-    });
-  }
-
-  return (
-    <div>
-      <Button
-        variant={following ? 'secondary' : 'primary'}
-        size="sm"
-        onClick={() => (following ? setConfirmOpen(true) : follow())}
-        disabled={pending}
-        type="button"
-      >
-        {pending && !confirmOpen ? '…' : following ? 'Siguiendo' : 'Seguir'}
-      </Button>
-      {error && !confirmOpen && (
-        <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-2xs)', marginTop: 6 }}>{error}</div>
-      )}
-
-      {confirmOpen && (
-        <Modal title="¿Dejar de seguir?" onClose={() => setConfirmOpen(false)}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <button
-              type="button"
-              onClick={confirmUnfollow}
-              disabled={pending}
-              style={{
-                width: '100%', textAlign: 'center', padding: '13px 14px',
-                fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--danger)',
-                background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)',
-              }}
-            >
-              {pending ? 'Dejando de seguir…' : 'Dejar de seguir'}
-            </button>
-            {error && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-2xs)', textAlign: 'center' }}>{error}</div>}
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
 
 // El formulario del propio perfil: nombre, usuario, bio y foto. Se abre
 // desde el menú de los tres puntos (PerfilScreen controla el estado
