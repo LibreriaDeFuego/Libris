@@ -493,6 +493,14 @@ Arriba a la derecha de "Inicio", al lado del logo — mismo lugar que el corazó
 
 No hizo falta ninguna política de RLS nueva — todas las tablas que `notifications_feed` cruza ya tenían las suyas, y la función filtra por `auth.uid()` del lado del servidor como cualquier otra `security definer` de la app; `notifications_seen_at` se actualiza con la misma política de "cada quien edita su propio perfil" que ya usaba `updateProfile`.
 
+### Recorte al subir la portada del libro
+
+Subir la portada (`CoverUploader`, en "Preferencias del club" → "El libro en curso") ya no sube la foto tal cual, achicada — antes de subirla se abre el mismo recorte estilo Instagram (arrastrar + acercar) que ya usaban la foto de perfil y las fotos de publicación, con su propia proporción: **2:3**, la de una portada de libro de bolsillo. Antes ninguna pantalla forzaba una proporción — cada tarjeta simplemente encuadraba "cover" lo que hubiera, así que una foto vertical, horizontal o cuadrada se recortaba distinto en cada lugar donde se mostraba, sin que quien subió la foto pudiera elegir qué parte quedaba dentro. Con el recorte, la persona decide de una vez qué parte de su foto es la portada, y esa decisión es la que se sube.
+
+No hizo falta construir nada nuevo para el recorte en sí: `CoverUploader` pasó a usar `PhotoCropModal` (`src/components/PhotoCropModal.jsx`) igual que `AvatarUploader` y `PostComposer`, solo con `aspect={2/3}` y su propio texto ("Ajusta la portada"). `PhotoCropModal` a su vez reusa la matemática de encuadre de `src/lib/coverFrame.js` — la misma que en su momento armó el editor de encuadre a pantalla completa de la portada del club (ver "El héroe del club..." más arriba), de cuando el héroe todavía vivía como imagen de fondo de la pantalla del club. Ese editor de encuadre se sacó al rediseñar el héroe como tarjeta chica, pero la matemática quedó y ya se había reutilizado para el recorte cuadrado de la foto de perfil y el 3:4 de las fotos de publicación — la portada del libro es el tercer lugar que la reusa, no uno nuevo.
+
+Con el recorte ya resuelto por la persona, `CoverUploader` dejó de llamar a `compressImage` (que solo achicaba sin recortar) — el recorte ya devuelve la imagen en su tamaño final (`outputSize=720`, o sea 720×1080 px), no hace falta comprimir aparte.
+
 ### Contenido editorial
 
 `editorial_items` alimenta las solapas Guías/Cursos de **Recursos**. No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.
