@@ -26,6 +26,12 @@ function pathColor(originalIndex, currentIndex) {
   return lerpColor(PATH_START, PATH_END, currentIndex <= 0 ? 1 : originalIndex / currentIndex);
 }
 
+// Un color por volumen — se cicla si hay más volúmenes que colores. No
+// tiene nada que ver con `pathColor` (ese marca qué leíste; este marca de
+// qué volumen es cada capítulo) — por eso corre en un carril aparte, al
+// lado del camino, no reemplaza el degradé.
+const RAIL_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '#3B5B7A'];
+
 // El camino de capítulos del club, de punta a punta como una tabla de
 // contenidos: Cap. 1 arriba, el último abajo, en orden. (Se probó al
 // revés — estilo Duolingo, lo que falta arriba — pero se sintió menos
@@ -55,7 +61,17 @@ function pathColor(originalIndex, currentIndex) {
 // no sea tu capítulo actual queda apagado (gris, sin tocar); al llegar
 // se enciende (dorado) y tocarlo marca el libro entero como terminado,
 // sin salir a buscar esa opción en el modal.
-export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, streakCount = 0, commentCounts = {}, onOpenFull, onFinishBook }) {
+//
+// Si el libro tiene más de un volumen, un carril de color al lado del
+// camino marca de cuál es cada capítulo (con su nombre real, como título
+// de sección la primera vez que aparece) — un color por volumen, cicla si
+// hay más volúmenes que colores en `RAIL_PALETTE`. Con uno solo (o
+// ninguno, el caso de siempre) no se muestra nada — se probaron otras
+// formas de marcarlo (un encabezado de texto entre volúmenes, una barra
+// de resumen arriba, un nodo punteado tipo "inicio de volumen") y esta,
+// el carril corrido, fue la elegida por notarse sin llegar al final de un
+// volumen.
+export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], currentChapterId, streakCount = 0, commentCounts = {}, onOpenFull, onFinishBook }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -88,6 +104,27 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
   // adelante del actual, con "+N capítulos más" en las puntas) pero
   // tapaba la ruta entera; ahora se ve toda, de principio a fin.
   const path = chapters;
+
+  // El carril de volumen: `chapters` ya llega agrupado por volumen (lo
+  // ordena `orderChapters` antes de pasarlo), así que alcanza con mirar
+  // el volumen de cada capítulo, en orden, para saber dónde empieza uno
+  // nuevo. Solo se activa si hay más de un grupo real entre los
+  // capítulos — un solo volumen (o ninguno) es el caso de siempre, y ahí
+  // no suma nada mostrar un carril de un color solo.
+  const sortedVolumes = [...volumes].sort((a, b) => a.position - b.position);
+  function volumeKeyOf(chapter) {
+    return chapter.volume_id && sortedVolumes.some((v) => v.id === chapter.volume_id) ? chapter.volume_id : null;
+  }
+  function volumeColorOf(key) {
+    if (key == null) return 'var(--neutral-200)';
+    const idx = sortedVolumes.findIndex((v) => v.id === key);
+    return idx === -1 ? 'var(--neutral-200)' : RAIL_PALETTE[idx % RAIL_PALETTE.length];
+  }
+  function volumeLabelOf(key) {
+    return key == null ? 'Sin volumen' : (sortedVolumes.find((v) => v.id === key)?.name ?? 'Sin volumen');
+  }
+  const showRail = new Set(chapters.map((c) => volumeKeyOf(c))).size > 1;
+  const gridCols = showRail ? '4px 1fr 48px 1fr' : '1fr 48px 1fr';
 
   function chapterLabel(chapter) {
     return chapter.title ? `Cap. ${chapter.number}` : (chapter.label ?? `Cap. ${chapter.number}`);
@@ -189,6 +226,16 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
             const showSegmentAfter = i < path.length - 1;
             const segmentColored = showSegmentAfter && currentIndex !== -1 && nextOriginalIndex <= currentIndex;
 
+            const volumeKey = volumeKeyOf(chapter);
+            const volumeColor = volumeColorOf(volumeKey);
+            const isFirstOfVolume = showRail && (i === 0 || volumeKeyOf(path[i - 1]) !== volumeKey);
+            const nextVolumeKey = nextChapter ? volumeKeyOf(nextChapter) : null;
+            const railSegmentBg = !showRail
+              ? null
+              : nextChapter && nextVolumeKey !== volumeKey
+                ? `linear-gradient(${volumeColor}, ${volumeColorOf(nextVolumeKey)})`
+                : volumeColor;
+
             const extras = (
               <SideExtras
                 commentCount={commentCount}
@@ -200,7 +247,16 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
 
             return (
               <div key={chapter.id}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', alignItems: 'center', gap: 12 }}>
+                {isFirstOfVolume && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: i === 0 ? '0 0 10px' : '14px 0 10px' }}>
+                    <span style={{ width: 4, height: 14, borderRadius: 2, background: volumeColor, flexShrink: 0 }} />
+                    <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: volumeColor }}>
+                      {volumeLabelOf(volumeKey)}
+                    </span>
+                  </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center', gap: 12 }}>
+                  {showRail && <div style={{ alignSelf: 'stretch', width: 4, borderRadius: 2, background: volumeColor, justifySelf: 'center' }} />}
                   <div style={{ textAlign: 'right' }}>
                     {extras}
                   </div>
@@ -250,7 +306,8 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
                 )}
 
                 {showSegmentAfter && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', height: 26 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: gridCols, height: 26 }}>
+                    {showRail && <div style={{ width: 4, borderRadius: 2, justifySelf: 'center', background: railSegmentBg }} />}
                     <div />
                     <div
                       style={{
@@ -269,12 +326,14 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
         </div>
 
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', height: 26 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: gridCols, height: 26 }}>
+            {showRail && <div />}
             <div />
             <div style={{ width: 3, borderLeft: `3px dashed ${isLastChapter ? 'var(--gold-500)' : 'var(--neutral-200)'}`, justifySelf: 'center' }} />
             <div />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center', gap: 12 }}>
+            {showRail && <div />}
             <div style={{ textAlign: 'right' }}>
               {isLastChapter ? (
                 <>
@@ -302,7 +361,8 @@ export function ChapterPath({ clubId, clubBookId, chapters, currentChapterId, st
             </button>
             <div />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: gridCols }}>
+            {showRail && <div />}
             <div />
             <div
               style={{

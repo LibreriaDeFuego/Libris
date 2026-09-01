@@ -66,6 +66,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
                     clubId={club.id}
                     clubBookId={clubBookId}
                     chapters={orderedChapters}
+                    volumes={volumes ?? []}
                     currentChapterId={myProgress?.chapter_id ?? null}
                     streakCount={myProgress?.streak_count ?? 0}
                     commentCounts={commentCounts ?? {}}
