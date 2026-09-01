@@ -418,7 +418,7 @@ Además del hilo general del libro, ahora se puede comentar (texto, cita o nota 
 Como no todos los miembros de un club leen la misma edición (cambia la paginación, no los capítulos), el modal de "Actualizar progreso" deja elegir cómo registrarlo:
 
 - **Por capítulo** — elegís un capítulo de la lista (igual para todos, sea cual sea la edición). El % de la barra sale de en qué lugar de la lista de capítulos está ese capítulo (contando volúmenes en el orden en que fueron creados).
-- **Por página** — página actual y total de páginas **de tu propia edición**. El % sale de esa proporción, y queda guardado por persona (`current_page`/`total_pages` en `reading_progress`, migración 011).
+- **Por página** — página actual y total de páginas **de tu propia edición**. El % sale de esa proporción, y queda guardado por persona (`current_page`/`total_pages` en `reading_progress`, migración 011). El total de páginas solo se pide **la primera vez**: una vez que `UpdateProgressModal` ya sabe cuántas páginas tiene tu edición (`initialTotalPages`, lo último que guardaste), las siguientes veces solo pide en qué página vas — el total aparece como texto fijo ("de 320 páginas"), no como campo para volver a escribir. Un link chico ("¿Cambiaste de edición? Actualizar el total de páginas") lo vuelve a mostrar como campo editable, por si cambiaste de edición.
 
 El servidor es el que calcula el % siempre (antes lo elegía un slider que en realidad medía el avance dentro del capítulo, no el del libro entero — quedaba inconsistente con la barra).
 

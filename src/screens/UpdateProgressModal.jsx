@@ -26,6 +26,13 @@ export function UpdateProgressModal({
   const [savePending, startSave] = useTransition();
   const [chapterPending, startChapter] = useTransition();
 
+  // Ya sabemos el total de páginas de una vez anterior — no hace falta
+  // volver a pedirlo cada vez que actualizás en qué página vas, solo si
+  // cambiaste de edición.
+  const [editingTotal, setEditingTotal] = useState(false);
+  const knowsTotal = Boolean(totalPages);
+  const showTotalInput = editingTotal || !knowsTotal;
+
   function handleSave() {
     const formData = new FormData();
     formData.set('clubBookId', clubBookId);
@@ -117,11 +124,29 @@ export function UpdateProgressModal({
               <div style={{ flex: 1 }}>
                 <Input type="number" min="0" placeholder="Voy en la" value={currentPage} onChange={(e) => setCurrentPage(e.target.value)} />
               </div>
-              <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-tertiary)' }}>de</span>
-              <div style={{ flex: 1 }}>
-                <Input type="number" min="1" placeholder="Total de páginas" value={totalPages} onChange={(e) => setTotalPages(e.target.value)} />
-              </div>
+              {showTotalInput ? (
+                <>
+                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-tertiary)' }}>de</span>
+                  <div style={{ flex: 1 }}>
+                    <Input type="number" min="1" placeholder="Total de páginas" value={totalPages} onChange={(e) => setTotalPages(e.target.value)} />
+                  </div>
+                </>
+              ) : (
+                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>de {totalPages} páginas</span>
+              )}
             </div>
+            {!showTotalInput && (
+              <button
+                type="button"
+                onClick={() => setEditingTotal(true)}
+                style={{
+                  marginTop: 8, background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  fontSize: 'var(--fs-2xs)', fontWeight: 600, color: 'var(--text-link)', fontFamily: 'var(--font-body)',
+                }}
+              >
+                ¿Cambiaste de edición? Actualizar el total de páginas
+              </button>
+            )}
           </div>
         )}
 
