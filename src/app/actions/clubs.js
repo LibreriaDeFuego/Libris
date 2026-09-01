@@ -483,6 +483,20 @@ export async function updateProgress(formData) {
     if (!Number.isFinite(currentPage) || currentPage < 0) return { error: 'Indica en qué página vas.' };
     if (currentPage > totalPages) return { error: 'La página no puede ser mayor que el total.' };
     percent = Math.round((currentPage / totalPages) * 100);
+
+    // Opcional: en qué capítulo vas, para que el nodo actual de Tu camino
+    // también quede bien ubicado — el % sigue saliendo de la página, esto
+    // no lo recalcula.
+    const optionalChapterId = formData.get('chapterId')?.toString();
+    if (optionalChapterId) {
+      const { data: chapter } = await supabase
+        .from('chapters')
+        .select('id')
+        .eq('id', optionalChapterId)
+        .eq('club_book_id', clubBookId)
+        .maybeSingle();
+      if (chapter) chapterId = chapter.id;
+    }
   } else if (mode === 'finished') {
     const [{ data: chapters }, { data: volumes }] = await Promise.all([
       supabase.from('chapters').select('id, number, volume_id').eq('club_book_id', clubBookId),

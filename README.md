@@ -422,6 +422,8 @@ Como no todos los miembros de un club leen la misma edición (cambia la paginaci
 
 `UpdateProgressModal` **se achicó a solo esto** — antes también dejaba elegir "Por capítulo" (una lista de chips redundante con tocar un nodo en Tu camino) y "Terminado" (redundante con el nodo de FIN al final del camino), más una reacción "¿Cómo estuvo?" (genial capítulo/capítulo lento) que no pintaba nada estando ya en modo página. Sacado todo: el único camino hasta este modal es "Actualizar por página", así que ya no hace falta preguntar qué querés hacer.
 
+**Aun así pregunta, aparte, en qué capítulo vas** — "Para que también se vea en Tu camino, ¿nos cuentas en qué capítulo vas?", con los mismos chips de capítulo de siempre. Es **opcional** (tocar el mismo chip lo deselecciona; no hace falta responder para guardar) porque actualizando por página no todo el mundo tiene el capítulo exacto en la cabeza. Si lo contestás, `updateProgress` guarda ese `chapter_id` junto con la página — el % sigue saliendo de la proporción de páginas, no se recalcula por capítulo — y así el nodo actual de "Tu camino" también queda bien ubicado, aunque hayas actualizado por página. Se probaron varias formas de hacer la pregunta (directa, explicando el porqué, más conversacional, bajando la exigencia con "aunque sea aproximado") antes de elegir esta, la que explica de entrada para qué sirve responder.
+
 El servidor es el que calcula el % siempre (antes lo elegía un slider que en realidad medía el avance dentro del capítulo, no el del libro entero — quedaba inconsistente con la barra).
 
 ### El héroe del club, ahora como tarjeta en "Mis clubes de lectura"

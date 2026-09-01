@@ -93,8 +93,10 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
           {showModal && (
             <UpdateProgressModal
               clubBookId={clubBookId}
+              chapters={orderedChapters}
               initialCurrentPage={myProgress?.current_page ?? null}
               initialTotalPages={myProgress?.total_pages ?? null}
+              initialChapterId={myProgress?.chapter_id ?? null}
               onClose={() => setShowModal(false)}
             />
           )}

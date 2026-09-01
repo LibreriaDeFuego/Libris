@@ -4,15 +4,24 @@ import { useState, useTransition } from 'react';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { Input } from '@/design-system/components/forms/Input.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
+import { Chip } from '@/design-system/components/core/Chip.jsx';
 import { updateProgress } from '@/app/actions/clubs';
+import { chapterDisplayLabel } from '@/lib/orderChapters';
 
 // Solo la vía "por página" — por capítulo ya se hace tocando un nodo en
 // Tu camino, y "Terminado" ya tiene su propio nodo de FIN al final del
 // camino. Este modal, al que se llega únicamente desde "Actualizar por
 // página", ya no necesita elegir entre esas otras dos formas.
-export function UpdateProgressModal({ clubBookId, initialCurrentPage, initialTotalPages, onClose }) {
+//
+// Sí pregunta, aparte, en qué capítulo vas — opcional (tocar el mismo chip
+// lo deselecciona) porque no todo el mundo lo tiene claro mirando solo la
+// página. Con eso, aunque actualices por página, "Tu camino" también
+// muestra el nodo correcto — el % sigue saliendo de la página, esto solo
+// ubica dónde estás.
+export function UpdateProgressModal({ clubBookId, chapters = [], initialCurrentPage, initialTotalPages, initialChapterId, onClose }) {
   const [currentPage, setCurrentPage] = useState(initialCurrentPage != null ? String(initialCurrentPage) : '');
   const [totalPages, setTotalPages] = useState(initialTotalPages != null ? String(initialTotalPages) : '');
+  const [chapterId, setChapterId] = useState(initialChapterId ?? null);
   const [error, setError] = useState(null);
   const [savePending, startSave] = useTransition();
 
@@ -29,6 +38,7 @@ export function UpdateProgressModal({ clubBookId, initialCurrentPage, initialTot
     formData.set('mode', 'page');
     formData.set('currentPage', currentPage);
     formData.set('totalPages', totalPages);
+    if (chapterId) formData.set('chapterId', chapterId);
 
     startSave(async () => {
       const result = await updateProgress(formData);
@@ -77,6 +87,21 @@ export function UpdateProgressModal({ clubBookId, initialCurrentPage, initialTot
             </button>
           )}
         </div>
+
+        {chapters.length > 0 && (
+          <div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>
+              Para que también se vea en Tu camino, ¿nos cuentas en qué capítulo vas?
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', maxHeight: 132, overflowY: 'auto' }}>
+              {chapters.map((c) => (
+                <Chip key={c.id} selected={c.id === chapterId} onClick={() => setChapterId(chapterId === c.id ? null : c.id)}>
+                  {chapterDisplayLabel(c)}
+                </Chip>
+              ))}
+            </div>
+          </div>
+        )}
 
         {error && (
           <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 10 }}>
