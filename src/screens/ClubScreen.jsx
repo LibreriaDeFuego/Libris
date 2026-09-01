@@ -92,17 +92,9 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
           {showModal && (
             <UpdateProgressModal
               clubBookId={clubBookId}
-              chapters={orderedChapters}
-              isAdmin={isAdmin}
-              initialChapterId={myProgress?.chapter_id ?? null}
               initialCurrentPage={myProgress?.current_page ?? null}
               initialTotalPages={myProgress?.total_pages ?? null}
-              initialReaction={myProgress?.reaction ?? null}
               onClose={() => setShowModal(false)}
-              onFinished={() => {
-                setShowModal(false);
-                setShowReviewModal(true);
-              }}
             />
           )}
 

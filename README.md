@@ -415,10 +415,12 @@ Además del hilo general del libro, ahora se puede comentar (texto, cita o nota 
 
 ### Progreso de lectura: por capítulo o por página
 
-Como no todos los miembros de un club leen la misma edición (cambia la paginación, no los capítulos), el modal de "Actualizar progreso" deja elegir cómo registrarlo:
+Como no todos los miembros de un club leen la misma edición (cambia la paginación, no los capítulos), hay dos formas de registrar en qué vas — cada una en su propio lugar, ya no elegís entre las dos desde un mismo modal:
 
-- **Por capítulo** — elegís un capítulo de la lista (igual para todos, sea cual sea la edición). El % de la barra sale de en qué lugar de la lista de capítulos está ese capítulo (contando volúmenes en el orden en que fueron creados).
-- **Por página** — página actual y total de páginas **de tu propia edición**. El % sale de esa proporción, y queda guardado por persona (`current_page`/`total_pages` en `reading_progress`, migración 011). El total de páginas solo se pide **la primera vez**: una vez que `UpdateProgressModal` ya sabe cuántas páginas tiene tu edición (`initialTotalPages`, lo último que guardaste), las siguientes veces solo pide en qué página vas — el total aparece como texto fijo ("de 320 páginas"), no como campo para volver a escribir. Un link chico ("¿Cambiaste de edición? Actualizar el total de páginas") lo vuelve a mostrar como campo editable, por si cambiaste de edición.
+- **Por capítulo** — tocás un capítulo directo en "Tu camino" (`ChapterPath`), sin abrir ningún modal. El % de la barra sale de en qué lugar de la lista de capítulos está ese capítulo (contando volúmenes en el orden en que fueron creados).
+- **Por página** — el link "Actualizar por página" (al lado de "Tu camino") abre **`UpdateProgressModal`**, que ya solo pide esto: página actual y total de páginas **de tu propia edición**. El % sale de esa proporción, y queda guardado por persona (`current_page`/`total_pages` en `reading_progress`, migración 011). El total de páginas solo se pide **la primera vez**: una vez que el modal ya sabe cuántas páginas tiene tu edición (`initialTotalPages`, lo último que guardaste), las siguientes veces solo pide en qué página vas — el total aparece como texto fijo ("de 320 páginas"), no como campo para volver a escribir. Un link chico ("¿Cambiaste de edición? Actualizar el total de páginas") lo vuelve a mostrar como campo editable, por si cambiaste de edición.
+
+`UpdateProgressModal` **se achicó a solo esto** — antes también dejaba elegir "Por capítulo" (una lista de chips redundante con tocar un nodo en Tu camino) y "Terminado" (redundante con el nodo de FIN al final del camino), más una reacción "¿Cómo estuvo?" (genial capítulo/capítulo lento) que no pintaba nada estando ya en modo página. Sacado todo: el único camino hasta este modal es "Actualizar por página", así que ya no hace falta preguntar qué querés hacer.
 
 El servidor es el que calcula el % siempre (antes lo elegía un slider que en realidad medía el avance dentro del capítulo, no el del libro entero — quedaba inconsistente con la barra).
 
