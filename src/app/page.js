@@ -34,11 +34,11 @@ export default async function Page() {
 
       if (!clubBook) return { ...club, book: null, members: membersWithFollow };
 
-      const { chapters, volumes, myProgress } = await getClubProgressSummary(supabase, { clubBookId: clubBook.id, userId: user.id });
+      const { chapters, myProgress } = await getClubProgressSummary(supabase, { clubBookId: clubBook.id, userId: user.id });
       const percent = myProgress?.percent ?? 0;
-      const { progressMeta, unit, pips } = computeHeroProgress({ chapters, volumes, myProgress, percent });
+      const { progressMeta } = computeHeroProgress({ chapters, myProgress });
 
-      return { ...club, book: clubBook.books, percent, progressMeta, unit, pips, members: membersWithFollow };
+      return { ...club, book: clubBook.books, percent, progressMeta, members: membersWithFollow };
     })
   );
 

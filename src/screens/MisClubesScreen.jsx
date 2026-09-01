@@ -104,9 +104,11 @@ function ClubHeroCard({ club, currentUserId }) {
                 >
                   {book.title}
                 </div>
-                <div style={{ fontSize: 10.5, color: CREAM, opacity: 0.72, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {[book.author, club.unit].filter(Boolean).join(' · ')}
-                </div>
+                {book.author && (
+                  <div style={{ fontSize: 10.5, color: CREAM, opacity: 0.72, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {book.author}
+                  </div>
+                )}
               </div>
 
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -119,24 +121,9 @@ function ClubHeroCard({ club, currentUserId }) {
               </div>
             </div>
 
-            {club.pips?.type === 'pips' ? (
-              <div style={{ display: 'flex', gap: 3 }}>
-                {Array.from({ length: club.pips.total }, (_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      flex: 1, height: 4, borderRadius: 2,
-                      background: i <= club.pips.nowIndex ? CREAM : 'rgba(255,248,236,.22)',
-                      opacity: i === club.pips.nowIndex ? 0.6 : 1,
-                    }}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,248,236,.22)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${club.pips?.percent ?? club.percent}%`, borderRadius: 2, background: CREAM }} />
-              </div>
-            )}
+            <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,248,236,.22)', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${club.percent}%`, borderRadius: 2, background: CREAM }} />
+            </div>
           </div>
         </div>
       ) : (
