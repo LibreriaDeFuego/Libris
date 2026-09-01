@@ -34,10 +34,12 @@ function peopleLabel(members) {
 //
 // Se probó también una versión con la portada ocupando toda la franja
 // izquierda de la tarjeta (de punta a punta) — no era lo que hacía
-// falta. Lo que se pidió es esta misma miniatura, solo más grande:
-// 56×76 → 84×114 (mismo 56:76 ≈ 0.737 de siempre, escalado 1.5×).
+// falta. Después se pidió agrandarla un poco más, hasta la barra de
+// progreso: la portada crece (84×130) y la barra pasa a vivir adentro
+// de esa misma columna, alineada abajo — ya no es una franja aparte
+// que cruza toda la tarjeta, arranca donde termina la portada.
 const COVER_W = 84;
-const COVER_H = 114;
+const COVER_H = 130;
 const CARD_SHADOW = [
   '-1px 2px 0 rgba(20,16,4,0.32)',
   '-3px 5px 2px rgba(20,16,4,0.26)',
@@ -73,50 +75,50 @@ function ClubHeroCard({ club, currentUserId }) {
       </div>
 
       {book ? (
-        <>
-          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-            {book.cover_url ? (
-              <div style={{ position: 'relative', lineHeight: 0, flexShrink: 0 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element -- proporción propia que solo se conoce en el navegador. */}
-                <img
-                  src={book.cover_url}
-                  alt=""
-                  style={{ display: 'block', width: 'auto', height: 'auto', maxWidth: COVER_W, maxHeight: COVER_H, borderRadius: '0 3px 3px 0', boxShadow: CARD_SHADOW }}
-                />
-                <div style={{ position: 'absolute', inset: 0, borderRadius: '0 3px 3px 0', mixBlendMode: 'soft-light', pointerEvents: 'none', background: CARD_LIGHT }} />
-              </div>
-            ) : (
-              <div style={{ width: COVER_W, height: COVER_H, borderRadius: '0 3px 3px 0', background: CREAM, opacity: 0.35, flexShrink: 0 }} />
-            )}
+        <div style={{ marginTop: 12, display: 'flex', gap: 12, height: COVER_H }}>
+          {book.cover_url ? (
+            <div style={{ position: 'relative', width: COVER_W, flexShrink: 0 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- llena la portada a medida (alto de la fila), no un tamaño fijo conocido de antemano. */}
+              <img
+                src={book.cover_url}
+                alt=""
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: '0 3px 3px 0', boxShadow: CARD_SHADOW }}
+              />
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '0 3px 3px 0', mixBlendMode: 'soft-light', pointerEvents: 'none', background: CARD_LIGHT }} />
+            </div>
+          ) : (
+            <div style={{ width: COVER_W, borderRadius: '0 3px 3px 0', background: CREAM, opacity: 0.35, flexShrink: 0 }} />
+          )}
 
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 8.5, letterSpacing: '.1em', textTransform: 'uppercase', color: CREAM, opacity: 0.7, fontWeight: 800 }}>
-                Leyendo ahora
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 8.5, letterSpacing: '.1em', textTransform: 'uppercase', color: CREAM, opacity: 0.7, fontWeight: 800 }}>
+                  Leyendo ahora
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, lineHeight: 1.2, color: CREAM, marginTop: 3,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}
+                >
+                  {book.title}
+                </div>
+                <div style={{ fontSize: 10.5, color: CREAM, opacity: 0.72, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {[book.author, club.unit].filter(Boolean).join(' · ')}
+                </div>
               </div>
-              <div
-                style={{
-                  fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, lineHeight: 1.2, color: CREAM, marginTop: 3,
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                }}
-              >
-                {book.title}
-              </div>
-              <div style={{ fontSize: 10.5, color: CREAM, opacity: 0.72, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {[book.author, club.unit].filter(Boolean).join(' · ')}
+
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 800, letterSpacing: '-.02em', color: CREAM }}>
+                  {club.percent}%
+                </div>
+                {club.progressMeta && (
+                  <div style={{ fontSize: 9.5, color: CREAM, opacity: 0.7, marginTop: 1 }}>{club.progressMeta}</div>
+                )}
               </div>
             </div>
 
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 800, letterSpacing: '-.02em', color: CREAM }}>
-                {club.percent}%
-              </div>
-              {club.progressMeta && (
-                <div style={{ fontSize: 9.5, color: CREAM, opacity: 0.7, marginTop: 1 }}>{club.progressMeta}</div>
-              )}
-            </div>
-          </div>
-
-          <div style={{ marginTop: 12 }}>
             {club.pips?.type === 'pips' ? (
               <div style={{ display: 'flex', gap: 3 }}>
                 {Array.from({ length: club.pips.total }, (_, i) => (
@@ -136,7 +138,7 @@ function ClubHeroCard({ club, currentUserId }) {
               </div>
             )}
           </div>
-        </>
+        </div>
       ) : (
         <div style={{ marginTop: 10, fontSize: 12, color: CREAM, opacity: 0.75 }}>
           Todavía no tiene un libro activo.
