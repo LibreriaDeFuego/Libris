@@ -91,38 +91,37 @@ function ClubHeroCard({ club, currentUserId }) {
           )}
 
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 8.5, letterSpacing: '.1em', textTransform: 'uppercase', color: CREAM, opacity: 0.7, fontWeight: 800 }}>
-                  Leyendo ahora
-                </div>
-                <div
-                  style={{
-                    fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, lineHeight: 1.2, color: CREAM, marginTop: 3,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}
-                >
-                  {book.title}
-                </div>
-                {book.author && (
-                  <div style={{ fontSize: 10.5, color: CREAM, opacity: 0.72, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {book.author}
-                  </div>
-                )}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 8.5, letterSpacing: '.1em', textTransform: 'uppercase', color: CREAM, opacity: 0.7, fontWeight: 800 }}>
+                Leyendo ahora
               </div>
-
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 800, letterSpacing: '-.02em', color: CREAM }}>
-                  {club.percent}%
-                </div>
-                {club.progressMeta && (
-                  <div style={{ fontSize: 9.5, color: CREAM, opacity: 0.7, marginTop: 1 }}>{club.progressMeta}</div>
-                )}
+              <div
+                style={{
+                  fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, lineHeight: 1.2, color: CREAM, marginTop: 3,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}
+              >
+                {book.title}
               </div>
+              {book.author && (
+                <div style={{ fontSize: 10.5, color: CREAM, opacity: 0.72, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {book.author}
+                </div>
+              )}
             </div>
 
-            <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,248,236,.22)', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${club.percent}%`, borderRadius: 2, background: CREAM }} />
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'rgba(255,248,236,.22)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${club.percent}%`, borderRadius: 2, background: CREAM }} />
+                </div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 800, letterSpacing: '-.02em', color: CREAM, flexShrink: 0 }}>
+                  {club.percent}%
+                </div>
+              </div>
+              {club.progressMeta && (
+                <div style={{ fontSize: 9.5, color: CREAM, opacity: 0.7, textAlign: 'right', marginTop: 4 }}>{club.progressMeta}</div>
+              )}
             </div>
           </div>
         </div>
