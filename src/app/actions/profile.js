@@ -52,6 +52,20 @@ export async function unfollowProfile(formData) {
   return { error: null };
 }
 
+// Marca todas las notificaciones como vistas de una sola vez — no hay
+// "marcar como leída" una por una, como tampoco lo tiene Instagram con el
+// corazón: abrir la campana ya alcanza para apagar el punto.
+export async function markNotificationsSeen() {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const { error } = await supabase.from('profiles').update({ notifications_seen_at: new Date().toISOString() }).eq('id', user.id);
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/inicio');
+  return { error: null };
+}
+
 // Editar el propio perfil: nombre, usuario y bio. La foto se sube aparte
 // (uploadAvatar, en actions/media.js) porque implica Storage.
 export async function updateProfile(prevState, formData) {

@@ -475,6 +475,17 @@ Ninguna de estas piezas necesitó migración: los datos y los permisos ya exist�
 
 **"Quiénes están leyendo" se sacó entera**, de las dos pantallas donde vivía: la franja de avatares arriba del carrusel (`MemberProgressStrip`, componente eliminado) y el botón "Mostrar quién está leyendo" dentro de "Tu camino" (compañeros por capítulo, en `ChapterPath`). Quedó redundante frente a los **integrantes del club** que ahora se ven en "Mis clubes de lectura" (ver más arriba) — esa lista ya cumple el mismo rol (quién está en el club) y de paso deja seguir a cualquiera. Se sacó también toda la plomería que solo alimentaba esto: la consulta cruzada `club_members`+`reading_progress` en `/club/[clubId]/page.js`, y las props `members`/`currentUserId` de `ChapterPath` y `ClubScreen` (`ChapterPath` ya no necesita saber quién sos para dibujar el camino).
 
+### Notificaciones en Inicio (migración 037)
+
+Arriba a la derecha de "Inicio", al lado del logo — mismo lugar que el corazón de Instagram, pero con un libro (`Icon name="book-open"`) en vez de un corazón: acá "me gusta" no es el ícono de marca de la app. Un punto rojo (`--accent-500`) avisa que hay algo nuevo; tocar el ícono abre una hoja con la lista completa y apaga el punto **de una sola vez** al abrir — no hay "marcar como leída" notificación por notificación, mismo criterio que usa Instagram con el suyo.
+
+- **No hay tabla de notificaciones propia.** `notifications_feed` (función `security definer`, como `recent_activity`) arma la lista al vuelo cruzando lo que ya existía: alguien te empezó a seguir (`follows`), le pusieron "me gusta" a un comentario/cita/reseña o a una foto tuya (`comment_likes`/`post_likes`), te respondieron (`comments.parent_comment_id`), o comentaron una foto tuya (`post_comments`). Todo filtrado por `auth.uid()` del lado del servidor, igual que el resto de las funciones de la app — nunca trae nada que no sea tuyo.
+- **Qué es "nuevo"**: una sola columna nueva, `profiles.notifications_seen_at` — no una fila por notificación con su propio estado de leído. `getNotifications` (`src/lib/notifications.js`) compara la fecha de cada evento contra ese timestamp para pintar el punto de "nuevo" en la lista y decidir si mostrar el punto rojo del ícono. Abrir la hoja llama a la Server Action **`markNotificationsSeen`** (`src/app/actions/profile.js`), que pone ese timestamp en `now()` — optimista del lado del cliente (el punto se apaga al toque, no espera la respuesta del servidor).
+- Cada notificación arma su propio texto y su propio link (`describe()` en `notifications.js`): un comentario/respuesta lleva al capítulo puntual del club (`?capitulo=<id>` si lo tiene), un nuevo seguidor lleva a su perfil, y un "me gusta"/comentario en una foto lleva a tu propio Perfil (`/perfil`) — no hay otro lugar donde ver tus fotos.
+- **`NotificationsButton`** (`src/components/NotificationsButton.jsx`) — la campana y la hoja (`Modal`), auto-contenidos: no le hace falta al resto de "Inicio" saber que existen.
+
+No hizo falta ninguna política de RLS nueva — todas las tablas que `notifications_feed` cruza ya tenían las suyas, y la función filtra por `auth.uid()` del lado del servidor como cualquier otra `security definer` de la app; `notifications_seen_at` se actualiza con la misma política de "cada quien edita su propio perfil" que ya usaba `updateProfile`.
+
 ### Contenido editorial
 
 `editorial_items` alimenta las solapas Guías/Cursos de **Recursos**. No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.

@@ -293,4 +293,12 @@ select 'Migración 036 — recent_activity trae chapter_id',
        case when exists (
               select 1 from pg_proc where proname = 'recent_activity' and prosrc like '%chapter_id%'
             )
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 037 — profiles.notifications_seen_at (notificaciones)',
+       case when exists (select 1 from information_schema.columns where table_name = 'profiles' and column_name = 'notifications_seen_at')
+            then 'OK' else 'FALTA' end
+union all
+select 'Migración 037 — función notifications_feed',
+       case when exists (select 1 from pg_proc where proname = 'notifications_feed')
             then 'OK' else 'FALTA' end;

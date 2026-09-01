@@ -1,17 +1,19 @@
 'use client';
 
 import { ActivityCard } from '@/components/ActivityCard';
+import { NotificationsButton } from '@/components/NotificationsButton';
 
 // El feed general: citas destacadas y fotos de lo que está leyendo
 // cualquier persona en Libris, más recientes primero. Por ahora solo esos
 // dos tipos — se van a ir sumando otros (comentarios, notas de voz, empezar
 // un libro nuevo) más adelante, extendiendo recent_activity.
-export function InicioScreen({ activity, myClubIds, myProfileId }) {
+export function InicioScreen({ activity, myClubIds, myProfileId, notifications, hasUnread }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '20px 18px 24px' }}>
-      <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
         <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block' }} />
+        <NotificationsButton notifications={notifications} hasUnread={hasUnread} />
       </div>
 
       {activity.length === 0 ? (
