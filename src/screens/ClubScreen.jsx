@@ -94,6 +94,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
             <UpdateProgressModal
               clubBookId={clubBookId}
               chapters={orderedChapters}
+              volumes={volumes ?? []}
               initialCurrentPage={myProgress?.current_page ?? null}
               initialTotalPages={myProgress?.total_pages ?? null}
               initialChapterId={myProgress?.chapter_id ?? null}
