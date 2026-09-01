@@ -43,7 +43,7 @@ export default async function Page({ params }) {
     );
   }
 
-  const [heroExtras, { data: otherClubsCount }, { data: members }, { data: memberProgress }, commentCounts] = await Promise.all([
+  const [heroExtras, { data: otherClubsCount }, commentCounts] = await Promise.all([
     // Chapters, volumes, mi progreso, mi reseña, actividad reciente y
     // solicitudes pendientes — ver src/lib/clubDetail.js.
     getClubHeroExtras(supabase, { clubId, clubBookId: clubBook.id, userId: user.id, isAdmin }),
@@ -53,25 +53,10 @@ export default async function Page({ params }) {
       target_book_id: clubBook.book_id,
       exclude_club_id: clubId,
     }),
-    // "Quiénes están leyendo": todos los miembros del club — mismo alcance
-    // que ya tiene la lista de Preferencias, RLS ya lo permite.
-    supabase.from('club_members').select('profile_id, profiles(display_name, avatar_url)').eq('club_id', clubId).order('joined_at'),
-    // El progreso de todos (no solo el propio) para este libro, para saber
-    // quién va por qué capítulo. reading_progress no tiene FK a club_members,
-    // así que se trae aparte y se cruza acá abajo por profile_id.
-    supabase.from('reading_progress').select('profile_id, chapter_id').eq('club_book_id', clubBook.id),
     // Cuántos comentarios tiene cada capítulo, para la pastilla de
     // "Comentarios" en Tu camino.
     getChapterCommentCounts(supabase, clubBook.id),
   ]);
-
-  const progressByProfile = new Map((memberProgress ?? []).map((p) => [p.profile_id, p.chapter_id]));
-  const membersWithProgress = (members ?? []).map((m) => ({
-    profileId: m.profile_id,
-    displayName: m.profiles?.display_name ?? 'Alguien',
-    avatarUrl: m.profiles?.avatar_url ?? null,
-    chapterId: progressByProfile.get(m.profile_id) ?? null,
-  }));
 
   return (
     <ClubScreen
@@ -83,9 +68,7 @@ export default async function Page({ params }) {
       volumes={heroExtras.volumes}
       myProgress={heroExtras.myProgress}
       myReview={heroExtras.myReview}
-      members={membersWithProgress}
       activity={heroExtras.activity}
-      currentUserId={user.id}
       commentCounts={commentCounts}
       otherClubsCount={Number(otherClubsCount ?? 0)}
     />

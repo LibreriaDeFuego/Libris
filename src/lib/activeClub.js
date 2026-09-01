@@ -11,8 +11,8 @@ export async function getMyClubs(supabase, userId) {
     .map((membership) => ({ ...membership.clubs, role: membership.role }));
 }
 
-// Los miembros de un club, con perfil básico — mismo shape que ya usa
-// /club/[clubId] para "Quiénes están leyendo".
+// Los miembros de un club, con perfil básico — la usa "Mis clubes de
+// lectura" para la lista de integrantes de cada tarjeta.
 export async function getClubMembers(supabase, clubId) {
   const { data } = await supabase
     .from('club_members')
