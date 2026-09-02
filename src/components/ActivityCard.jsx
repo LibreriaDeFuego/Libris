@@ -26,6 +26,13 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 // Antes iba la imagen primero y el texto después, como un posteo de
 // Instagram — se invirtió el orden al pedir una estética más parecida a X.
 //
+// Cuando hay foto de perfil (author), va en su propia columna izquierda
+// fija (avatarLink) y todo lo demás —nombre, texto, imagen, acciones—
+// se alinea a su derecha (misma columna, no solo el nombre), igual que en
+// X. Antes el avatar y el nombre eran un único bloque en una fila propia,
+// y el resto de la tarjeta arrancaba desde el borde izquierdo sin alinearse
+// con el nombre.
+//
 // Las reseñas finales (kind = 'review', al declarar un libro terminado) son
 // la excepción: el título va junto a la portada, en un panel de color
 // propio (BookReviewCard) — no una imagen de fondo con texto encima.
@@ -138,12 +145,20 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
       ? `url(${backgroundUrl}) center / contain no-repeat, var(--hero-bg)`
       : `center/cover no-repeat url(${backgroundUrl})`;
 
-  const authorRow = author && (
-    <Link
-      href={`/perfil/${author.id}`}
-      style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
-    >
+  // Igual que en X: la foto de perfil vive en su propia columna izquierda,
+  // fija, y todo lo demás (nombre, texto, imagen, acciones) se alinea a su
+  // derecha — no solo el nombre. Por eso el avatar y el nombre son dos
+  // links separados (avatarLink en la columna izquierda, nameLink arriba
+  // de la columna derecha) en vez de un único bloque avatar+nombre como
+  // antes, que dejaba el texto de abajo empezando desde el borde izquierdo
+  // de la tarjeta, sin alinearse con el nombre.
+  const avatarLink = author && (
+    <Link href={`/perfil/${author.id}`} style={{ flexShrink: 0, display: 'block' }}>
       <Avatar name={author.display_name} src={author.avatar_url} size={30} />
+    </Link>
+  );
+  const nameLink = author && (
+    <Link href={`/perfil/${author.id}`} style={{ textDecoration: 'none' }}>
       <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-primary)' }}>
         <span style={{ fontWeight: 700 }}>{author.display_name}</span>{' '}
         <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(activity.created_at)}</span>
@@ -156,184 +171,185 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
     // Perfil se omite por redundante), acá hace falta el mismo encabezado
     // en Perfil y en Inicio: es lo que hace que los 3 puntos, al quedar del
     // otro lado en un "space-between", terminen siempre a la derecha.
-    const reviewName = author ? (
-      <Link href={`/perfil/${author.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-        <Avatar name={author.display_name} src={author.avatar_url} size={30} />
-        <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-primary)' }}>
-          <span style={{ fontWeight: 700 }}>{author.display_name}</span>{' '}
-          <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(activity.created_at)}</span>
-        </span>
-      </Link>
-    ) : (
+    // Sin author (Perfil, cuando el kind no es 'review' — acá siempre lo
+    // es, pero se deja el fallback igual que antes) no hay avatar: el
+    // nombre queda solo, sin columna izquierda para alinear.
+    const reviewName = author ? nameLink : (
       <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-primary)' }}>
         <span style={{ fontWeight: 700 }}>{personName}</span>{' '}
         <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(activity.created_at)}</span>
       </span>
     );
     return (
-      <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 8, opacity: pending ? 0.6 : 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {reviewName}
-          {isOwn && (
-            <PostMenu
-              editLabel="Editar reseña"
-              onEdit={() => router.push(`/club/${activity.club_id}/comentarios`)}
-              deleteLabel="Eliminar reseña"
-              onDelete={handleDeleteReview}
-            />
+      <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border-subtle)', display: 'flex', gap: 10, opacity: pending ? 0.6 : 1 }}>
+        {avatarLink}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {reviewName}
+            {isOwn && (
+              <PostMenu
+                editLabel="Editar reseña"
+                onEdit={() => router.push(`/club/${activity.club_id}/comentarios`)}
+                deleteLabel="Eliminar reseña"
+                onDelete={handleDeleteReview}
+              />
+            )}
+          </div>
+          <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600 }}>
+            {activity.club_name} · terminó {activity.book_title}
+          </div>
+          <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
+            <BookReviewCard title={activity.title} body={activity.body} coverUrl={activity.book_cover_url} expanded={expanded} />
+          </div>
+          <EngagementBlock
+            commentId={activity.id}
+            liked={activity.liked_by_me}
+            likeCount={activity.like_count}
+            replies={activity.replies ?? []}
+            compact
+          />
+          {expanded && canOpenClub && (
+            <Link
+              href={`/club/${activity.club_id}/comentarios`}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
+            >
+              Ver el resto de los comentarios en el club
+              <Icon name="arrow-right" size={12} color="var(--text-link)" />
+            </Link>
           )}
         </div>
-        <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600 }}>
-          {activity.club_name} · terminó {activity.book_title}
-        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border-subtle)', display: 'flex', gap: 10, opacity: pending ? 0.6 : 1 }}>
+      {avatarLink}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 0 }}>
+        {(nameLink || ((isPhoto || isQuote) && isOwn)) && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: nameLink ? 'space-between' : 'flex-end' }}>
+            {nameLink}
+            {isPhoto && isOwn && (
+              <PostMenu
+                editLabel="Editar foto"
+                onEdit={() => setEditingPhoto(true)}
+                deleteLabel="Eliminar foto"
+                onDelete={handleDeletePhoto}
+              />
+            )}
+            {isQuote && isOwn && (
+              <PostMenu
+                editLabel="Editar cita"
+                onEdit={() => setEditingQuote(true)}
+                deleteLabel="Eliminar cita"
+                onDelete={handleDeleteQuote}
+              />
+            )}
+          </div>
+        )}
+
+        {/* El texto va antes que la imagen — como un posteo de X, no de
+            Instagram (donde la foto sola encabeza la tarjeta). */}
         <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
-          <BookReviewCard title={activity.title} body={activity.body} coverUrl={activity.book_cover_url} expanded={expanded} />
+          {!showAsImage && (
+            <>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
+                {activity.book_title}
+              </div>
+              <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                {activity.book_author}
+              </div>
+            </>
+          )}
+          {!hasQuoteImage && text && (
+            <div
+              ref={textRef}
+              style={{
+                fontSize: 'var(--fs-sm)', marginTop: isPhoto ? 4 : 8, lineHeight: 'var(--lh-snug)',
+                color: isQuote ? 'var(--gold-700)' : 'var(--text-secondary)',
+                fontStyle: isQuote ? 'italic' : 'normal',
+                whiteSpace: 'pre-wrap',
+                display: '-webkit-box',
+                WebkitLineClamp: expanded ? 'unset' : TEXT_LINE_CLAMP,
+                WebkitBoxOrient: 'vertical',
+                overflow: expanded ? 'visible' : 'hidden',
+              }}
+            >
+              {isPhoto ? text : `“${text}”`}
+              {!expanded && isTruncated && (
+                <span style={{ fontWeight: 700, color: 'var(--text-tertiary)' }}> más</span>
+              )}
+            </div>
+          )}
         </div>
-        <EngagementBlock
-          commentId={activity.id}
-          liked={activity.liked_by_me}
-          likeCount={activity.like_count}
-          replies={activity.replies ?? []}
-          compact
+
+        {/* La imagen va sola, sin nada escrito encima — igual que un posteo. */}
+        <div
+          style={{
+            aspectRatio: '3 / 4', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+            boxShadow: 'var(--shadow-sm)', flexShrink: 0, background,
+          }}
         />
-        {expanded && canOpenClub && (
+
+        {isPhoto ? (
+          <PhotoCommentsBlock
+            postId={activity.id}
+            liked={activity.liked_by_me}
+            likeCount={activity.like_count}
+            comments={activity.replies ?? []}
+            compact
+          />
+        ) : isQuote ? (
+          <EngagementBlock
+            commentId={activity.id}
+            liked={activity.liked_by_me}
+            likeCount={activity.like_count}
+            replies={activity.replies ?? []}
+            compact
+          />
+        ) : (
+          <LikeButton liked={activity.liked_by_me} count={activity.like_count} onToggle={() => toggleCommentLike(activity.id)} compact />
+        )}
+
+        {expanded && isQuote && activity.quote_style && (
+          <DownloadQuoteImageButton
+            style={activity.quote_style}
+            quoteText={activity.body}
+            book={{ title: activity.book_title, author: activity.book_author, cover_url: activity.book_cover_url }}
+            clubName={activity.club_name}
+            personName={personName}
+            imageUrl={activity.quote_image_url}
+          />
+        )}
+        {expanded && canOpenClub && !isPhoto && (
           <Link
-            href={`/club/${activity.club_id}/comentarios`}
+            href={activity.chapter_id ? `/club/${activity.club_id}/comentarios?capitulo=${activity.chapter_id}` : `/club/${activity.club_id}/comentarios`}
             style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
           >
             Ver el resto de los comentarios en el club
             <Icon name="arrow-right" size={12} color="var(--text-link)" />
           </Link>
         )}
-      </div>
-    );
-  }
 
-  return (
-    <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 8, opacity: pending ? 0.6 : 1 }}>
-      {(authorRow || ((isPhoto || isQuote) && isOwn)) && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: authorRow ? 'space-between' : 'flex-end' }}>
-          {authorRow}
-          {isPhoto && isOwn && (
-            <PostMenu
-              editLabel="Editar foto"
-              onEdit={() => setEditingPhoto(true)}
-              deleteLabel="Eliminar foto"
-              onDelete={handleDeletePhoto}
-            />
-          )}
-          {isQuote && isOwn && (
-            <PostMenu
-              editLabel="Editar cita"
-              onEdit={() => setEditingQuote(true)}
-              deleteLabel="Eliminar cita"
-              onDelete={handleDeleteQuote}
-            />
-          )}
-        </div>
-      )}
-
-      {/* El texto va antes que la imagen — como un posteo de X, no de
-          Instagram (donde la foto sola encabeza la tarjeta). */}
-      <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
-        {!showAsImage && (
-          <>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
-              {activity.book_title}
-            </div>
-            <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>
-              {activity.book_author}
-            </div>
-          </>
+        {editingPhoto && (
+          <EditPostModal
+            postId={activity.id}
+            photoUrl={activity.photo_url}
+            initialCaption={activity.body}
+            onClose={() => setEditingPhoto(false)}
+          />
         )}
-        {!hasQuoteImage && text && (
-          <div
-            ref={textRef}
-            style={{
-              fontSize: 'var(--fs-sm)', marginTop: isPhoto ? 4 : 8, lineHeight: 'var(--lh-snug)',
-              color: isQuote ? 'var(--gold-700)' : 'var(--text-secondary)',
-              fontStyle: isQuote ? 'italic' : 'normal',
-              whiteSpace: 'pre-wrap',
-              display: '-webkit-box',
-              WebkitLineClamp: expanded ? 'unset' : TEXT_LINE_CLAMP,
-              WebkitBoxOrient: 'vertical',
-              overflow: expanded ? 'visible' : 'hidden',
-            }}
-          >
-            {isPhoto ? text : `“${text}”`}
-            {!expanded && isTruncated && (
-              <span style={{ fontWeight: 700, color: 'var(--text-tertiary)' }}> más</span>
-            )}
-          </div>
+
+        {editingQuote && (
+          <EditQuoteModal
+            quote={{ id: activity.id, body: activity.body, quote_style: activity.quote_style }}
+            book={{ title: activity.book_title, author: activity.book_author, cover_url: activity.book_cover_url }}
+            clubName={activity.club_name}
+            personName={personName}
+            onClose={() => setEditingQuote(false)}
+          />
         )}
       </div>
-
-      {/* La imagen va sola, sin nada escrito encima — igual que un posteo. */}
-      <div
-        style={{
-          aspectRatio: '3 / 4', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
-          boxShadow: 'var(--shadow-sm)', flexShrink: 0, background,
-        }}
-      />
-
-      {isPhoto ? (
-        <PhotoCommentsBlock
-          postId={activity.id}
-          liked={activity.liked_by_me}
-          likeCount={activity.like_count}
-          comments={activity.replies ?? []}
-          compact
-        />
-      ) : isQuote ? (
-        <EngagementBlock
-          commentId={activity.id}
-          liked={activity.liked_by_me}
-          likeCount={activity.like_count}
-          replies={activity.replies ?? []}
-          compact
-        />
-      ) : (
-        <LikeButton liked={activity.liked_by_me} count={activity.like_count} onToggle={() => toggleCommentLike(activity.id)} compact />
-      )}
-
-      {expanded && isQuote && activity.quote_style && (
-        <DownloadQuoteImageButton
-          style={activity.quote_style}
-          quoteText={activity.body}
-          book={{ title: activity.book_title, author: activity.book_author, cover_url: activity.book_cover_url }}
-          clubName={activity.club_name}
-          personName={personName}
-          imageUrl={activity.quote_image_url}
-        />
-      )}
-      {expanded && canOpenClub && !isPhoto && (
-        <Link
-          href={activity.chapter_id ? `/club/${activity.club_id}/comentarios?capitulo=${activity.chapter_id}` : `/club/${activity.club_id}/comentarios`}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
-        >
-          Ver el resto de los comentarios en el club
-          <Icon name="arrow-right" size={12} color="var(--text-link)" />
-        </Link>
-      )}
-
-      {editingPhoto && (
-        <EditPostModal
-          postId={activity.id}
-          photoUrl={activity.photo_url}
-          initialCaption={activity.body}
-          onClose={() => setEditingPhoto(false)}
-        />
-      )}
-
-      {editingQuote && (
-        <EditQuoteModal
-          quote={{ id: activity.id, body: activity.body, quote_style: activity.quote_style }}
-          book={{ title: activity.book_title, author: activity.book_author, cover_url: activity.book_cover_url }}
-          clubName={activity.club_name}
-          personName={personName}
-          onClose={() => setEditingQuote(false)}
-        />
-      )}
     </div>
   );
 }
