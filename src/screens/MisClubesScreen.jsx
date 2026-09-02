@@ -48,12 +48,36 @@ const CARD_SHADOW = [
 
 const CARD_LIGHT = 'linear-gradient(210deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.06) 30%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.42) 100%)';
 
-function ClubHeroCard({ club, currentUserId }) {
+// Un color de tarjeta por posición en la lista, no por club fijo ni a
+// elección de quien administra — mismo criterio que ya usa Avatar.jsx
+// (nadie elige su color de perfil, la app lo asigna). Como "Mis clubes de
+// lectura" ordena por joined_at (nunca por actividad reciente — ver
+// getMyClubs), la posición de cada club es estable: no cambia de color de
+// una sesión a otra. Cicla de a 4 — con más de 4 clubes se repiten, pero
+// nunca entre vecinos (el ciclo garantiza eso), solo entre clubes que ya
+// no compiten por atención en la misma pantalla. Degradado fuerte (claro
+// arriba, tinta oscura abajo) con textura de lino encima — se probaron
+// varias combinaciones de color y dos texturas (grano y lino) en mockup;
+// esta fue la elegida.
+const CLUB_PALETTE = [
+  { gradient: 'linear-gradient(150deg, #29C481 0%, #1BAA6B 40%, #14304F 100%)', ring: '#1BAA6B' },
+  { gradient: 'linear-gradient(150deg, #C4A6FF 0%, #7C4DFF 40%, #1B1330 100%)', ring: '#7C4DFF' },
+  { gradient: 'linear-gradient(150deg, #5FD4E0 0%, #1E93A8 40%, #0B2340 100%)', ring: '#1E93A8' },
+  { gradient: 'linear-gradient(150deg, #FF8FB3 0%, #D63A6B 40%, #3A0F22 100%)', ring: '#D63A6B' },
+];
+
+const CLUB_TEXTURE = [
+  'repeating-linear-gradient(45deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 1px, transparent 1px, transparent 4px)',
+  'repeating-linear-gradient(-45deg, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, transparent 1px, transparent 4px)',
+].join(', ');
+
+function ClubHeroCard({ club, index, currentUserId }) {
   const book = club.book;
   const [membersOpen, setMembersOpen] = useState(false);
   const members = club.members ?? [];
   const shown = members.slice(0, STACK_LIMIT);
   const extra = members.length - shown.length;
+  const { gradient, ring } = CLUB_PALETTE[index % CLUB_PALETTE.length];
 
   // La tarjeta entera es un link al club — esto abre la lista de
   // integrantes en su lugar, así que no puede dejar que el toque le
@@ -66,8 +90,10 @@ function ClubHeroCard({ club, currentUserId }) {
 
   return (
     <>
-      <Link href={`/club/${club.id}`} style={{ display: 'block', background: 'var(--accent-500)', borderRadius: 18, padding: '14px 16px', textDecoration: 'none' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+      <Link href={`/club/${club.id}`} style={{ position: 'relative', overflow: 'hidden', display: 'block', background: gradient, borderRadius: 18, padding: '14px 16px', textDecoration: 'none' }}>
+      <div style={{ position: 'absolute', inset: 0, opacity: 0.55, mixBlendMode: 'overlay', pointerEvents: 'none', backgroundImage: CLUB_TEXTURE }} />
+
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: CREAM, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {club.name}
         </div>
@@ -75,7 +101,7 @@ function ClubHeroCard({ club, currentUserId }) {
       </div>
 
       {book ? (
-        <div style={{ marginTop: 12, display: 'flex', gap: 12, height: COVER_H }}>
+        <div style={{ position: 'relative', marginTop: 12, display: 'flex', gap: 12, height: COVER_H }}>
           {book.cover_url ? (
             <div style={{ position: 'relative', width: COVER_W, flexShrink: 0 }}>
               {/* eslint-disable-next-line @next/next/no-img-element -- llena la portada a medida (alto de la fila), no un tamaño fijo conocido de antemano. */}
@@ -126,7 +152,7 @@ function ClubHeroCard({ club, currentUserId }) {
           </div>
         </div>
       ) : (
-        <div style={{ marginTop: 10, fontSize: 12, color: CREAM, opacity: 0.75 }}>
+        <div style={{ position: 'relative', marginTop: 10, fontSize: 12, color: CREAM, opacity: 0.75 }}>
           Todavía no tiene un libro activo.
         </div>
       )}
@@ -135,13 +161,13 @@ function ClubHeroCard({ club, currentUserId }) {
         <button
           type="button"
           onClick={openMembers}
-          style={{ marginTop: 11, display: 'flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+          style={{ position: 'relative', marginTop: 11, display: 'flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
         >
           <div style={{ display: 'flex' }}>
             {shown.map((m, i) => (
               <div
                 key={m.profileId}
-                style={{ marginLeft: i === 0 ? 0 : -7, border: '2px solid var(--accent-500)', borderRadius: 'var(--radius-round)', lineHeight: 0 }}
+                style={{ marginLeft: i === 0 ? 0 : -7, border: `2px solid ${ring}`, borderRadius: 'var(--radius-round)', lineHeight: 0 }}
               >
                 <Avatar name={m.displayName} src={m.avatarUrl} size={22} />
               </div>
@@ -149,7 +175,7 @@ function ClubHeroCard({ club, currentUserId }) {
             {extra > 0 && (
               <div
                 style={{
-                  marginLeft: -7, width: 22, height: 22, borderRadius: 'var(--radius-round)', border: '2px solid var(--accent-500)',
+                  marginLeft: -7, width: 22, height: 22, borderRadius: 'var(--radius-round)', border: `2px solid ${ring}`,
                   background: 'rgba(255,248,236,.24)', color: CREAM, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 8, fontWeight: 800,
                 }}
@@ -199,7 +225,7 @@ export function MisClubesScreen({ clubs, currentUserId }) {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {clubs.map((club) => <ClubHeroCard key={club.id} club={club} currentUserId={currentUserId} />)}
+            {clubs.map((club, i) => <ClubHeroCard key={club.id} club={club} index={i} currentUserId={currentUserId} />)}
           </div>
         )}
       </div>
