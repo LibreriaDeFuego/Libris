@@ -11,6 +11,7 @@ import { Input } from '@/design-system/components/forms/Input.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { CoverUploader } from '@/components/CoverUploader';
 import { VisibilityPicker } from '@/components/VisibilityOption';
+import { PlaceAutocompleteInput } from '@/components/PlaceAutocompleteInput';
 
 const initialState = { error: null };
 
@@ -235,7 +236,7 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
             {meetingMode === 'lugar' ? (
               <div>
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Dirección o nombre del lugar</div>
-                <Input name="meetingPlace" placeholder="Café Martínez, San Martín 450" defaultValue={club.meeting_place ?? ''} />
+                <PlaceAutocompleteInput name="meetingPlace" placeholder="Café Martínez, San Martín 450" defaultValue={club.meeting_place ?? ''} />
                 <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 6, lineHeight: 'var(--lh-snug)' }}>
                   Con esto se arma un link a Google Maps solo — no hace falta pegar uno vos mismo.
                 </div>
