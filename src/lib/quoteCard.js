@@ -165,15 +165,13 @@ async function renderCover(ctx, { quoteText, book, clubName, personName }) {
     weight: 700, italic: true, family: 'Bricolage Grotesque',
   });
 
-  // Igual que la tarjeta del club en Mis clubes: si la portada ya trae el título impreso
-  // (cover_has_title), no lo repetimos acá — evita que el título dibujado
-  // choque visualmente con el que ya está en la propia imagen.
-  const showTitle = Boolean(book?.title) && !book?.cover_has_title;
+  // No repetimos el título acá: la portada de fondo ya lo trae impreso en
+  // casi todos los casos, y dibujarlo de nuevo chocaba visualmente con el
+  // que ya está en la propia imagen.
   const dividerH = 34;
-  const titleH = showTitle ? 56 : 0;
   const meta = metaLine({ book, clubName, personName });
   const metaH = meta ? 42 : 0;
-  const blockH = quote.lines.length * quote.lineHeightPx + dividerH + titleH + metaH;
+  const blockH = quote.lines.length * quote.lineHeightPx + dividerH + metaH;
 
   let y = (H - blockH) / 2;
 
@@ -200,10 +198,6 @@ async function renderCover(ctx, { quoteText, book, clubName, personName }) {
   ctx.stroke();
   y += dividerH * 0.7;
 
-  if (showTitle) {
-    drawLines(ctx, [book.title], pad, y, 0, { color: CREAM, weight: 700, family: 'Bricolage Grotesque', size: 39 });
-    y += titleH;
-  }
   if (meta) {
     drawLines(ctx, [meta], pad, y, 0, { color: 'rgba(255,248,236,0.72)', weight: 500, family: 'Plus Jakarta Sans', size: 30 });
   }

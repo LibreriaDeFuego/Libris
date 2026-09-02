@@ -39,7 +39,7 @@ export function QuoteCardPreview({ style, quoteText, book, clubName, personName 
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- "book" es un objeto nuevo en cada render del padre; comparar por sus campos evita regenerar la vista previa en un loop.
-  }, [style, text, book?.title, book?.author, book?.cover_url, book?.cover_has_title, clubName, personName]);
+  }, [style, text, book?.title, book?.author, book?.cover_url, clubName, personName]);
 
   // Al desmontar, liberar la última URL generada.
   useEffect(() => () => {

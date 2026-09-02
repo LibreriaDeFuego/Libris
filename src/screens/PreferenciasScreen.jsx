@@ -171,7 +171,6 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
   const [state, action, pending] = useActionState(updateClubPreferences, initialState);
   const [visibility, setVisibility] = useState(JOIN_MODE_TO_VISIBILITY[club.join_mode] ?? (club.is_private ? 'privado' : 'publico'));
   const [meetingMode, setMeetingMode] = useState(club.meeting_mode ?? 'link');
-  const [bookCoverHasTitle, setBookCoverHasTitle] = useState(book?.cover_has_title ?? true);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaveError, setLeaveError] = useState(null);
   const [leavePending, startLeave] = useTransition();
@@ -269,43 +268,6 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
                 <CoverUploader bookId={book.id} hasCover={Boolean(book.cover_url)} tone="light" />
               </div>
 
-              <label
-                style={{
-                  position: 'relative', display: 'flex', gap: 12, alignItems: 'flex-start', padding: 14,
-                  borderRadius: 'var(--radius-md)', border: `1.5px solid ${bookCoverHasTitle ? 'var(--success)' : 'var(--border-default)'}`,
-                  background: bookCoverHasTitle ? 'var(--success-bg)' : 'transparent', cursor: 'pointer',
-                }}
-              >
-                <input
-                  type="checkbox"
-                  name="bookCoverHasTitle"
-                  checked={bookCoverHasTitle}
-                  onChange={(e) => setBookCoverHasTitle(e.target.checked)}
-                  style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
-                />
-                <span
-                  style={{
-                    width: 40, height: 23, borderRadius: 999, background: bookCoverHasTitle ? 'var(--success)' : 'var(--border-default)',
-                    flexShrink: 0, position: 'relative', transition: 'background .16s', marginTop: 1,
-                  }}
-                >
-                  <span
-                    style={{
-                      position: 'absolute', top: 3, left: 3, width: 17, height: 17, borderRadius: '50%',
-                      background: 'var(--hero-cream)', transition: 'transform .16s',
-                      transform: bookCoverHasTitle ? 'translateX(17px)' : 'none',
-                    }}
-                  />
-                </span>
-                <span>
-                  <b style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-primary)', display: 'block', lineHeight: 1.35 }}>
-                    La portada ya trae el título
-                  </b>
-                  <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-secondary)', display: 'block', marginTop: 3, lineHeight: 1.45 }}>
-                    Evita repetirlo al armar una cita para compartir con esa portada de fondo.
-                  </span>
-                </span>
-              </label>
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <Link href={`/club/${club.id}/capitulos`}>

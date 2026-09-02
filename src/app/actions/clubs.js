@@ -388,8 +388,6 @@ export async function updateClubPreferences(prevState, formData) {
   const clubName = formData.get('clubName')?.toString().trim();
   const bookTitle = formData.get('bookTitle')?.toString().trim();
   const bookAuthor = formData.get('bookAuthor')?.toString().trim();
-  // Checkbox: ausente en el FormData = destildado.
-  const bookCoverHasTitle = formData.get('bookCoverHasTitle') === 'on';
   // Ausente = sin cambios de visibilidad.
   const visibility = formData.get('visibility')?.toString();
   // La reunión es opcional: sin fecha, se guarda todo en null (sin
@@ -428,7 +426,7 @@ export async function updateClubPreferences(prevState, formData) {
   if (bookId && bookTitle && bookAuthor) {
     const { error: bookError } = await supabase
       .from('books')
-      .update({ title: bookTitle, author: bookAuthor, cover_has_title: bookCoverHasTitle })
+      .update({ title: bookTitle, author: bookAuthor })
       .eq('id', bookId);
     if (bookError) return { error: friendlyDbError(bookError) };
   }

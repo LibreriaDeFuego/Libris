@@ -39,7 +39,7 @@ export async function getClubMembers(supabase, clubId) {
 export async function getActiveClubBook(supabase, clubId) {
   const { data } = await supabase
     .from('club_books')
-    .select('id, club_id, book_id, books(id, title, author, cover_url, cover_has_title)')
+    .select('id, club_id, book_id, books(id, title, author, cover_url)')
     .eq('club_id', clubId)
     .eq('is_active', true)
     .maybeSingle();
