@@ -7,6 +7,7 @@ import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { AddClubSheet } from '@/components/AddClubSheet';
 import { ClubMembersModal } from '@/components/ClubMembersModal';
+import { googleMapsUrl } from '@/lib/meetingFormat';
 
 const CREAM = 'var(--hero-cream)';
 const STACK_LIMIT = 3;
@@ -88,20 +89,35 @@ function ClubHeroCard({ club, index, currentUserId }) {
     setMembersOpen(true);
   }
 
+  // Toca el ícono, no toca la tarjeta: abre el link de la reunión (o Maps
+  // con el lugar) directo, sin pasar por la pantalla del club — mismo
+  // preventDefault+stopPropagation que ya usa openMembers para que el
+  // toque no le llegue también al link de abajo.
+  function openMeeting(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = club.meeting_mode === 'lugar' ? googleMapsUrl(club.meeting_place) : club.meeting_link;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
   // Solo avisa que hay una reunión programada — sin fecha ni lugar acá,
   // eso se ve al entrar al club (ver el bloque de ClubScreen.jsx). Se
   // probaron 3 mockups (solo el ícono, una línea con fecha corta, una
   // línea con fecha y lugar); este fue el elegido por no sumarle más
   // texto a una tarjeta que ya tiene bastante.
   const meetingBadge = club.meeting_at && (
-    <div
+    <button
+      type="button"
+      onClick={openMeeting}
+      aria-label={club.meeting_mode === 'lugar' ? 'Ver el lugar de la reunión en Maps' : 'Abrir el link de la reunión'}
       style={{
         position: 'absolute', top: -6, left: -6, width: 22, height: 22, borderRadius: 'var(--radius-round)',
-        background: CREAM, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,.3)',
+        background: CREAM, border: 'none', padding: 0, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,.3)',
       }}
     >
       <Icon name={club.meeting_mode === 'lugar' ? 'calendar' : 'video'} size={12} color={ring} />
-    </div>
+    </button>
   );
 
   return (
