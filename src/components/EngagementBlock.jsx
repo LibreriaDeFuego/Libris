@@ -94,7 +94,11 @@ function ReplyRow({ reply, indented, onReply }) {
 // le está contestando. El "@Nombre" queda como texto plano en el
 // comentario — no es un link ni una mención de verdad, igual que hace
 // Instagram por dentro.
-export function EngagementBlock({ commentId, liked, likeCount, replies, share }) {
+// `compact` es la versión sin píldoras — ícono + número, como el resto del
+// feed estilo timeline (ver ActivityCard, LikeButton). El hilo de
+// respuestas y el campo para comentar de abajo no cambian: solo el botón
+// que los abre.
+export function EngagementBlock({ commentId, liked, likeCount, replies, share, compact = false }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [body, setBody] = useState('');
   const [replyingToName, setReplyingToName] = useState(null);
@@ -136,20 +140,33 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <LikeButton liked={liked} count={likeCount} onToggle={() => toggleCommentLike(commentId)} />
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); if (replyOpen) closeReply(); else openReply(null, null); }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', border: 'none',
-            borderRadius: 'var(--radius-pill)', background: replyOpen ? 'var(--surface-sunken)' : 'none',
-            cursor: 'pointer', fontFamily: 'var(--font-body)',
-          }}
-        >
-          <Icon name="message-circle" size={18} color="var(--text-tertiary)" />
-          <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>Comentar</span>
-        </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: compact ? 22 : 4 }}>
+        <LikeButton liked={liked} count={likeCount} onToggle={() => toggleCommentLike(commentId)} compact={compact} />
+        {compact ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); if (replyOpen) closeReply(); else openReply(null, null); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+          >
+            <Icon name="message-circle" size={17} color="var(--text-tertiary)" />
+            {replies.length > 0 && (
+              <span style={{ fontSize: 'var(--fs-2xs)', fontWeight: 600, color: 'var(--text-tertiary)' }}>{replies.length}</span>
+            )}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); if (replyOpen) closeReply(); else openReply(null, null); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', border: 'none',
+              borderRadius: 'var(--radius-pill)', background: replyOpen ? 'var(--surface-sunken)' : 'none',
+              cursor: 'pointer', fontFamily: 'var(--font-body)',
+            }}
+          >
+            <Icon name="message-circle" size={18} color="var(--text-tertiary)" />
+            <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>Comentar</span>
+          </button>
+        )}
         {share && <ShareButton shared={share.shared} onToggle={share.onToggle} />}
       </div>
 

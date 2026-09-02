@@ -21,7 +21,7 @@ export function InicioScreen({ activity, myClubIds, myProfileId, notifications, 
           Todavía no hay nada para mostrar acá.
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border-subtle)' }}>
           {activity.map((item) => (
             <ActivityCard
               key={item.id}

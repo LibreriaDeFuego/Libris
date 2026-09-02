@@ -14,7 +14,10 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 // puntual" ni un "me gusta" por comentario, solo una lista plana y el
 // campo para agregar uno. Mismo patrón visual (fila de acciones + lista
 // debajo) para que se sienta parte de la misma familia.
-export function PhotoCommentsBlock({ postId, liked, likeCount, comments }) {
+//
+// `compact` es la versión sin píldoras — mismo criterio que EngagementBlock
+// y LikeButton, para el feed estilo timeline (ver ActivityCard).
+export function PhotoCommentsBlock({ postId, liked, likeCount, comments, compact = false }) {
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState('');
   const [pending, startTransition] = useTransition();
@@ -34,22 +37,35 @@ export function PhotoCommentsBlock({ postId, liked, likeCount, comments }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <LikeButton liked={liked} count={likeCount} onToggle={() => togglePostLike(postId)} />
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', border: 'none',
-            borderRadius: 'var(--radius-pill)', background: open ? 'var(--surface-sunken)' : 'none',
-            cursor: 'pointer', fontFamily: 'var(--font-body)',
-          }}
-        >
-          <Icon name="message-circle" size={18} color="var(--text-tertiary)" />
-          <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>
-            {comments.length > 0 ? `${comments.length} comentario${comments.length === 1 ? '' : 's'}` : 'Comentar'}
-          </span>
-        </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: compact ? 22 : 4 }}>
+        <LikeButton liked={liked} count={likeCount} onToggle={() => togglePostLike(postId)} compact={compact} />
+        {compact ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+          >
+            <Icon name="message-circle" size={17} color="var(--text-tertiary)" />
+            {comments.length > 0 && (
+              <span style={{ fontSize: 'var(--fs-2xs)', fontWeight: 600, color: 'var(--text-tertiary)' }}>{comments.length}</span>
+            )}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', border: 'none',
+              borderRadius: 'var(--radius-pill)', background: open ? 'var(--surface-sunken)' : 'none',
+              cursor: 'pointer', fontFamily: 'var(--font-body)',
+            }}
+          >
+            <Icon name="message-circle" size={18} color="var(--text-tertiary)" />
+            <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              {comments.length > 0 ? `${comments.length} comentario${comments.length === 1 ? '' : 's'}` : 'Comentar'}
+            </span>
+          </button>
+        )}
       </div>
 
       {(comments.length > 0 || open) && (

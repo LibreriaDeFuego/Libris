@@ -211,7 +211,7 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
             {isOwn ? 'Todavía no comentaste ni compartiste nada.' : 'Todavía no compartió nada que puedas ver.'}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border-subtle)' }}>
             {activity.map((item) => (
               <ActivityCard
                 key={item.id}

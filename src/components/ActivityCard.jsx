@@ -17,10 +17,14 @@ import { deleteBookReview, deleteQuote, toggleCommentLike } from '@/app/actions/
 import { deletePost } from '@/app/actions/posts';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
-// Una tarjeta de actividad, con el mismo orden que un posteo de Instagram:
-// arriba quién publicó (si corresponde), después la imagen sola y limpia
-// —nada escrito encima—, y abajo el texto (de qué se trata, la cita o el
-// comentario). Tocar el bloque de abajo despliega el texto completo.
+// Una tarjeta de actividad, al estilo timeline de X en vez de Instagram (ver
+// README): arriba quién publicó (si corresponde), después el texto (de qué
+// se trata, la cita o el comentario, tocable para desplegarlo completo), y
+// recién ahí la imagen sola y limpia —nada escrito encima—, sin tarjeta ni
+// sombra propia: cada publicación es una fila separada de la siguiente por
+// una línea fina (borderBottom), no por una tarjeta con aire alrededor.
+// Antes iba la imagen primero y el texto después, como un posteo de
+// Instagram — se invirtió el orden al pedir una estética más parecida a X.
 //
 // Las reseñas finales (kind = 'review', al declarar un libro terminado) son
 // la excepción: el título va junto a la portada, en un panel de color
@@ -115,11 +119,15 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
       ? `url(${backgroundUrl}) center / contain no-repeat, var(--hero-bg)`
       : `center/cover no-repeat url(${backgroundUrl})`;
 
+  // Con encabezado (Inicio, "author" viene puesto) la hora ya se ve ahí, al
+  // lado del nombre — repetirla acá sería dos veces la misma hora. Sin
+  // encabezado (Perfil, donde no hace falta repetir de quién es) sigue
+  // siendo el único lugar donde se ve.
   const metaText = isPhoto
-    ? `Compartió una foto · ${formatRelativeTime(activity.created_at)}`
+    ? author ? 'Compartió una foto' : `Compartió una foto · ${formatRelativeTime(activity.created_at)}`
     : hasQuoteImage
-      ? `Publicó una cita · ${formatRelativeTime(activity.created_at)}`
-      : `${activity.club_name} · ${formatRelativeTime(activity.created_at)}`;
+      ? author ? 'Publicó una cita' : `Publicó una cita · ${formatRelativeTime(activity.created_at)}`
+      : author ? activity.club_name : `${activity.club_name} · ${formatRelativeTime(activity.created_at)}`;
 
   const authorRow = author && (
     <Link
@@ -127,7 +135,10 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
       style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
     >
       <Avatar name={author.display_name} src={author.avatar_url} size={30} />
-      <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-primary)' }}>{author.display_name}</span>
+      <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-primary)' }}>
+        <span style={{ fontWeight: 700 }}>{author.display_name}</span>{' '}
+        <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(activity.created_at)}</span>
+      </span>
     </Link>
   );
 
@@ -139,18 +150,21 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
     const reviewName = author ? (
       <Link href={`/perfil/${author.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
         <Avatar name={author.display_name} src={author.avatar_url} size={30} />
-        <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-primary)' }}>{author.display_name}</span>
+        <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-primary)' }}>
+          <span style={{ fontWeight: 700 }}>{author.display_name}</span>{' '}
+          <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(activity.created_at)}</span>
+        </span>
       </Link>
     ) : (
-      <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-primary)' }}>{personName}</span>
+      <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-primary)' }}>
+        <span style={{ fontWeight: 700 }}>{personName}</span>{' '}
+        <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(activity.created_at)}</span>
+      </span>
     );
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: pending ? 0.6 : 1 }}>
+      <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 8, opacity: pending ? 0.6 : 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {reviewName}
-            <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600 }}>{formatRelativeTime(activity.created_at)}</span>
-          </div>
+          {reviewName}
           {isOwn && (
             <PostMenu
               editLabel="Editar reseña"
@@ -160,6 +174,9 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
             />
           )}
         </div>
+        <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600 }}>
+          {activity.club_name} · terminó {activity.book_title}
+        </div>
         <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
           <BookReviewCard title={activity.title} body={activity.body} coverUrl={activity.book_cover_url} expanded={expanded} />
         </div>
@@ -168,27 +185,23 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
           liked={activity.liked_by_me}
           likeCount={activity.like_count}
           replies={activity.replies ?? []}
+          compact
         />
-        <div style={{ padding: '0 2px' }}>
-          <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600 }}>
-            {activity.club_name} · terminó {activity.book_title}
-          </div>
-          {expanded && canOpenClub && (
-            <Link
-              href={`/club/${activity.club_id}/comentarios`}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 10, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
-            >
-              Ver el resto de los comentarios en el club
-              <Icon name="arrow-right" size={12} color="var(--text-link)" />
-            </Link>
-          )}
-        </div>
+        {expanded && canOpenClub && (
+          <Link
+            href={`/club/${activity.club_id}/comentarios`}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
+          >
+            Ver el resto de los comentarios en el club
+            <Icon name="arrow-right" size={12} color="var(--text-link)" />
+          </Link>
+        )}
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, opacity: pending ? 0.6 : 1 }}>
+    <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 8, opacity: pending ? 0.6 : 1 }}>
       {(authorRow || ((isPhoto || isQuote) && isOwn)) && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: authorRow ? 'space-between' : 'flex-end' }}>
           {authorRow}
@@ -211,33 +224,9 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
         </div>
       )}
 
-      {/* La imagen va sola, sin nada escrito encima — igual que un posteo. */}
-      <div
-        style={{
-          aspectRatio: '3 / 4', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
-          boxShadow: 'var(--shadow-sm)', flexShrink: 0, background,
-        }}
-      />
-
-      {isPhoto ? (
-        <PhotoCommentsBlock
-          postId={activity.id}
-          liked={activity.liked_by_me}
-          likeCount={activity.like_count}
-          comments={activity.replies ?? []}
-        />
-      ) : isQuote ? (
-        <EngagementBlock
-          commentId={activity.id}
-          liked={activity.liked_by_me}
-          likeCount={activity.like_count}
-          replies={activity.replies ?? []}
-        />
-      ) : (
-        <LikeButton liked={activity.liked_by_me} count={activity.like_count} onToggle={() => toggleCommentLike(activity.id)} />
-      )}
-
-      <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer', padding: '0 2px' }}>
+      {/* El texto va antes que la imagen — como un posteo de X, no de
+          Instagram (donde la foto sola encabeza la tarjeta). */}
+      <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 6 }}>
           {isPhoto && <Icon name="camera" size={12} color="var(--text-tertiary)" />}
           {hasQuoteImage && <Icon name="quote" size={12} color="var(--text-tertiary)" />}
@@ -269,29 +258,55 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
             {isPhoto ? text : `“${text}”`}
           </div>
         )}
-        {expanded && isQuote && activity.quote_style && (
-          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 10 }}>
-            <DownloadQuoteImageButton
-              style={activity.quote_style}
-              quoteText={activity.body}
-              book={{ title: activity.book_title, author: activity.book_author, cover_url: activity.book_cover_url }}
-              clubName={activity.club_name}
-              personName={personName}
-              imageUrl={activity.quote_image_url}
-            />
-          </div>
-        )}
-        {expanded && canOpenClub && !isPhoto && (
-          <Link
-            href={activity.chapter_id ? `/club/${activity.club_id}/comentarios?capitulo=${activity.chapter_id}` : `/club/${activity.club_id}/comentarios`}
-            onClick={(e) => e.stopPropagation()}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 10, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
-          >
-            Ver el resto de los comentarios en el club
-            <Icon name="arrow-right" size={12} color="var(--text-link)" />
-          </Link>
-        )}
       </div>
+
+      {/* La imagen va sola, sin nada escrito encima — igual que un posteo. */}
+      <div
+        style={{
+          aspectRatio: '3 / 4', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+          boxShadow: 'var(--shadow-sm)', flexShrink: 0, background,
+        }}
+      />
+
+      {isPhoto ? (
+        <PhotoCommentsBlock
+          postId={activity.id}
+          liked={activity.liked_by_me}
+          likeCount={activity.like_count}
+          comments={activity.replies ?? []}
+          compact
+        />
+      ) : isQuote ? (
+        <EngagementBlock
+          commentId={activity.id}
+          liked={activity.liked_by_me}
+          likeCount={activity.like_count}
+          replies={activity.replies ?? []}
+          compact
+        />
+      ) : (
+        <LikeButton liked={activity.liked_by_me} count={activity.like_count} onToggle={() => toggleCommentLike(activity.id)} compact />
+      )}
+
+      {expanded && isQuote && activity.quote_style && (
+        <DownloadQuoteImageButton
+          style={activity.quote_style}
+          quoteText={activity.body}
+          book={{ title: activity.book_title, author: activity.book_author, cover_url: activity.book_cover_url }}
+          clubName={activity.club_name}
+          personName={personName}
+          imageUrl={activity.quote_image_url}
+        />
+      )}
+      {expanded && canOpenClub && !isPhoto && (
+        <Link
+          href={activity.chapter_id ? `/club/${activity.club_id}/comentarios?capitulo=${activity.chapter_id}` : `/club/${activity.club_id}/comentarios`}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
+        >
+          Ver el resto de los comentarios en el club
+          <Icon name="arrow-right" size={12} color="var(--text-link)" />
+        </Link>
+      )}
 
       {editingPhoto && (
         <EditPostModal
