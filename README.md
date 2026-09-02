@@ -245,6 +245,13 @@ Con la búsqueda vacía se ve el directorio de siempre; al escribir, aparecen do
 
 **Pendiente, a propósito**: hoy cualquier persona puede aparecer en esta búsqueda — no existe (todavía) una opción de perfil privado/público como en Instagram. Cuando se agregue esa opción, va a necesitar su propio flujo de "solicitud para seguir" con notificación (como ya existe para unirse a un club "con solicitud", migración 014) — se dejó pendiente a propósito, decisión explícita del dueño del producto.
 
+**De vuelta con una puerta de entrada.** En algún momento `/descubrir` perdió su pestaña propia de la barra de abajo (quedó reemplazada por Recursos — ver `AppShell.jsx`) y se quedó sin ninguna forma de llegar a ella desde la app: la ruta seguía viva, la búsqueda seguía funcionando, pero nadie podía tocar nada para llegar ahí. Se probaron 3 mockups de dónde ponerle una entrada (barra completa en Inicio, ícono en el encabezado de Inicio, ícono en Mis clubes) y se construyeron dos:
+
+- **En Inicio**, debajo del encabezado: un `Link` a `/descubrir` con el mismo look que un `Input` (borde, fondo, radio) y una lupa adentro — parece un campo de búsqueda pero es un botón: tocarlo lleva a `/descubrir`, no filtra el feed ahí mismo. Se optó por parecerse al campo real para que se entienda de un vistazo qué hace, aunque el gesto real (tocar, no tipear) sea distinto.
+- **En Mis clubes**, un `IconButton` con una lupa, al lado del "+" de siempre — mismo lugar donde ya se agrega un club, porque buscar uno es la acción hermana de esa. A diferencia del botón de Inicio, acá es un ícono solo (sin texto), consistente con que el "+" tampoco lo lleva.
+
+Los dos son solo un `Link`/`router.push('/descubrir')` — cero lógica nueva, la pantalla de destino ya existía tal cual.
+
 ### Citas para Instagram (migración 019)
 
 Las citas destacadas (`kind = 'quote'`) ya existían desde antes; lo nuevo es poder exportarlas como imagen lista para publicar.

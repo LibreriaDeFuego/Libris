@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
@@ -243,15 +244,25 @@ function ClubHeroCard({ club, index, currentUserId }) {
 
 export function MisClubesScreen({ clubs, currentUserId }) {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const router = useRouter();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: '20px 18px 24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
         <img src="/logo-libris.png" alt="Libris" style={{ height: 26, width: 'auto', display: 'block' }} />
-        <IconButton aria-label="Sumar un club" size={36} onClick={() => setSheetOpen(true)}>
-          <Icon name="plus" size={16} />
-        </IconButton>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {/* Mismo lugar donde ya se agrega un club — buscar uno es la
+              acción "hermana" de crear/unirse. Lleva a /descubrir, la
+              búsqueda de clubes y personas que ya existía pero se había
+              quedado sin ninguna puerta de entrada (ver README). */}
+          <IconButton aria-label="Buscar clubes o personas" size={36} onClick={() => router.push('/descubrir')}>
+            <Icon name="search" size={16} />
+          </IconButton>
+          <IconButton aria-label="Sumar un club" size={36} onClick={() => setSheetOpen(true)}>
+            <Icon name="plus" size={16} />
+          </IconButton>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
