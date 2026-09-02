@@ -1,10 +1,18 @@
 // Todos los clubes a los que pertenece el usuario, en orden de ingreso.
 export async function getMyClubs(supabase, userId) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('club_members')
     .select('role, joined_at, clubs(id, name, is_private, join_mode, created_by, meeting_at, meeting_mode, meeting_link, meeting_place)')
     .eq('profile_id', userId)
     .order('joined_at');
+
+  // Antes esto se tragaba en silencio (data ?? []) — si esta consulta falla
+  // (por ejemplo, una migración de columna todavía no corrida en Supabase),
+  // page.js interpreta "cero clubes" como "todavía no tenés ninguno" y
+  // manda a la pantalla de bienvenida, como si los clubes hubieran
+  // desaparecido. Un log server-side deja el motivo real a mano en los
+  // logs, en vez de una lista vacía sin explicación.
+  if (error) console.error('getMyClubs:', error.message);
 
   return (data ?? [])
     .filter((membership) => membership.clubs)
