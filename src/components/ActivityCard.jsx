@@ -138,16 +138,6 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
       ? `url(${backgroundUrl}) center / contain no-repeat, var(--hero-bg)`
       : `center/cover no-repeat url(${backgroundUrl})`;
 
-  // Con encabezado (Inicio, "author" viene puesto) la hora ya se ve ahí, al
-  // lado del nombre — repetirla acá sería dos veces la misma hora. Sin
-  // encabezado (Perfil, donde no hace falta repetir de quién es) sigue
-  // siendo el único lugar donde se ve.
-  const metaText = isPhoto
-    ? author ? 'Compartió una foto' : `Compartió una foto · ${formatRelativeTime(activity.created_at)}`
-    : hasQuoteImage
-      ? author ? 'Publicó una cita' : `Publicó una cita · ${formatRelativeTime(activity.created_at)}`
-      : author ? activity.club_name : `${activity.club_name} · ${formatRelativeTime(activity.created_at)}`;
-
   const authorRow = author && (
     <Link
       href={`/perfil/${author.id}`}
@@ -246,11 +236,6 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
       {/* El texto va antes que la imagen — como un posteo de X, no de
           Instagram (donde la foto sola encabeza la tarjeta). */}
       <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: 6 }}>
-          {isPhoto && <Icon name="camera" size={12} color="var(--text-tertiary)" />}
-          {hasQuoteImage && <Icon name="quote" size={12} color="var(--text-tertiary)" />}
-          {metaText}
-        </div>
         {!showAsImage && (
           <>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
