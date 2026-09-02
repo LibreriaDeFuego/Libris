@@ -392,6 +392,12 @@ export async function updateClubPreferences(prevState, formData) {
   const bookCoverHasTitle = formData.get('bookCoverHasTitle') === 'on';
   // Ausente = sin cambios de visibilidad.
   const visibility = formData.get('visibility')?.toString();
+  // La reunión es opcional: sin fecha, se guarda todo en null (sin
+  // reunión programada), sea cual sea lo que haya en link/lugar.
+  const meetingAt = formData.get('meetingAt')?.toString().trim();
+  const meetingMode = formData.get('meetingMode')?.toString();
+  const meetingLink = formData.get('meetingLink')?.toString().trim();
+  const meetingPlace = formData.get('meetingPlace')?.toString().trim();
 
   if (!clubId) return { error: 'Falta el club.' };
   if (!clubName) return { error: 'El club necesita un nombre.' };
@@ -400,6 +406,20 @@ export async function updateClubPreferences(prevState, formData) {
   if (VISIBILITY_TO_JOIN_MODE[visibility]) {
     clubChanges.join_mode = VISIBILITY_TO_JOIN_MODE[visibility];
     clubChanges.is_private = visibility !== 'publico';
+  }
+
+  if (!meetingAt) {
+    clubChanges.meeting_at = null;
+    clubChanges.meeting_mode = null;
+    clubChanges.meeting_link = null;
+    clubChanges.meeting_place = null;
+  } else {
+    if (meetingMode === 'lugar' && !meetingPlace) return { error: 'Poné la dirección o el nombre del lugar de la reunión.' };
+    if (meetingMode !== 'lugar' && !meetingLink) return { error: 'Poné el link de la reunión.' };
+    clubChanges.meeting_at = meetingAt;
+    clubChanges.meeting_mode = meetingMode === 'lugar' ? 'lugar' : 'link';
+    clubChanges.meeting_link = meetingMode === 'lugar' ? null : meetingLink;
+    clubChanges.meeting_place = meetingMode === 'lugar' ? meetingPlace : null;
   }
 
   const { error: clubError } = await supabase.from('clubs').update(clubChanges).eq('id', clubId);

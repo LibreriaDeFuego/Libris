@@ -32,6 +32,29 @@ function Section({ title, description, children }) {
   );
 }
 
+// Link o lugar físico — dos formas de decir "dónde", cada una con su propio
+// campo debajo (ver PreferenciasScreen). Mismo patrón visual que los chips
+// de otras partes de la app, pero con radio nativo (así viaja en el
+// FormData del form como cualquier otro campo, sin JS extra al enviar).
+function MeetingModeOption({ value, current, onChange, icon, label }) {
+  const selected = current === value;
+  return (
+    <label
+      style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
+        padding: '10px 12px', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-xs)', fontWeight: 600,
+        background: selected ? 'var(--accent-50)' : 'var(--surface-card)',
+        border: `1px solid ${selected ? 'var(--accent-500)' : 'var(--border-default)'}`,
+        color: selected ? 'var(--accent-600)' : 'var(--text-secondary)',
+      }}
+    >
+      <input type="radio" name="meetingMode" value={value} checked={selected} onChange={() => onChange(value)} style={{ display: 'none' }} />
+      <Icon name={icon} size={14} />
+      {label}
+    </label>
+  );
+}
+
 // Una fila por miembro: nombre, insignia de "Administrador" si aplica, y —
 // solo si quien mira la pantalla es administrador — un botón para nombrar o
 // sacar administradores. Nunca se puede sacar el propio rol si eres el único
@@ -146,6 +169,7 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
   const router = useRouter();
   const [state, action, pending] = useActionState(updateClubPreferences, initialState);
   const [visibility, setVisibility] = useState(JOIN_MODE_TO_VISIBILITY[club.join_mode] ?? (club.is_private ? 'privado' : 'publico'));
+  const [meetingMode, setMeetingMode] = useState(club.meeting_mode ?? 'link');
   const [bookCoverHasTitle, setBookCoverHasTitle] = useState(book?.cover_has_title ?? true);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaveError, setLeaveError] = useState(null);
@@ -195,6 +219,33 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
             description="Otros clubes que leen el mismo libro ven que hay un club leyéndolo. Esto decide si además ven cómo se llama."
           >
             <VisibilityPicker current={visibility} onChange={setVisibility} />
+          </Section>
+
+          <Section title="Próxima reunión" description="Opcional. Si la completas, el club la ve arriba de todo en la pantalla del club.">
+            <div>
+              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Fecha y hora</div>
+              <Input type="datetime-local" name="meetingAt" defaultValue={club.meeting_at ? club.meeting_at.slice(0, 16) : ''} />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <MeetingModeOption value="link" current={meetingMode} onChange={setMeetingMode} icon="video" label="Link (Zoom, Meet…)" />
+              <MeetingModeOption value="lugar" current={meetingMode} onChange={setMeetingMode} icon="map-pin" label="Lugar físico" />
+            </div>
+
+            {meetingMode === 'lugar' ? (
+              <div>
+                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Dirección o nombre del lugar</div>
+                <Input name="meetingPlace" placeholder="Café Martínez, San Martín 450" defaultValue={club.meeting_place ?? ''} />
+                <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 6, lineHeight: 'var(--lh-snug)' }}>
+                  Con esto se arma un link a Google Maps solo — no hace falta pegar uno vos mismo.
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Link de la reunión</div>
+                <Input type="url" name="meetingLink" placeholder="https://meet.google.com/…" defaultValue={club.meeting_link ?? ''} />
+              </div>
+            )}
           </Section>
 
           {book && (

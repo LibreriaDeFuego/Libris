@@ -12,6 +12,7 @@ import { PreferenciasIconButton } from '@/components/PreferenciasIconButton';
 import { UpdateProgressModal } from './UpdateProgressModal.jsx';
 import { FinalReviewModal } from './FinalReviewModal.jsx';
 import { orderChapters } from '@/lib/orderChapters';
+import { formatMeetingDate, googleMapsUrl } from '@/lib/meetingFormat';
 
 // El héroe grande ya no vive acá — se ve como tarjeta chica en "Mis clubes
 // de lectura", y tocarla entra directo a esta pantalla en "Tu camino"
@@ -51,9 +52,44 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
     </div>
   );
 
+  // Opcional — solo se arma si un administrador cargó fecha en
+  // Preferencias (ver README). El destino del botón depende de la
+  // modalidad: el link tal cual si es por videollamada, o un link de
+  // Google Maps armado con el texto del lugar si es presencial (sin API
+  // key ni mapa embebido, solo la búsqueda pública de Maps).
+  const meetingInfo = club.meeting_at && (
+    <div style={{ margin: '0 18px 16px', padding: 14, borderRadius: 'var(--radius-lg)', background: 'var(--surface-card)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ width: 38, height: 38, borderRadius: 'var(--radius-round)', background: 'var(--accent-50)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon name="calendar" size={17} color="var(--accent-600)" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-primary)' }}>
+          {formatMeetingDate(club.meeting_at)}
+        </div>
+        <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {club.meeting_mode === 'lugar' ? club.meeting_place : 'Por videollamada'}
+        </div>
+      </div>
+      <a
+        href={club.meeting_mode === 'lugar' ? googleMapsUrl(club.meeting_place) : club.meeting_link}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, padding: '8px 12px',
+          borderRadius: 'var(--radius-pill)', background: 'var(--accent-500)', color: 'var(--text-on-accent)',
+          fontSize: 'var(--fs-2xs)', fontWeight: 700, textDecoration: 'none',
+        }}
+      >
+        {club.meeting_mode === 'lugar' ? 'Cómo llegar' : 'Unirse'}
+        <Icon name="external-link" size={12} color="var(--text-on-accent)" />
+      </a>
+    </div>
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {header}
+      {meetingInfo}
 
       {book ? (
         <>

@@ -2,7 +2,7 @@
 export async function getMyClubs(supabase, userId) {
   const { data } = await supabase
     .from('club_members')
-    .select('role, joined_at, clubs(id, name, is_private, join_mode, created_by)')
+    .select('role, joined_at, clubs(id, name, is_private, join_mode, created_by, meeting_at, meeting_mode, meeting_link, meeting_place)')
     .eq('profile_id', userId)
     .order('joined_at');
 
