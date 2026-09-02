@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
@@ -63,12 +63,22 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 // (PhotoCommentsBlock): comentarios en lista plana, sin hilo ni su propio
 // "me gusta" — "Compartir" no aplica a ninguno de los tres, es solo para
 // comentarios de capítulo/notas de voz, y ese vive solo en el club.
+//
+// El texto (cita, comentario, foto) se corta a 5 líneas — mismo tope que ya
+// usa BookReviewCard para la reseña — con un "más" al final si de verdad se
+// cortó (no medido a ojo: un useEffect compara scrollHeight/clientHeight
+// después de pintar). Tocar el bloque entero lo despliega igual, "más" es
+// solo la pista visible de que hay más para leer.
+const TEXT_LINE_CLAMP = 5;
+
 export function ActivityCard({ activity, canOpenClub, personName, author, isOwn }) {
   const [expanded, setExpanded] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState(false);
   const [editingQuote, setEditingQuote] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const textRef = useRef(null);
+  const [isTruncated, setIsTruncated] = useState(false);
 
   function handleDeleteReview() {
     if (!window.confirm('¿Eliminar esta reseña? No se puede deshacer.')) return;
@@ -105,6 +115,15 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
     : activity.kind === 'voice'
       ? (activity.voice_transcript ?? 'Publicó una nota de voz.')
       : activity.body;
+
+  // "más" solo aparece si el texto realmente se corta a 5 líneas — sin
+  // medirlo, cualquier texto cortito quedaría con un "más" que no tiene
+  // nada más para mostrar. scrollHeight > clientHeight es lo mismo que ya
+  // recorta el line-clamp de CSS, solo que leído después de pintar.
+  useEffect(() => {
+    if (!textRef.current) return;
+    setIsTruncated(textRef.current.scrollHeight > textRef.current.clientHeight + 1);
+  }, [text]);
   const backgroundUrl = isPhoto ? activity.photo_url : hasQuoteImage ? activity.quote_image_url : activity.book_cover_url;
 
   // Las citas con imagen guardada de antes de que los tres estilos se
@@ -244,18 +263,22 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn 
         )}
         {!hasQuoteImage && text && (
           <div
+            ref={textRef}
             style={{
               fontSize: 'var(--fs-sm)', marginTop: isPhoto ? 4 : 8, lineHeight: 'var(--lh-snug)',
               color: isQuote ? 'var(--gold-700)' : 'var(--text-secondary)',
               fontStyle: isQuote ? 'italic' : 'normal',
               whiteSpace: 'pre-wrap',
               display: '-webkit-box',
-              WebkitLineClamp: expanded ? 'unset' : 2,
+              WebkitLineClamp: expanded ? 'unset' : TEXT_LINE_CLAMP,
               WebkitBoxOrient: 'vertical',
               overflow: expanded ? 'visible' : 'hidden',
             }}
           >
             {isPhoto ? text : `“${text}”`}
+            {!expanded && isTruncated && (
+              <span style={{ fontWeight: 700, color: 'var(--text-tertiary)' }}> más</span>
+            )}
           </div>
         )}
       </div>

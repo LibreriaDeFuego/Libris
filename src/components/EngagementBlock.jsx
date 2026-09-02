@@ -95,19 +95,24 @@ function ReplyRow({ reply, indented, onReply }) {
 // comentario — no es un link ni una mención de verdad, igual que hace
 // Instagram por dentro.
 // `compact` es la versión sin píldoras — ícono + número, como el resto del
-// feed estilo timeline (ver ActivityCard, LikeButton). El hilo de
-// respuestas y el campo para comentar de abajo no cambian: solo el botón
-// que los abre.
+// feed estilo timeline (ver ActivityCard, LikeButton). También cambia el
+// hilo de respuestas: en vez de mostrarlas todas siempre, arrancan
+// colapsadas detrás de un "Ver N respuestas" — se despliegan al tocarlo, o
+// solas si se abre el campo para responder (para que la respuesta nueva no
+// quede sin contexto). Fuera de Inicio/Perfil (ComentariosScreen, sin
+// `compact`) el hilo se sigue mostrando siempre, como antes.
 export function EngagementBlock({ commentId, liked, likeCount, replies, share, compact = false }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [body, setBody] = useState('');
   const [replyingToName, setReplyingToName] = useState(null);
   const [replyToId, setReplyToId] = useState(null);
+  const [repliesShown, setRepliesShown] = useState(!compact);
   const [pending, startTransition] = useTransition();
   const textareaRef = useRef(null);
 
   function openReply(name, targetId) {
     setReplyOpen(true);
+    setRepliesShown(true);
     setReplyToId(targetId ?? null);
     if (name) {
       setReplyingToName(name);
@@ -172,14 +177,24 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share, c
 
       {(replies.length > 0 || replyOpen) && (
         <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 38 }}>
-          {groups.map(({ root, children }) => (
-            <div key={root.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <ReplyRow reply={root} indented={false} onReply={openReply} />
-              {children.map((child) => (
-                <ReplyRow key={child.id} reply={child} indented onReply={openReply} />
-              ))}
-            </div>
-          ))}
+          {replies.length > 0 && !repliesShown ? (
+            <button
+              type="button"
+              onClick={() => setRepliesShown(true)}
+              style={{ alignSelf: 'flex-start', border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)' }}
+            >
+              Ver {replies.length} {replies.length === 1 ? 'respuesta' : 'respuestas'}
+            </button>
+          ) : (
+            groups.map(({ root, children }) => (
+              <div key={root.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <ReplyRow reply={root} indented={false} onReply={openReply} />
+                {children.map((child) => (
+                  <ReplyRow key={child.id} reply={child} indented onReply={openReply} />
+                ))}
+              </div>
+            ))
+          )}
 
           {replyOpen && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

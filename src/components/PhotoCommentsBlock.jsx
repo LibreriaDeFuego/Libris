@@ -16,11 +16,19 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 // debajo) para que se sienta parte de la misma familia.
 //
 // `compact` es la versión sin píldoras — mismo criterio que EngagementBlock
-// y LikeButton, para el feed estilo timeline (ver ActivityCard).
+// y LikeButton, para el feed estilo timeline (ver ActivityCard). También
+// hace que los comentarios ya puestos arranquen colapsados detrás de un
+// "Ver N comentarios", igual que el hilo de respuestas de EngagementBlock.
 export function PhotoCommentsBlock({ postId, liked, likeCount, comments, compact = false }) {
   const [open, setOpen] = useState(false);
   const [body, setBody] = useState('');
+  const [commentsShown, setCommentsShown] = useState(!compact);
   const [pending, startTransition] = useTransition();
+
+  function toggleOpen() {
+    setOpen((o) => !o);
+    setCommentsShown(true);
+  }
 
   function handleSubmit() {
     const text = body.trim();
@@ -42,7 +50,7 @@ export function PhotoCommentsBlock({ postId, liked, likeCount, comments, compact
         {compact ? (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+            onClick={(e) => { e.stopPropagation(); toggleOpen(); }}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
           >
             <Icon name="message-circle" size={17} color="var(--text-tertiary)" />
@@ -53,7 +61,7 @@ export function PhotoCommentsBlock({ postId, liked, likeCount, comments, compact
         ) : (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+            onClick={(e) => { e.stopPropagation(); toggleOpen(); }}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', border: 'none',
               borderRadius: 'var(--radius-pill)', background: open ? 'var(--surface-sunken)' : 'none',
@@ -70,22 +78,32 @@ export function PhotoCommentsBlock({ postId, liked, likeCount, comments, compact
 
       {(comments.length > 0 || open) && (
         <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 38 }}>
-          {comments.map((c) => {
-            const name = c.profiles?.display_name ?? 'Alguien';
-            return (
-              <div key={c.id} style={{ display: 'flex', gap: 8 }}>
-                <Avatar name={name} size={24} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(c.created_at)}</span>
-                  </div>
-                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>
-                    {c.body}
+          {comments.length > 0 && !commentsShown ? (
+            <button
+              type="button"
+              onClick={() => setCommentsShown(true)}
+              style={{ alignSelf: 'flex-start', border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)' }}
+            >
+              Ver {comments.length} comentario{comments.length === 1 ? '' : 's'}
+            </button>
+          ) : (
+            comments.map((c) => {
+              const name = c.profiles?.display_name ?? 'Alguien';
+              return (
+                <div key={c.id} style={{ display: 'flex', gap: 8 }}>
+                  <Avatar name={name} size={24} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(c.created_at)}</span>
+                    </div>
+                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>
+                      {c.body}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
 
           {open && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
