@@ -5,6 +5,7 @@ import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
+import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { LikeButton } from '@/components/LikeButton';
 import { ShareButton } from '@/components/ShareButton';
 import { postReply, toggleCommentLike } from '@/app/actions/clubs';
@@ -76,6 +77,35 @@ function ReplyRow({ reply, indented, onReply }) {
   );
 }
 
+// Un comentario raíz + sus respuestas — puestas detrás de su propio "Ver N
+// respuestas" (colapsadas por default, cada hilo con su propio estado, no
+// uno solo para toda la lista). Solo la usa el modal de comentarios
+// (compact); fuera de ahí (ComentariosScreen) el hilo entero se muestra
+// siempre, sin este colapso.
+function ThreadGroup({ root, replies: childReplies, onReply }) {
+  const [childrenShown, setChildrenShown] = useState(false);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <ReplyRow reply={root} indented={false} onReply={onReply} />
+      {childReplies.length > 0 && (
+        childrenShown ? (
+          childReplies.map((child) => <ReplyRow key={child.id} reply={child} indented onReply={onReply} />)
+        ) : (
+          <button
+            type="button"
+            onClick={() => setChildrenShown(true)}
+            style={{ marginLeft: 32, alignSelf: 'flex-start', border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)' }}
+          >
+            Ver {childReplies.length} {childReplies.length === 1 ? 'respuesta' : 'respuestas'}
+          </button>
+        )
+      )}
+    </div>
+  );
+}
+
+const PREVIEW_COUNT = 2;
+
 // Me gusta + Comentar (+ Compartir, opcional) para una reseña, cita,
 // comentario o nota de voz puntual — y, debajo, su hilo de respuestas: las
 // que ya hay (agrupadas por a quién le contestan, con su propio "me gusta"
@@ -94,25 +124,29 @@ function ReplyRow({ reply, indented, onReply }) {
 // le está contestando. El "@Nombre" queda como texto plano en el
 // comentario — no es un link ni una mención de verdad, igual que hace
 // Instagram por dentro.
-// `compact` es la versión sin píldoras — ícono + número, como el resto del
-// feed estilo timeline (ver ActivityCard, LikeButton). También cambia el
-// hilo de respuestas: en vez de mostrarlas todas siempre, arrancan
-// colapsadas detrás de un "Ver N respuestas" — se despliegan al tocarlo, o
-// solas si se abre el campo para responder (para que la respuesta nueva no
-// quede sin contexto). Fuera de Inicio/Perfil (ComentariosScreen, sin
-// `compact`) el hilo se sigue mostrando siempre, como antes.
+//
+// `compact` es la versión del feed estilo timeline (ver ActivityCard,
+// LikeButton) — y no es solo un cambio de look: en vez de desplegar el
+// hilo ahí mismo, adentro de la tarjeta, muestra como mucho 2 comentarios
+// de vista previa (solo texto, sin acciones) y un "Ver los N comentarios"
+// que abre una hoja aparte (Modal) con el hilo completo — cada comentario
+// con su propio "Ver N respuestas" colapsado (ThreadGroup) — y el campo
+// para escribir, siempre visible ahí abajo. Mismo patrón que Instagram:
+// la tarjeta nunca crece con el largo de la conversación. Fuera de
+// Inicio/Perfil (ComentariosScreen, sin `compact`) el hilo se sigue
+// desplegando en el lugar de siempre, sin hoja aparte.
 export function EngagementBlock({ commentId, liked, likeCount, replies, share, compact = false }) {
   const [replyOpen, setReplyOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [body, setBody] = useState('');
   const [replyingToName, setReplyingToName] = useState(null);
   const [replyToId, setReplyToId] = useState(null);
-  const [repliesShown, setRepliesShown] = useState(!compact);
   const [pending, startTransition] = useTransition();
   const textareaRef = useRef(null);
 
   function openReply(name, targetId) {
     setReplyOpen(true);
-    setRepliesShown(true);
+    setModalOpen(true);
     setReplyToId(targetId ?? null);
     if (name) {
       setReplyingToName(name);
@@ -121,10 +155,14 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share, c
     requestAnimationFrame(() => textareaRef.current?.focus());
   }
 
-  function closeReply() {
-    setReplyOpen(false);
+  function clearReplyTarget() {
     setReplyingToName(null);
     setReplyToId(null);
+  }
+
+  function closeReply() {
+    setReplyOpen(false);
+    clearReplyTarget();
     setBody('');
   }
 
@@ -137,20 +175,22 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share, c
     if (replyToId) formData.set('replyToId', replyToId);
     startTransition(async () => {
       await postReply(formData);
-      closeReply();
+      setBody('');
+      clearReplyTarget();
     });
   }
 
   const groups = groupReplies(replies);
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: compact ? 22 : 4 }}>
-        <LikeButton liked={liked} count={likeCount} onToggle={() => toggleCommentLike(commentId)} compact={compact} />
-        {compact ? (
+  if (compact) {
+    const preview = groups.slice(0, PREVIEW_COUNT);
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+          <LikeButton liked={liked} count={likeCount} onToggle={() => toggleCommentLike(commentId)} compact />
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); if (replyOpen) closeReply(); else openReply(null, null); }}
+            onClick={(e) => { e.stopPropagation(); setModalOpen(true); }}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
           >
             <Icon name="message-circle" size={17} color="var(--text-tertiary)" />
@@ -158,43 +198,92 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share, c
               <span style={{ fontSize: 'var(--fs-2xs)', fontWeight: 600, color: 'var(--text-tertiary)' }}>{replies.length}</span>
             )}
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); if (replyOpen) closeReply(); else openReply(null, null); }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', border: 'none',
-              borderRadius: 'var(--radius-pill)', background: replyOpen ? 'var(--surface-sunken)' : 'none',
-              cursor: 'pointer', fontFamily: 'var(--font-body)',
-            }}
-          >
-            <Icon name="message-circle" size={18} color="var(--text-tertiary)" />
-            <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>Comentar</span>
-          </button>
+          {share && <ShareButton shared={share.shared} onToggle={share.onToggle} />}
+        </div>
+
+        {replies.length > 0 && (
+          <div onClick={(e) => { e.stopPropagation(); setModalOpen(true); }} style={{ display: 'flex', flexDirection: 'column', gap: 3, cursor: 'pointer' }}>
+            {preview.map(({ root }) => (
+              <div key={root.id} style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{root.profiles?.display_name ?? 'Alguien'}</span> {root.body}
+              </div>
+            ))}
+            <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)' }}>
+              Ver los {replies.length} comentario{replies.length === 1 ? '' : 's'}
+            </div>
+          </div>
         )}
+
+        {modalOpen && (
+          <Modal title="Comentarios" onClose={() => setModalOpen(false)}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {groups.length === 0 ? (
+                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', textAlign: 'center', padding: '12px 0' }}>
+                  Todavía no hay comentarios.
+                </div>
+              ) : (
+                groups.map(({ root, children }) => (
+                  <ThreadGroup key={root.id} root={root} replies={children} onReply={openReply} />
+                ))
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--border-subtle)', paddingTop: 14 }}>
+                {replyingToName && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>
+                    Respondiendo a @{replyingToName}
+                    <button
+                      type="button"
+                      onClick={clearReplyTarget}
+                      aria-label="Quitar destinatario"
+                      style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 0, display: 'flex' }}
+                    >
+                      <Icon name="x" size={12} color="var(--text-tertiary)" />
+                    </button>
+                  </div>
+                )}
+                <Textarea ref={textareaRef} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Escribe un comentario…" rows={2} />
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button variant="primary" size="sm" type="button" onClick={handleSubmitReply} disabled={pending || !body.trim()}>
+                    {pending ? 'Enviando…' : 'Comentar'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <LikeButton liked={liked} count={likeCount} onToggle={() => toggleCommentLike(commentId)} />
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); if (replyOpen) closeReply(); else openReply(null, null); }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', border: 'none',
+            borderRadius: 'var(--radius-pill)', background: replyOpen ? 'var(--surface-sunken)' : 'none',
+            cursor: 'pointer', fontFamily: 'var(--font-body)',
+          }}
+        >
+          <Icon name="message-circle" size={18} color="var(--text-tertiary)" />
+          <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>Comentar</span>
+        </button>
         {share && <ShareButton shared={share.shared} onToggle={share.onToggle} />}
       </div>
 
       {(replies.length > 0 || replyOpen) && (
         <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 38 }}>
-          {replies.length > 0 && !repliesShown ? (
-            <button
-              type="button"
-              onClick={() => setRepliesShown(true)}
-              style={{ alignSelf: 'flex-start', border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)' }}
-            >
-              Ver {replies.length} {replies.length === 1 ? 'respuesta' : 'respuestas'}
-            </button>
-          ) : (
-            groups.map(({ root, children }) => (
-              <div key={root.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <ReplyRow reply={root} indented={false} onReply={openReply} />
-                {children.map((child) => (
-                  <ReplyRow key={child.id} reply={child} indented onReply={openReply} />
-                ))}
-              </div>
-            ))
-          )}
+          {groups.map(({ root, children }) => (
+            <div key={root.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <ReplyRow reply={root} indented={false} onReply={openReply} />
+              {children.map((child) => (
+                <ReplyRow key={child.id} reply={child} indented onReply={openReply} />
+              ))}
+            </div>
+          ))}
 
           {replyOpen && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -203,7 +292,7 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share, c
                   Respondiendo a @{replyingToName}
                   <button
                     type="button"
-                    onClick={() => { setReplyingToName(null); setReplyToId(null); }}
+                    onClick={clearReplyTarget}
                     aria-label="Quitar destinatario"
                     style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 0, display: 'flex' }}
                   >
