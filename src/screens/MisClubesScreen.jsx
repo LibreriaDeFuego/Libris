@@ -7,7 +7,7 @@ import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { AddClubSheet } from '@/components/AddClubSheet';
 import { ClubMembersModal } from '@/components/ClubMembersModal';
-import { googleMapsUrl } from '@/lib/meetingFormat';
+import { MeetingInfoModal } from '@/components/MeetingInfoModal';
 
 const CREAM = 'var(--hero-cream)';
 const STACK_LIMIT = 3;
@@ -75,6 +75,7 @@ const CLUB_TEXTURE = [
 function ClubHeroCard({ club, index, currentUserId }) {
   const book = club.book;
   const [membersOpen, setMembersOpen] = useState(false);
+  const [meetingInfoOpen, setMeetingInfoOpen] = useState(false);
   const members = club.members ?? [];
   const shown = members.slice(0, STACK_LIMIT);
   const extra = members.length - shown.length;
@@ -89,15 +90,14 @@ function ClubHeroCard({ club, index, currentUserId }) {
     setMembersOpen(true);
   }
 
-  // Toca el ícono, no toca la tarjeta: abre el link de la reunión (o Maps
-  // con el lugar) directo, sin pasar por la pantalla del club — mismo
-  // preventDefault+stopPropagation que ya usa openMembers para que el
-  // toque no le llegue también al link de abajo.
+  // Toca el ícono, no toca la tarjeta: mismo preventDefault+stopPropagation
+  // que openMembers, para que no navegue también al link de abajo. Antes
+  // abría Maps directo — ahora muestra primero el horario y la dirección
+  // (o el link), un paso intermedio antes de salir de la app.
   function openMeeting(e) {
     e.preventDefault();
     e.stopPropagation();
-    const url = club.meeting_mode === 'lugar' ? googleMapsUrl(club.meeting_place) : club.meeting_link;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    setMeetingInfoOpen(true);
   }
 
   // Solo avisa que hay una reunión programada — sin fecha ni lugar acá,
@@ -232,6 +232,10 @@ function ClubHeroCard({ club, index, currentUserId }) {
           currentUserId={currentUserId}
           onClose={() => setMembersOpen(false)}
         />
+      )}
+
+      {meetingInfoOpen && (
+        <MeetingInfoModal club={club} onClose={() => setMeetingInfoOpen(false)} />
       )}
     </>
   );
