@@ -88,6 +88,22 @@ function ClubHeroCard({ club, index, currentUserId }) {
     setMembersOpen(true);
   }
 
+  // Solo avisa que hay una reunión programada — sin fecha ni lugar acá,
+  // eso se ve al entrar al club (ver el bloque de ClubScreen.jsx). Se
+  // probaron 3 mockups (solo el ícono, una línea con fecha corta, una
+  // línea con fecha y lugar); este fue el elegido por no sumarle más
+  // texto a una tarjeta que ya tiene bastante.
+  const meetingBadge = club.meeting_at && (
+    <div
+      style={{
+        position: 'absolute', top: -6, left: -6, width: 22, height: 22, borderRadius: 'var(--radius-round)',
+        background: CREAM, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,.3)',
+      }}
+    >
+      <Icon name={club.meeting_mode === 'lugar' ? 'calendar' : 'video'} size={12} color={ring} />
+    </div>
+  );
+
   return (
     <>
       <Link href={`/club/${club.id}`} style={{ position: 'relative', overflow: 'hidden', display: 'block', background: gradient, borderRadius: 18, padding: '14px 16px', textDecoration: 'none' }}>
@@ -111,9 +127,13 @@ function ClubHeroCard({ club, index, currentUserId }) {
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: '0 3px 3px 0', boxShadow: CARD_SHADOW }}
               />
               <div style={{ position: 'absolute', inset: 0, borderRadius: '0 3px 3px 0', mixBlendMode: 'soft-light', pointerEvents: 'none', background: CARD_LIGHT }} />
+              {meetingBadge}
             </div>
           ) : (
-            <div style={{ width: COVER_W, borderRadius: '0 3px 3px 0', background: CREAM, opacity: 0.35, flexShrink: 0 }} />
+            <div style={{ position: 'relative', width: COVER_W, flexShrink: 0 }}>
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '0 3px 3px 0', background: CREAM, opacity: 0.35 }} />
+              {meetingBadge}
+            </div>
           )}
 
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
