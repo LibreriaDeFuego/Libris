@@ -89,25 +89,25 @@ function ReviewCard({ review, book, isOwn, onEdit, replies }) {
     </div>
   );
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar name={name} size={30} />
+    <div style={{ display: 'flex', gap: 10 }}>
+      <Avatar name={name} size={30} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
             {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· terminó el libro · {formatRelativeTime(review.created_at)}</span>
           </div>
+          {isOwn && (
+            <PostMenu
+              editLabel="Editar reseña"
+              onEdit={() => onEdit(review)}
+              deleteLabel="Eliminar reseña"
+              onDelete={handleDelete}
+            />
+          )}
         </div>
-        {isOwn && (
-          <PostMenu
-            editLabel="Editar reseña"
-            onEdit={() => onEdit(review)}
-            deleteLabel="Eliminar reseña"
-            onDelete={handleDelete}
-          />
-        )}
+        {review.is_spoiler ? <SpoilerBlock>{card}</SpoilerBlock> : card}
+        <EngagementBlock commentId={review.id} liked={review.liked_by_me} likeCount={review.like_count} replies={replies} />
       </div>
-      {review.is_spoiler ? <SpoilerBlock>{card}</SpoilerBlock> : card}
-      <EngagementBlock commentId={review.id} liked={review.liked_by_me} likeCount={review.like_count} replies={replies} />
     </div>
   );
 }
