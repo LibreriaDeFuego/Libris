@@ -551,6 +551,12 @@ Se pidió acercar el look de `ActivityCard` (la tarjeta que arma el feed de Inic
 
 No hizo falta ninguna migración — es un cambio de presentación nomás, ni una columna ni una política tocadas.
 
+### Una puerta de entrada antes del login
+
+Hasta ahora, quien abría la app sin sesión iniciada caía directo al formulario de `/login` — sin ningún logo, ninguna explicación de qué es Libris, nada. Se agregó **`WelcomeScreen`** (`src/screens/WelcomeScreen.jsx`): una pantalla de bienvenida sobre el mismo fondo oscuro que ya usan la tarjeta de cita "Oscuro" (`quoteCard.js`) y el ícono/splash de la PWA — con el logo (versión crema, para ese fondo), una línea de qué es la app y un solo botón, "Empezar", que lleva a `/login`. Ahí adentro, `LoginForm` ya resuelve las dos cosas (iniciar sesión o crear cuenta, con un link para cambiar de una a la otra) — no hacía falta separar eso en la puerta de entrada.
+
+`src/app/page.js` (la ruta `/`) es quien decide: antes, sin sesión, hacía `redirect('/login')`; ahora, sin sesión, devuelve `<WelcomeScreen />` directo. El resto de rutas protegidas (`/club/[id]`, `/perfil/[id]`, una invitación) siguen mandando derecho a `/login` como siempre — esto solo cambia lo que ve alguien que abre la app "pelada" (el ícono de la PWA, o el dominio a mano), no ningún link puntual compartido.
+
 ### Contenido editorial
 
 `editorial_items` alimenta las solapas Guías/Cursos de **Recursos**. No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.

@@ -1,15 +1,20 @@
-import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs, getActiveClubBook, getClubMembers } from '@/lib/activeClub';
 import { getClubProgressSummary } from '@/lib/clubDetail';
 import { computeHeroProgress } from '@/lib/heroProgress';
 import { OnboardingScreen } from '@/screens/OnboardingScreen.jsx';
 import { MisClubesScreen } from '@/screens/MisClubesScreen.jsx';
+import { WelcomeScreen } from '@/screens/WelcomeScreen.jsx';
 
 export default async function Page() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
+  // Antes redirigía directo a /login — la puerta de entrada real de la app
+  // (el logo, para qué sirve, un botón para arrancar) era el login mismo,
+  // sin ninguna presentación antes. Cualquier link a una página puntual
+  // (club, perfil, invitación) sigue mandando directo a /login como
+  // siempre — esto solo cambia lo que ve alguien que abre la app "pelada".
+  if (!user) return <WelcomeScreen />;
 
   const clubs = await getMyClubs(supabase, user.id);
   if (clubs.length === 0) return <OnboardingScreen />;
