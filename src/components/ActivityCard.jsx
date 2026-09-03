@@ -37,22 +37,22 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 // la excepción: el título va junto a la portada, en un panel de color
 // propio (BookReviewCard) — no una imagen de fondo con texto encima.
 //
-// La usan tanto el Perfil (donde ya se sabe de quién es la actividad, no
-// hace falta repetirlo) como el Inicio (donde "author" identifica quién
-// publicó cada tarjeta del feed, con su nombre y foto en una fila propia).
+// La usan tanto el Perfil como el Inicio, y las dos pantallas pasan
+// siempre "author" — antes Perfil solo lo pasaba para la reseña final ("ya
+// se sabe de quién es el perfil, no hace falta repetirlo"), pero sin
+// nombre tampoco había avatar, y la tarjeta de foto/cita/comentario/nota
+// de voz quedaba sin nada a la izquierda para alinear el resto — se pidió
+// mostrar siempre el nombre (+ foto), en Perfil igual que en Inicio.
 //
-// La reseña final es la excepción a "no hace falta repetirlo": ahí el
-// nombre (+ fecha) va siempre, en Perfil igual que en Inicio, para que el
-// menú de 3 puntos, del otro lado de la fila, quede siempre a la derecha —
-// sin nombre a la izquierda quedaba pegado al borde izquierdo. En la propia
-// reseña (isOwn), ese menú permite borrarla directo desde acá; "Editar"
-// lleva a los comentarios del club, donde vive el formulario de edición
-// (acá no se cuenta con club_book_id para abrir el mismo modal).
+// El fallback sin "author" (encabezado en flex-end en vez de
+// space-between, para que el menú de 3 puntos no quede pegado al borde
+// izquierdo con un solo elemento adentro) queda igual por las dudas, pero
+// ya no se dispara en ninguna pantalla real de la app.
 //
-// Las fotos y las citas propias (isPhoto/isQuote && isOwn) tienen el mismo
-// menú de 3 puntos, siempre a la derecha (si no hay "author" a la
-// izquierda —Perfil—, el encabezado usa flex-end en vez de space-between,
-// para que no se pegue a la izquierda con un solo elemento adentro).
+// En la propia reseña (isOwn), el menú de 3 puntos permite borrarla
+// directo desde acá; "Editar" lleva a los comentarios del club, donde vive
+// el formulario de edición (acá no se cuenta con club_book_id para abrir
+// el mismo modal).
 // "Editar" abre un modal ahí mismo — en la foto, solo el texto (la foto no
 // se reemplaza); en la cita, el texto y el estilo, que regenera la tarjeta
 // guardada — y "Eliminar" borra directo, con confirmación. Las dos limpian
