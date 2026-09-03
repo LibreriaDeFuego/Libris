@@ -37,15 +37,17 @@ export function WelcomeScreen() {
     <div
       style={{
         position: 'relative', overflow: 'hidden', minHeight: '100dvh', display: 'flex', flexDirection: 'column',
-        justifyContent: 'space-between', alignItems: 'center', textAlign: 'center', padding: '56px 28px 40px',
+        alignItems: 'center', textAlign: 'center', padding: '56px 28px 40px',
         background: 'linear-gradient(160deg, var(--accent-500) 0%, var(--accent-600) 32%, var(--gold-700) 68%, #7A5A06 100%)',
       }}
     >
       <div style={{ position: 'absolute', inset: 0, opacity: 0.55, mixBlendMode: 'overlay', pointerEvents: 'none', backgroundImage: TEXTURE }} />
 
-      <div style={{ position: 'relative' }} />
-
-      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18 }}>
+      {/* El botón va pegado al bloque de texto, no al fondo de la pantalla
+          — todo el grupo (logo + texto + botón) sube junto con un
+          paddingTop en vez de repartirse con space-between entre 3 bloques
+          (quedaba con mucho aire vacío abajo, separado del texto). */}
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, paddingTop: '18vh' }}>
         {/* eslint-disable-next-line @next/next/no-img-element -- logo estático de /public, no una foto de contenido */}
         <img src="/logo-libris-cream.png" alt="Libris" style={{ height: 46, width: 'auto' }} />
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', color: 'var(--hero-cream)', lineHeight: 1.3, maxWidth: 280 }}>
@@ -54,14 +56,11 @@ export function WelcomeScreen() {
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-sm)', color: 'rgba(255,248,236,0.85)', maxWidth: 280, lineHeight: 'var(--lh-normal)' }}>
           Sigue el progreso de todos, comparte citas y fotos, y coordina la próxima reunión — todo en un solo lugar.
         </div>
-      </div>
-
-      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
         <Link
           href="/login"
           style={{
             fontFamily: 'var(--font-body)', fontWeight: 'var(--fw-semibold)', fontSize: 'var(--fs-md)',
-            borderRadius: 'var(--radius-pill)', padding: '14px 26px', textDecoration: 'none',
+            borderRadius: 'var(--radius-pill)', padding: '14px 26px', textDecoration: 'none', marginTop: 10,
             background: 'var(--neutral-900)', color: 'var(--hero-cream)',
           }}
         >
