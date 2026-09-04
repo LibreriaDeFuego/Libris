@@ -5,8 +5,12 @@ import { createClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/requireUser';
 import { friendlyDbError } from '@/lib/friendlyError';
 
-const MAX_PHOTO_BYTES = 8 * 1024 * 1024; // 8 MB — de sobra: el recorte ya la deja liviana.
-const PHOTO_EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+const MAX_PHOTO_BYTES = 8 * 1024 * 1024; // 8 MB — de sobra para una foto recortada; un GIF entra justo.
+// GIF — migración 039: a diferencia de jpeg/png/webp, no pasa por el
+// recorte del navegador (el recuadro de PhotoCropModal usa <canvas>, que
+// solo puede dibujar un frame — recortar un GIF ahí lo dejaría animado por
+// dentro pero estático al mostrarlo). PostComposer lo sube tal cual llegó.
+const PHOTO_EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
 
 function isFile(value) {
   return value && typeof value !== 'string' && typeof value.size === 'number';

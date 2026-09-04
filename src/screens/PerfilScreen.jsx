@@ -133,7 +133,7 @@ function ProfileMenu({ profileId, onEdit }) {
 }
 
 
-export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myClubIds }) {
+export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myClubIds, myProfileId }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
 
@@ -212,14 +212,23 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border-subtle)' }}>
+            {/* author/isOwn/personName se arman con los datos de CADA item
+                (item.profile_id/display_name/avatar_url), no con los de
+                "profile" (la página que se está mirando) — migración 039:
+                un repost muestra el autor ORIGINAL del contenido, que no
+                es necesariamente profile.id (podés ver, en el perfil de
+                alguien, algo que esa persona reposteó de un tercero). Para
+                el resto de las tarjetas (no reposteadas) da exactamente lo
+                mismo: item.profile_id siempre es profile.id ahí. */}
             {activity.map((item) => (
               <ActivityCard
-                key={item.id}
+                key={item.repost_id ?? item.id}
                 activity={item}
                 canOpenClub={myClubIds.has(item.club_id)}
-                personName={profile.display_name}
-                isOwn={isOwn}
-                author={{ id: profile.id, display_name: profile.display_name, avatar_url: profile.avatar_url }}
+                personName={item.display_name}
+                isOwn={item.profile_id === myProfileId}
+                author={{ id: item.profile_id, display_name: item.display_name, avatar_url: item.avatar_url }}
+                myProfileId={myProfileId}
               />
             ))}
           </div>

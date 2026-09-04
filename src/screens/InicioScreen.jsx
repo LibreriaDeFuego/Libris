@@ -45,12 +45,13 @@ export function InicioScreen({ activity, myClubIds, myProfileId, notifications, 
         <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border-subtle)' }}>
           {activity.map((item) => (
             <ActivityCard
-              key={item.id}
+              key={item.repost_id ?? item.id}
               activity={item}
               canOpenClub={myClubIds.has(item.club_id)}
               personName={item.display_name}
               author={{ id: item.profile_id, display_name: item.display_name, avatar_url: item.avatar_url }}
               isOwn={item.profile_id === myProfileId}
+              myProfileId={myProfileId}
             />
           ))}
         </div>

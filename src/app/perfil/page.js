@@ -25,6 +25,7 @@ export default async function Page() {
       stats={data.stats}
       activity={data.activity}
       myClubIds={new Set(clubs.map((c) => c.id))}
+      myProfileId={user.id}
     />
   );
 }

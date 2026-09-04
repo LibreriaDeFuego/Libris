@@ -7,6 +7,7 @@ import { Button } from '@/design-system/components/core/Button.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { LikeButton } from '@/components/LikeButton';
+import { RepostButton } from '@/components/RepostButton';
 import { postPhotoComment, togglePostLike } from '@/app/actions/posts';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
@@ -41,7 +42,7 @@ function CommentRow({ comment }) {
 // (Modal) con la lista completa y el campo para escribir, siempre visible
 // ahí abajo. Fuera de Inicio/Perfil (sin `compact`) la lista se sigue
 // desplegando en el lugar de siempre, sin hoja aparte.
-export function PhotoCommentsBlock({ postId, liked, likeCount, comments, compact = false }) {
+export function PhotoCommentsBlock({ postId, liked, likeCount, comments, repost, compact = false }) {
   const [open, setOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [body, setBody] = useState('');
@@ -66,6 +67,7 @@ export function PhotoCommentsBlock({ postId, liked, likeCount, comments, compact
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
           <LikeButton liked={liked} count={likeCount} onToggle={() => togglePostLike(postId)} compact />
+          {repost && <RepostButton kind={repost.kind} id={repost.id} reposted={repost.reposted} count={repost.count} />}
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setModalOpen(true); }}

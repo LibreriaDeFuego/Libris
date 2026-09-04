@@ -25,6 +25,10 @@ function PreviewImage({ blob }) {
 // obligar a elegir antes entre dos botones propios. De ahí se pasa directo
 // al recorte vertical (3:4) y a un texto corto opcional antes de publicar.
 // Aparece mezclada con comentarios y notas de voz en la Actividad del perfil.
+//
+// GIF (migración 039) es la excepción: no pasa por el recorte (canvas solo
+// captura un frame, lo dejaría estático) — va directo a la vista previa
+// con el archivo tal cual se eligió, y se sube sin tocar.
 export function PostComposer() {
   const inputRef = useRef(null);
   const [step, setStep] = useState('closed'); // closed | cropping | composing
@@ -46,6 +50,15 @@ export function PostComposer() {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    // Un GIF no pasa por el recorte: PhotoCropModal dibuja en un <canvas>
+    // para recortar, y canvas solo puede capturar un frame — recortar un
+    // GIF ahí lo dejaría animado por dentro pero estático al mostrarlo. Va
+    // directo a la vista previa, tal cual se seleccionó.
+    if (file.type === 'image/gif') {
+      setCroppedBlob(file);
+      setStep('composing');
+      return;
+    }
     setPendingFile(file);
     setStep('cropping');
   }
@@ -58,7 +71,8 @@ export function PostComposer() {
 
   function publish() {
     const formData = new FormData();
-    formData.set('file', croppedBlob, 'foto.jpg');
+    const filename = croppedBlob.type === 'image/gif' ? 'foto.gif' : 'foto.jpg';
+    formData.set('file', croppedBlob, filename);
     formData.set('caption', caption);
     startTransition(async () => {
       const result = await createPost(null, formData);
@@ -84,7 +98,7 @@ export function PostComposer() {
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         onChange={handlePick}
         style={{ display: 'none' }}
       />

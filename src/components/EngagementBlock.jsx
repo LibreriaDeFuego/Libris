@@ -7,6 +7,7 @@ import { Button } from '@/design-system/components/core/Button.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { LikeButton } from '@/components/LikeButton';
+import { RepostButton } from '@/components/RepostButton';
 import { ShareButton } from '@/components/ShareButton';
 import { postReply, toggleCommentLike } from '@/app/actions/clubs';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
@@ -135,7 +136,7 @@ const PREVIEW_COUNT = 2;
 // la tarjeta nunca crece con el largo de la conversación. Fuera de
 // Inicio/Perfil (ComentariosScreen, sin `compact`) el hilo se sigue
 // desplegando en el lugar de siempre, sin hoja aparte.
-export function EngagementBlock({ commentId, liked, likeCount, replies, share, compact = false }) {
+export function EngagementBlock({ commentId, liked, likeCount, replies, share, repost, compact = false }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [body, setBody] = useState('');
@@ -188,6 +189,7 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share, c
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
           <LikeButton liked={liked} count={likeCount} onToggle={() => toggleCommentLike(commentId)} compact />
+          {repost && <RepostButton kind={repost.kind} id={repost.id} reposted={repost.reposted} count={repost.count} />}
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setModalOpen(true); }}
