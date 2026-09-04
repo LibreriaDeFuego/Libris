@@ -42,7 +42,11 @@ function CommentRow({ comment }) {
 // (Modal) con la lista completa y el campo para escribir, siempre visible
 // ahí abajo. Fuera de Inicio/Perfil (sin `compact`) la lista se sigue
 // desplegando en el lugar de siempre, sin hoja aparte.
-export function PhotoCommentsBlock({ postId, liked, likeCount, comments, repost, compact = false }) {
+//
+// `repostId` (opcional, migración 040) — solo lo pasa ActivityCard cuando
+// la tarjeta es el repost de una foto: cualquier comentario que se
+// escriba ahí queda scopeado a ESE repost, no a la foto original.
+export function PhotoCommentsBlock({ postId, liked, likeCount, comments, repost, repostId, compact = false }) {
   const [open, setOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [body, setBody] = useState('');
@@ -54,6 +58,7 @@ export function PhotoCommentsBlock({ postId, liked, likeCount, comments, repost,
     const formData = new FormData();
     formData.set('postId', postId);
     formData.set('body', text);
+    if (repostId) formData.set('repostId', repostId);
     startTransition(async () => {
       await postPhotoComment(formData);
       setBody('');

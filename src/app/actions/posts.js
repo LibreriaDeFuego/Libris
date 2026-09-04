@@ -132,12 +132,19 @@ export async function togglePostLike(postId) {
 // fila más en "comments": esa exige un club_book_id que una foto no tiene.
 // Lista plana, sin responder a un comentario puntual ni su propio "me
 // gusta" — más simple a propósito que el hilo de reseñas/citas.
+//
+// "repostId" (opcional, migración 040): igual que en postReply — si el
+// comentario se escribió desde el repost de la foto de otra persona, queda
+// scopeado a ESE repost, no aparece en la foto original. La política de
+// insert (repost_id is not null → can_comment_on_repost) exige que el
+// repost exista y sea visible.
 export async function postPhotoComment(formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
   const postId = formData.get('postId')?.toString();
   const body = formData.get('body')?.toString().trim();
+  const repostId = formData.get('repostId')?.toString() || null;
   if (!postId) return { error: 'Falta la foto.' };
   if (!body) return { error: 'Escribe algo antes de comentar.' };
 
@@ -145,6 +152,7 @@ export async function postPhotoComment(formData) {
     post_id: postId,
     profile_id: user.id,
     body,
+    repost_id: repostId,
   });
   if (error) return { error: friendlyDbError(error) };
 

@@ -91,6 +91,12 @@ export async function getClubProgressSummary(supabase, { clubBookId, userId }) {
 // chapter_id de cada fila y cuenta acá mismo: no hay forma de pedirle a
 // Supabase un GROUP BY sin una función RPC aparte, y para un libro esto es
 // liviano (unas pocas columnas, sin texto ni joins).
+//
+// "repost_id is null" (migración 040) — sin este filtro, un comentario
+// que alguien dejó en el REPOST de una cita de este club (que vive
+// scopeado a ese repost, no al club) se sumaría acá igual, inflando el
+// número que ve todo el club por algo que en realidad pasó en el feed de
+// otra persona.
 export async function getChapterCommentCounts(supabase, clubBookId) {
   if (!clubBookId) return {};
 
@@ -99,7 +105,8 @@ export async function getChapterCommentCounts(supabase, clubBookId) {
     .select('chapter_id')
     .eq('club_book_id', clubBookId)
     .not('chapter_id', 'is', null)
-    .neq('kind', 'review');
+    .neq('kind', 'review')
+    .is('repost_id', null);
 
   const counts = {};
   for (const row of data ?? []) {

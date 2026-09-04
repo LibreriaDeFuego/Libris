@@ -193,6 +193,11 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
   );
   const commentRepostProps = { kind: 'comment', id: activity.id, reposted: activity.reposted_by_me, count: activity.repost_count };
   const postRepostProps = { kind: 'post', id: activity.id, reposted: activity.reposted_by_me, count: activity.repost_count };
+  // Comentar DESDE un repost queda scopeado a ese repost puntual, no al
+  // contenido original (ver postReply/postPhotoComment, migración 040) —
+  // por eso EngagementBlock/PhotoCommentsBlock necesitan saber si esta
+  // tarjeta es un repost, y cuál.
+  const repostId = activity.is_repost ? activity.repost_id : undefined;
 
   if (isReview) {
     // El nombre va siempre — a diferencia del resto de la tarjeta (donde en
@@ -237,6 +242,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
               likeCount={activity.like_count}
               replies={activity.replies ?? []}
               repost={commentRepostProps}
+              repostId={repostId}
               compact
             />
             {expanded && canOpenClub && (
@@ -332,6 +338,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
               likeCount={activity.like_count}
               comments={activity.replies ?? []}
               repost={postRepostProps}
+              repostId={repostId}
               compact
             />
           ) : isQuote ? (
@@ -341,6 +348,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
               likeCount={activity.like_count}
               replies={activity.replies ?? []}
               repost={commentRepostProps}
+              repostId={repostId}
               compact
             />
           ) : (

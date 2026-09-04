@@ -24,6 +24,11 @@ export default async function Page({ params, searchParams }) {
       .from('comments')
       .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, parent_comment_id, reply_to_id, shared_to_feed, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, profiles(display_name)')
       .eq('club_book_id', clubBook.id)
+      // repost_id is null (migración 040) — un comentario dejado en el
+      // repost de algo de este club vive scopeado a ese repost, no acá:
+      // sin este filtro aparecería colgando del original en la pantalla
+      // de Comentarios de todo el club, exactamente lo que no debía pasar.
+      .is('repost_id', null)
       .order('created_at', { ascending: false }),
     supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
     supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),

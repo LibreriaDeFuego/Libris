@@ -881,25 +881,34 @@ export async function toggleCommentLike(commentId) {
 // La respuesta es un comentario más (kind = 'text'), con parent_comment_id
 // apuntando SIEMPRE al original (nunca a otra respuesta — un solo nivel
 // de anidamiento); hereda su club_book_id y chapter_id (no se confía en lo
-// que mande el navegador para eso, se lee del original). "replyToId"
-// (opcional, migración 034) es distinto: si vino de tocar "Responder" en
-// una respuesta puntual (no en el "Comentar" general), guarda a cuál —
-// solo para que la pantalla la agrupe debajo suyo, nunca arma un hilo más
-// profundo.
+// que mande el navegador para eso, se lee del original, vía
+// get_comment_context — un lookup security definer, no el select directo
+// de antes: sujeto al RLS de "comments", que exige ser miembro del club,
+// bloqueaba responder al repost de una cita de un club público sin serlo).
+// "replyToId" (opcional, migración 034) es distinto: si vino de tocar
+// "Responder" en una respuesta puntual (no en el "Comentar" general),
+// guarda a cuál — solo para que la pantalla la agrupe debajo suyo, nunca
+// arma un hilo más profundo.
+//
+// "repostId" (opcional, migración 040): si la respuesta se escribió desde
+// un repost (no desde el contenido orgánico), queda scopeada a ESE repost
+// puntual — no aparece en la publicación original ni en ningún otro
+// repost del mismo contenido. La política de insert (repost_id is not
+// null → can_comment_on_repost) es la que de verdad exige que ese repost
+// exista y sea visible; acá no hace falta repetir esa validación.
 export async function postReply(formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
   const parentCommentId = formData.get('parentCommentId')?.toString();
   const replyToId = formData.get('replyToId')?.toString() || null;
+  const repostId = formData.get('repostId')?.toString() || null;
   const body = formData.get('body')?.toString().trim();
   if (!parentCommentId) return { error: 'Falta el comentario original.' };
   if (!body) return { error: 'Escribe algo antes de responder.' };
 
   const { data: parent } = await supabase
-    .from('comments')
-    .select('club_book_id, chapter_id')
-    .eq('id', parentCommentId)
+    .rpc('get_comment_context', { target_comment_id: parentCommentId })
     .maybeSingle();
   if (!parent) return { error: 'No encontramos el comentario original.' };
 
@@ -911,6 +920,7 @@ export async function postReply(formData) {
     body,
     parent_comment_id: parentCommentId,
     reply_to_id: replyToId,
+    repost_id: repostId,
   });
   if (error) return { error: friendlyDbError(error) };
 

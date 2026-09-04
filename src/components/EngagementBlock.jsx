@@ -136,7 +136,12 @@ const PREVIEW_COUNT = 2;
 // la tarjeta nunca crece con el largo de la conversación. Fuera de
 // Inicio/Perfil (ComentariosScreen, sin `compact`) el hilo se sigue
 // desplegando en el lugar de siempre, sin hoja aparte.
-export function EngagementBlock({ commentId, liked, likeCount, replies, share, repost, compact = false }) {
+//
+// `repostId` (opcional, migración 040) — solo lo pasa ActivityCard cuando
+// la tarjeta es un repost: cualquier respuesta que se escriba ahí queda
+// scopeada a ESE repost puntual, no al contenido original (ver
+// postReply). ComentariosScreen nunca lo pasa — ahí no hay reposts.
+export function EngagementBlock({ commentId, liked, likeCount, replies, share, repost, repostId, compact = false }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [body, setBody] = useState('');
@@ -174,6 +179,7 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share, r
     formData.set('parentCommentId', commentId);
     formData.set('body', text);
     if (replyToId) formData.set('replyToId', replyToId);
+    if (repostId) formData.set('repostId', repostId);
     startTransition(async () => {
       await postReply(formData);
       setBody('');
