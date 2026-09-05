@@ -127,6 +127,10 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
   // donde falló la subida en su momento) siguen con el tratamiento
   // genérico: portada del libro de fondo + la cita como texto abajo.
   const hasQuoteImage = isQuote && Boolean(activity.quote_image_url);
+  // Un comentario de texto puede llevar, opcional, una foto o GIF propios
+  // (migración 041) — se muestra igual que la portada del libro que ya
+  // ocupaba ese lugar, solo que ahora es la foto real cuando existe.
+  const hasCommentImage = activity.kind === 'text' && Boolean(activity.image_url);
   const showAsImage = isPhoto || hasQuoteImage;
   const text = isPhoto
     ? activity.body
@@ -142,7 +146,13 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
     if (!textRef.current) return;
     setIsTruncated(textRef.current.scrollHeight > textRef.current.clientHeight + 1);
   }, [text]);
-  const backgroundUrl = isPhoto ? activity.photo_url : hasQuoteImage ? activity.quote_image_url : activity.book_cover_url;
+  const backgroundUrl = isPhoto
+    ? activity.photo_url
+    : hasQuoteImage
+      ? activity.quote_image_url
+      : hasCommentImage
+        ? activity.image_url
+        : activity.book_cover_url;
 
   // Las citas con imagen guardada de antes de que los tres estilos se
   // unificaran a 3:4 quedaron con su proporción vieja (Portada/Editorial en

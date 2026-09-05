@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs, getActiveClubBook } from '@/lib/activeClub';
+import { signCommentImageUrls } from '@/lib/commentPhotos';
 import { ComentariosScreen } from '@/screens/ComentariosScreen.jsx';
 
 export const metadata = { title: 'Comentarios · Libris' };
@@ -22,7 +23,7 @@ export default async function Page({ params, searchParams }) {
   const [{ data: comments }, { data: chapters }, { data: volumes }, { data: me }] = await Promise.all([
     supabase
       .from('comments')
-      .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, parent_comment_id, reply_to_id, shared_to_feed, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, profiles(display_name)')
+      .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, parent_comment_id, reply_to_id, shared_to_feed, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, image_url, profiles(display_name)')
       .eq('club_book_id', clubBook.id)
       // repost_id is null (migración 040) — un comentario dejado en el
       // repost de algo de este club vive scopeado a ese repost, no acá:
@@ -69,11 +70,14 @@ export default async function Page({ params, searchParams }) {
     like_count: likesByComment.get(c.id)?.count ?? 0,
     liked_by_me: likesByComment.get(c.id)?.likedByMe ?? false,
   }));
+  // "image_url" acá todavía es el path guardado en la fila, no una URL —
+  // se firma recién ahora (bucket privado, ver src/lib/commentPhotos.js).
+  const withPhotos = await signCommentImageUrls(supabase, withAudio);
 
   return (
     <ComentariosScreen
       clubBookId={clubBook.id}
-      comments={withAudio}
+      comments={withPhotos}
       chapters={chapters ?? []}
       volumes={volumes ?? []}
       book={clubBook.books}

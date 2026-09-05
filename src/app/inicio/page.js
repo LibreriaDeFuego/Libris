@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs } from '@/lib/activeClub';
 import { getNotifications } from '@/lib/notifications';
+import { signCommentImageUrls } from '@/lib/commentPhotos';
 import { InicioScreen } from '@/screens/InicioScreen.jsx';
 
 export const metadata = { title: 'Inicio · Libris' };
@@ -18,10 +19,13 @@ export default async function Page() {
   ]);
 
   const myClubIds = new Set(myClubs.map((c) => c.id));
+  // Un comentario compartido a Inicio con una foto adjunta trae, todavía,
+  // el path guardado (bucket privado "comment-photos") — se firma acá.
+  const signedActivity = await signCommentImageUrls(supabase, activity ?? []);
 
   return (
     <InicioScreen
-      activity={activity ?? []}
+      activity={signedActivity}
       myClubIds={myClubIds}
       myProfileId={user.id}
       notifications={notifications}

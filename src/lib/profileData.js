@@ -1,3 +1,5 @@
+import { signCommentImageUrls } from '@/lib/commentPhotos';
+
 // Todo lo que necesita la pantalla de Perfil, para un profileId puntual —
 // compartido entre "mi perfil" (/perfil) y "el perfil de otra persona"
 // (/perfil/[profileId]) para no duplicar las cuatro consultas.
@@ -13,11 +15,15 @@ export async function getProfileData(supabase, viewerId, targetProfileId) {
       : supabase.from('follows').select('follower_id').eq('follower_id', viewerId).eq('followed_id', targetProfileId).maybeSingle(),
   ]);
 
+  // Un comentario compartido con foto adjunta trae, todavía, el path
+  // guardado (bucket privado "comment-photos") — se firma acá.
+  const signedActivity = await signCommentImageUrls(supabase, activity ?? []);
+
   return {
     profile,
     isOwn,
     isFollowing: Boolean(followRow?.data),
     stats: stats ?? { book_count: 0, follower_count: 0, following_count: 0 },
-    activity: activity ?? [],
+    activity: signedActivity,
   };
 }

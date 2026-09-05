@@ -58,9 +58,19 @@ function CommentBody({ comment, book, clubName }) {
     );
   }
   return (
-    <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>
-      {comment.body}
-    </p>
+    <div>
+      <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>
+        {comment.body}
+      </p>
+      {comment.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element -- URL firmada de Storage (bucket privado), no algo que next/image pueda optimizar sin repetir la firma.
+        <img
+          src={comment.image_url}
+          alt=""
+          style={{ marginTop: 8, width: '100%', maxWidth: 320, borderRadius: 'var(--radius-md)', display: 'block' }}
+        />
+      )}
+    </div>
   );
 }
 

@@ -7,6 +7,7 @@ import { Button } from '@/design-system/components/core/Button.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { postComment } from '@/app/actions/clubs';
 import { QUOTE_STYLES, renderQuoteCard } from '@/lib/quoteCard';
+import { compressImage } from '@/lib/imageProcessing';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { QuoteCardPreview } from '@/components/QuoteCardPreview';
 
@@ -70,6 +71,31 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
   // descargar la tarjeta ahí mismo.
   const [published, setPublished] = useState(null);
   const formRef = useRef(null);
+  // Foto o GIF adjunto a un comentario de texto (migración 041) — "image"
+  // ya es el archivo listo para subir (comprimido, salvo que sea GIF); la
+  // vista previa es su propio object URL, liberado al sacarla o reemplazarla.
+  const [image, setImage] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+  const imageInputRef = useRef(null);
+
+  async function handlePickImage(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    // Un GIF no pasa por compressImage: ese <canvas> solo captura un
+    // frame, lo dejaría animado por dentro pero estático al mostrarlo —
+    // mismo criterio que ya usa PostComposer con las fotos de Perfil.
+    const prepared = file.type === 'image/gif' ? file : await compressImage(file);
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImage(prepared);
+    setImagePreviewUrl(URL.createObjectURL(prepared));
+  }
+
+  function removeImage() {
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImage(null);
+    setImagePreviewUrl(null);
+  }
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -79,6 +105,7 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
     if (chapterId) formData.set('chapterId', chapterId);
     if (isSpoiler) formData.set('isSpoiler', 'on');
     if (kind === 'quote') formData.set('quoteStyle', quoteStyle);
+    if (kind === 'text' && image) formData.set('image', image, image.type === 'image/gif' ? 'foto.gif' : 'foto.jpg');
     const quoteBody = body.trim();
 
     startTransition(async () => {
@@ -105,6 +132,7 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
         setPublished({ body: quoteBody, style: result.quoteStyle ?? quoteStyle, imageUrl: result.quoteImageUrl ?? null });
       } else {
         setBody('');
+        removeImage();
         formRef.current?.reset();
       }
     });
@@ -168,6 +196,48 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
             </div>
           </div>
           <QuoteCardPreview style={quoteStyle} quoteText={body} book={book} clubName={clubName} personName={personName} />
+        </div>
+      )}
+      {kind === 'text' && (
+        <div>
+          {imagePreviewUrl ? (
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- vista previa local de un blob recién elegido, no una URL persistida. */}
+              <img src={imagePreviewUrl} alt="" style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 'var(--radius-md)', display: 'block' }} />
+              <button
+                type="button"
+                onClick={removeImage}
+                aria-label="Quitar la foto"
+                style={{
+                  position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: '50%',
+                  background: 'var(--neutral-900)', color: '#fff', border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Icon name="x" size={12} color="#fff" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 'var(--radius-md)',
+                border: '1px dashed var(--border-default)', background: 'none', color: 'var(--text-secondary)',
+                fontSize: 'var(--fs-xs)', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
+              }}
+            >
+              <Icon name="image-plus" size={15} />
+              Agregar foto o GIF
+            </button>
+          )}
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={handlePickImage}
+            style={{ display: 'none' }}
+          />
         </div>
       )}
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
