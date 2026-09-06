@@ -35,12 +35,9 @@ export default async function Page({ params, searchParams }) {
     supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
     supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle(),
   ]);
-  // Este select nunca chequeaba su propio error — si el embed de
-  // "comment_photos(path, position)" fallara (por ejemplo, el caché de
-  // esquema de PostgREST sin refrescar tras crear la tabla a mano en el
-  // SQL Editor), "comments" quedaba en null y toda la pantalla se veía
-  // vacía sin ninguna pista de por qué. Log temporal para diagnosticar el
-  // reporte "subí fotos y no aparecieron" — sacar una vez resuelto.
+  // Antes este select nunca chequeaba su propio error — si el embed de
+  // "comment_photos(path, position)" fallara, "comments" quedaba en null y
+  // toda la pantalla se veía vacía sin ninguna pista de por qué.
   if (commentsError) console.error('comentarios/page.js: falló el select de comments:', commentsError);
 
   // El bucket de audio es privado: cada nota necesita una URL firmada, que
@@ -81,15 +78,6 @@ export default async function Page({ params, searchParams }) {
     // solo con el path; todavía sin firmar (bucket privado).
     image_urls: (c.comment_photos ?? []).slice().sort((a, b) => a.position - b.position).map((p) => p.path),
   }));
-  // Log temporal: cuántos comentarios traen algún path sin firmar todavía
-  // (confirma si comment_photos tiene filas) — sacar una vez resuelto.
-  const withSomePhoto = withAudio.filter((c) => c.image_urls.length > 0);
-  if (withSomePhoto.length > 0) {
-    console.log(
-      `comentarios/page.js: ${withSomePhoto.length} comentario(s) con paths sin firmar:`,
-      withSomePhoto.map((c) => ({ id: c.id, image_urls: c.image_urls }))
-    );
-  }
   const withPhotos = await signCommentImageUrls(supabase, withAudio);
 
   return (
