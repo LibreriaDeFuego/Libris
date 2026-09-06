@@ -63,7 +63,7 @@ export function UpdateProgressModal({ clubBookId, chapters = [], volumes = [], i
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>
-            Página de tu edición
+            ¿En qué página vas?
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ flex: 1 }}>
