@@ -329,8 +329,8 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
             <div style={{ textAlign: 'right' }}>
               {isLastChapter ? (
                 <>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--accent-500)' }}>¡Ya casi!</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Marcar como terminado</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--accent-500)' }}>¡Llegaste al final!</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Toca para terminarlo</div>
                 </>
               ) : (
                 <div style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>Fin del libro</div>
