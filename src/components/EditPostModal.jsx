@@ -34,7 +34,7 @@ export function EditPostModal({ postId, photoUrl, initialCaption, onClose }) {
           style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 'var(--radius-md)', display: 'block' }}
         />
         <Textarea
-          placeholder="Escribí algo sobre esta foto (opcional)"
+          placeholder="Escribe algo sobre esta foto (opcional)"
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
           rows={2}

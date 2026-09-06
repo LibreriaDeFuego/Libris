@@ -497,6 +497,14 @@ Se repasaron los ~20 textos de toda esta zona (Tu camino, el modal de página, l
 
 **De paso, un hueco real en la lógica de spoilers** (no solo texto) — surgió al discutir el #2: la advertencia de spoiler (`SpoilerWarning`, en la pastilla de comentarios de cada capítulo) solo se disparaba para capítulos **posteriores** al actual (`isAhead: originalIndex > currentIndex`). Estar "en" un capítulo no significa haberlo terminado — vas por la mitad, o recién arrancaste — así que sus propios comentarios ya podían adelantar algo que todavía no leíste de ESE MISMO capítulo, sin ningún aviso. `isAhead` pasa a `>=` (incluye tu capítulo actual); solo los capítulos YA marcados como leídos (`isDone`) siguen siendo un link directo. El texto de la advertencia, que asumía "de acá para allá" (solo capítulos futuros), se reescribió para cubrir también el actual: **"Todavía no marcaste {capítulo} como leído — puede que encuentres spoilers ahí."**
 
+**Después de esa revisión, un barrido del resto de la app** buscando voseo suelto — la convención de siempre es tuteo (español latino neutro), y esta zona de progreso se había colado con "Tocá". Un agente exploró los ~118 archivos de `src/` buscando marcas de voseo en texto de usuario real (no en comentarios de código) y encontró 8 más, fuera de "Tu camino":
+
+- `postComment`/error de reunión (`clubs.js`): **"Poné la dirección..."** / **"Poné el link..."** → **"Pon la dirección..."** / **"Pon el link..."**
+- Preferencias del club: **"...no hace falta pegar uno vos mismo"** → **"...tú mismo"**
+- Notificaciones vacías (`NotificationsButton.jsx`): **"Todavía no tenés notificaciones."** → **"...no tienes notificaciones."**
+- Aviso de fotos que no se pudieron guardar (`NewCommentForm.jsx`): **"Probá de nuevo."** → **"Prueba de nuevo."**
+- Placeholder de la descripción de una foto (`PostComposer.jsx` y `EditPostModal.jsx`, mismo texto en los dos): **"Escribí algo sobre esta foto (opcional)"** → **"Escribe algo..."**
+
 ### Actividad del club
 
 Debajo del encabezado, la pantalla del club sigue con estas piezas (completando la dirección de diseño "Centro del club" del handoff):

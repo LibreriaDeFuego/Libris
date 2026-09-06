@@ -150,7 +150,7 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
       setError(null);
       setPhotoWarning(
         result?.photosSkipped > 0
-          ? `El comentario se publicó, pero ${result.photosSkipped === 1 ? '1 foto no se pudo guardar' : `${result.photosSkipped} fotos no se pudieron guardar`}. Probá de nuevo.`
+          ? `El comentario se publicó, pero ${result.photosSkipped === 1 ? '1 foto no se pudo guardar' : `${result.photosSkipped} fotos no se pudieron guardar`}. Prueba de nuevo.`
           : null
       );
       if (kind === 'quote') {

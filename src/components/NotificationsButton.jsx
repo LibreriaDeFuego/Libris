@@ -47,7 +47,7 @@ export function NotificationsButton({ notifications, hasUnread }) {
         <Modal title="Notificaciones" onClose={() => setOpen(false)}>
           {notifications.length === 0 ? (
             <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '12px 0' }}>
-              Todavía no tenés notificaciones.
+              Todavía no tienes notificaciones.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

@@ -120,7 +120,7 @@ export function PostComposer() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <PreviewImage blob={croppedBlob} />
             <Textarea
-              placeholder="Escribí algo sobre esta foto (opcional)"
+              placeholder="Escribe algo sobre esta foto (opcional)"
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               rows={2}

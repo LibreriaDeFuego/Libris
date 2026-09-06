@@ -237,7 +237,7 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Dirección o nombre del lugar</div>
                 <PlaceAutocompleteInput name="meetingPlace" placeholder="Café Martínez, San Martín 450" defaultValue={club.meeting_place ?? ''} />
                 <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 6, lineHeight: 'var(--lh-snug)' }}>
-                  Con esto se arma un link a Google Maps solo — no hace falta pegar uno vos mismo.
+                  Con esto se arma un link a Google Maps solo — no hace falta pegar uno tú mismo.
                 </div>
               </div>
             ) : (

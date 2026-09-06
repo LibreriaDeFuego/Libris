@@ -412,8 +412,8 @@ export async function updateClubPreferences(prevState, formData) {
     clubChanges.meeting_link = null;
     clubChanges.meeting_place = null;
   } else {
-    if (meetingMode === 'lugar' && !meetingPlace) return { error: 'Poné la dirección o el nombre del lugar de la reunión.' };
-    if (meetingMode !== 'lugar' && !meetingLink) return { error: 'Poné el link de la reunión.' };
+    if (meetingMode === 'lugar' && !meetingPlace) return { error: 'Pon la dirección o el nombre del lugar de la reunión.' };
+    if (meetingMode !== 'lugar' && !meetingLink) return { error: 'Pon el link de la reunión.' };
     clubChanges.meeting_at = meetingAt;
     clubChanges.meeting_mode = meetingMode === 'lugar' ? 'lugar' : 'link';
     clubChanges.meeting_link = meetingMode === 'lugar' ? null : meetingLink;
