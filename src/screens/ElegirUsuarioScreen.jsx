@@ -30,7 +30,7 @@ export function ElegirUsuarioScreen({ next }) {
           Elige tu nombre de usuario
         </div>
         <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: 6, lineHeight: 'var(--lh-snug)' }}>
-          Es nuevo en Libris: sirve para distinguirte de otras personas con un nombre parecido al tuyo en el buscador y en tu perfil. Se puede cambiar después desde &ldquo;Editar perfil&rdquo;.
+          Tu nombre de usuario es nuevo en Libris: sirve para distinguirte de otras personas con un nombre parecido al tuyo en el buscador y en tu perfil. Se puede cambiar después desde &ldquo;Editar perfil&rdquo;.
         </div>
       </div>
 

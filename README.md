@@ -512,7 +512,13 @@ Se repasaron los ~20 textos de toda esta zona (Tu camino, el modal de página, l
   - Nueva función hermana, **`friendlyAuthError`** — mismo espíritu, para errores de Supabase Auth (contraseña incorrecta, email sin confirmar, cuenta ya registrada, límite de intentos), que no tienen nada que ver con RLS y antes tampoco se traducían.
   - Aplicado en los 4 `return { error: ... }` sueltos de `createClub`/`findOrCreateBook`, los 4 `uploadError.message` sueltos de `media.js`/`posts.js`, y los 3 `error.message` sueltos de `login/actions.js` (ahora `friendlyAuthError`).
 
-Quedan pendientes de revisar (encontrados en el mismo barrido, sin tocar todavía): el onboarding manda a agregar capítulos desde un lugar que no existe con ese nombre y no cumple esa función; la visibilidad de un club se llama "Público" en un lado y "Abierto" en otro; Preferencias promete que el club "aparece en Descubrir" pero ningún botón/pestaña visible se llama así; el botón "Unirse" significa "unirte a un club" en todos lados menos en uno, donde abre una videollamada; y el sujeto de una frase en la pantalla de elegir usuario queda ambiguo.
+El resto de los hallazgos de ese mismo barrido, ya resueltos:
+
+- **Onboarding mandaba a agregar capítulos desde "Actualizar progreso"** — ese lugar no existe con ese nombre, y el que sí existe con nombre parecido ("Actualizar por página") solo deja elegir un capítulo ya cargado, no agregar nuevos. Corregido a **"Gestionar capítulos"** (el lugar real, en Preferencias — mismo texto que ya usaba correctamente `ComentariosScreen.jsx` para el mismo caso).
+- **La visibilidad de un club se llamaba "Público" al crear/configurar, "Abierto" en Descubrir** (mismo `join_mode: 'open'`) — unificado a **"Abierto"**: describe mejor lo que distingue a esta opción de "Con solicitud" (nadie pide permiso), ya que las dos aparecen igual de visibles en la búsqueda.
+- **Preferencias prometía que el club "aparece en Descubrir"**, pero ningún botón/pestaña visible se llama así — el único entry point real es el link "Buscar clubes o personas" (`InicioScreen`/`MisClubesScreen`/`OtrosClubesScreen`), que apunta a la ruta `/descubrir` sin mostrar ese nombre en ningún lado. Las dos menciones en `VisibilityOption.jsx` pasan a **"la búsqueda de clubes"** / **"la búsqueda"**.
+- **El botón "Unirse" de la tarjeta de reunión significaba "entrar a la videollamada"**, mientras que en toda la app ese mismo verbo significa "unirte a un club" (Onboarding, `OtrosClubesScreen`, `InviteScreen`, `AddClubSheet`) — pasa a **"Entrar a la videollamada"**.
+- **Sujeto ambiguo** en la pantalla de elegir usuario: "Es nuevo en Libris..." sin decir qué es — pasa a **"Tu nombre de usuario es nuevo en Libris..."**.
 
 ### Actividad del club
 
