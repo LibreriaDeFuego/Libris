@@ -87,10 +87,18 @@ export async function getClubProgressSummary(supabase, { clubBookId, userId }) {
 }
 
 // Cuántos comentarios (sin contar reseñas) tiene cada capítulo — para la
-// pastilla de "Comentarios" en Tu camino (ChapterPath). Trae solo el
-// chapter_id de cada fila y cuenta acá mismo: no hay forma de pedirle a
-// Supabase un GROUP BY sin una función RPC aparte, y para un libro esto es
-// liviano (unas pocas columnas, sin texto ni joins).
+// pastilla de "Comentarios" en Tu camino (ChapterPath). Trae chapter_id +
+// kind (+ si ese comentario tiene fotos) de cada fila y cuenta acá mismo:
+// no hay forma de pedirle a Supabase un GROUP BY sin una función RPC
+// aparte, y para un libro esto es liviano (unas pocas columnas, sin texto
+// ni joins de más — comment_photos(id) solo para saber si hay alguna,
+// no cuántas).
+//
+// El total sigue siendo el mismo de siempre (todo tipo salvo reseña); acá
+// se suma, por capítulo, si ADEMÁS hay alguna nota de voz y/o algún
+// comentario de texto con foto/GIF — la pastilla (SideExtras, ChapterPath)
+// los muestra como íconos junto al total, sin desglosar cuántos hay de
+// cada uno.
 //
 // "repost_id is null" (migración 040) — sin este filtro, un comentario
 // que alguien dejó en el REPOST de una cita de este club (que vive
@@ -102,7 +110,7 @@ export async function getChapterCommentCounts(supabase, clubBookId) {
 
   const { data } = await supabase
     .from('comments')
-    .select('chapter_id')
+    .select('chapter_id, kind, comment_photos(id)')
     .eq('club_book_id', clubBookId)
     .not('chapter_id', 'is', null)
     .neq('kind', 'review')
@@ -110,7 +118,11 @@ export async function getChapterCommentCounts(supabase, clubBookId) {
 
   const counts = {};
   for (const row of data ?? []) {
-    counts[row.chapter_id] = (counts[row.chapter_id] ?? 0) + 1;
+    const entry = counts[row.chapter_id] ?? { total: 0, hasVoice: false, hasPhoto: false };
+    entry.total += 1;
+    if (row.kind === 'voice') entry.hasVoice = true;
+    if (Array.isArray(row.comment_photos) && row.comment_photos.length > 0) entry.hasPhoto = true;
+    counts[row.chapter_id] = entry;
   }
   return counts;
 }

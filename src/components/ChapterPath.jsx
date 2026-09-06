@@ -211,7 +211,7 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
             const isAhead = currentIndex !== -1 && originalIndex > currentIndex;
             const isSaving = pending && optimisticId === chapter.id;
             const showFlame = isCurrent && streakCount >= 2;
-            const commentCount = commentCounts[chapter.id] ?? 0;
+            const commentInfo = commentCounts[chapter.id];
             const nodeColor = isDone || isCurrent ? pathColor(originalIndex, currentIndex) : null;
 
             const nextChapter = path[i + 1];
@@ -224,7 +224,7 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
 
             const extras = (
               <SideExtras
-                commentCount={commentCount}
+                commentInfo={commentInfo}
                 isAhead={isAhead}
                 onCommentTap={() => handleSpoilerTap(chapter)}
                 href={!isAhead ? `/club/${clubId}/comentarios?capitulo=${chapter.id}` : null}
@@ -411,31 +411,43 @@ function NodeLabel({ chapter, isCurrent, isDone, align }) {
 }
 
 // Lo que va del lado libre de cada nodo (opuesto a la etiqueta del
-// capítulo): la pastilla de comentarios, si el capítulo tiene alguno.
-function SideExtras({ commentCount, isAhead, onCommentTap, href }) {
-  if (!commentCount) return null;
+// capítulo): la pastilla de comentarios, si el capítulo tiene alguno. Una
+// sola pastilla — antes solo con el ícono de "comentario"; ahora, si entre
+// los comentarios de este capítulo hay alguna nota de voz y/o alguna foto
+// o GIF, se les suma su propio ícono antes del total (mismo color que el
+// resto de la pastilla — ni "mic" ni "image" tienen un color propio en
+// ningún otro lugar de la app, así que no se les inventa uno acá). No
+// desglosa cuántos hay de cada tipo, solo cuáles hay.
+function SideExtras({ commentInfo, isAhead, onCommentTap, href }) {
+  if (!commentInfo?.total) return null;
+  const { total, hasVoice, hasPhoto } = commentInfo;
+  const label = `${total} ${total === 1 ? 'comentario' : 'comentarios'}`;
   return isAhead ? (
     <button
       type="button"
       onClick={onCommentTap}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--neutral-100)',
+        display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--neutral-100)',
         border: '1px solid var(--neutral-200)', borderRadius: 'var(--radius-pill)', padding: '3px 10px 3px 8px', cursor: 'pointer',
       }}
     >
       <Icon name="triangle-alert" size={11} color="var(--text-tertiary)" />
-      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{commentCount} {commentCount === 1 ? 'comentario' : 'comentarios'}</span>
+      {hasVoice && <Icon name="mic" size={11} color="var(--text-tertiary)" />}
+      {hasPhoto && <Icon name="image" size={11} color="var(--text-tertiary)" />}
+      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{label}</span>
     </button>
   ) : (
     <Link
       href={href}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--surface-card)',
+        display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface-card)',
         border: '1px solid var(--border-default)', borderRadius: 'var(--radius-pill)', padding: '3px 10px 3px 8px', textDecoration: 'none',
       }}
     >
       <Icon name="message-circle" size={11} color="var(--text-secondary)" />
-      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{commentCount} {commentCount === 1 ? 'comentario' : 'comentarios'}</span>
+      {hasVoice && <Icon name="mic" size={11} color="var(--text-secondary)" />}
+      {hasPhoto && <Icon name="image" size={11} color="var(--text-secondary)" />}
+      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</span>
     </Link>
   );
 }
