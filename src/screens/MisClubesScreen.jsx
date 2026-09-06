@@ -190,7 +190,7 @@ function ClubHeroCard({ club, index, currentUserId }) {
         </div>
       ) : (
         <div style={{ position: 'relative', marginTop: 10, fontSize: 12, color: CREAM, opacity: 0.75 }}>
-          Todavía no tiene un libro activo.
+          Este club no eligió un libro todavía.
         </div>
       )}
 
