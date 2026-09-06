@@ -487,7 +487,7 @@ function SpoilerWarning({ label, href, onDismiss }) {
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
         <Icon name="triangle-alert" size={15} color="#8A5A00" />
         <div style={{ fontSize: 12.5, color: '#5A3D00', lineHeight: 1.4 }}>
-          Todavía no marcaste {label} como leído — puede que encuentres spoilers ahí.
+          Puede que encuentres spoilers acá si todavía no terminaste {label}.
         </div>
       </div>
       <div style={{ display: 'flex', gap: 14 }}>
