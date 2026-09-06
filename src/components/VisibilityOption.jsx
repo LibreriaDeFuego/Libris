@@ -57,7 +57,7 @@ export function VisibilityPicker({ current, onChange }) {
         onChange={onChange}
         icon="user-check"
         title="Con solicitud"
-        description="Aparece en Descubrir con su nombre, como uno público, pero para sumarse hay que mandar una solicitud que un administrador aprueba o rechaza. Los comentarios y el progreso siguen siendo privados."
+        description="Aparece en la búsqueda de clubes con su nombre, como uno abierto, pero para sumarse hay que mandar una solicitud que un administrador aprueba o rechaza. Los comentarios y el progreso siguen siendo privados."
       />
       <VisibilityOption
         value="privado"
@@ -65,7 +65,7 @@ export function VisibilityPicker({ current, onChange }) {
         onChange={onChange}
         icon="eye-off"
         title="Privado"
-        description="Los otros clubes ven “Un club también está leyendo este libro”, sin el nombre. No aparece en Descubrir — solo se entra con el link de invitación."
+        description="Los otros clubes ven “Un club también está leyendo este libro”, sin el nombre. No aparece en la búsqueda — solo se entra con el link de invitación."
       />
     </div>
   );
