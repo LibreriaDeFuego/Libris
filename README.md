@@ -483,6 +483,20 @@ El **selector de club** (`ClubSwitcher`, el menú que dejaba saltar de un club a
 
 Este cambio dejó expuesto un bug de layout preexistente en `AppShell`: el tab bar de abajo es `position: sticky`, y cuando el contenido de una pantalla mide apenas un poco más que la pantalla del teléfono, "sticky" no empuja lo de arriba — lo tapa. Se corrigió reservándole su alto real como `padding-bottom` del contenido (`calc(70px + env(safe-area-inset-bottom, 8px))`), así el tab bar nunca vuelve a superponerse al final de ninguna pantalla.
 
+### Revisión de textos de progreso, uno por uno
+
+Se repasaron los ~20 textos de toda esta zona (Tu camino, el modal de página, la tarjeta de club) de a uno, en un ida y vuelta directo, en vez de reescribir todo de una — algunos quedaron igual, otros cambiaron. Cambios que quedaron:
+
+- **"Tocá..." pasa a "Toca..."** — el resto de la app ya usa tuteo ("no voseo"); esta pantalla se había colado con "Tocá un capítulo para marcarlo como el tuyo" → **"Toca el capítulo en el que vas"**.
+- **"TU CAPÍTULO" → "AQUÍ VAS"**, mismo verbo que el subtítulo de arriba.
+- Nodo de FIN, antes de llegar: **"¡Ya casi!" / "Marcar como terminado" → "¡Llegaste al final!" / "Toca para terminarlo"**.
+- Toast al tocar un capítulo: **"Ahora vas por Cap. N" → "Listo, vas por el Cap. N"**.
+- Modal de página: **"Página de tu edición" → "¿En qué página vas?"**; **"¿Cambiaste de edición? Actualizar el total de páginas" → "Actualizar el total de páginas"** (sin la pregunta, va directo); **"Para que también se vea en Tu camino, ¿nos cuentas en qué capítulo vas?" → "¿En qué capítulo vas?"**; la opción **"Prefiero no decirlo" → "No estoy seguro"** (el motivo real casi siempre es no tener claro el capítulo, no un tema de privacidad).
+- Tarjeta de club: **"Leyendo ahora" → "Estás leyendo"**; **"Todavía no tiene un libro activo." → "Este club no eligió un libro todavía."**
+- **`heroProgress.js`** — cuando el libro ya tiene capítulos pero todavía no marcaste ningún progreso, el texto bajo la barra decía `"N capítulos"` (describía el LIBRO, no tu progreso — al lado del 0% no calzaba). Pasa a **"Todavía no empezaste"**.
+
+**De paso, un hueco real en la lógica de spoilers** (no solo texto) — surgió al discutir el #2: la advertencia de spoiler (`SpoilerWarning`, en la pastilla de comentarios de cada capítulo) solo se disparaba para capítulos **posteriores** al actual (`isAhead: originalIndex > currentIndex`). Estar "en" un capítulo no significa haberlo terminado — vas por la mitad, o recién arrancaste — así que sus propios comentarios ya podían adelantar algo que todavía no leíste de ESE MISMO capítulo, sin ningún aviso. `isAhead` pasa a `>=` (incluye tu capítulo actual); solo los capítulos YA marcados como leídos (`isDone`) siguen siendo un link directo. El texto de la advertencia, que asumía "de acá para allá" (solo capítulos futuros), se reescribió para cubrir también el actual: **"Todavía no marcaste {capítulo} como leído — puede que encuentres spoilers ahí."**
+
 ### Actividad del club
 
 Debajo del encabezado, la pantalla del club sigue con estas piezas (completando la dirección de diseño "Centro del club" del handoff):
