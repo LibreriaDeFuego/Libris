@@ -422,12 +422,18 @@ function SideExtras({ commentInfo, isAhead, onCommentTap, href }) {
   if (!commentInfo?.total) return null;
   const { total, hasVoice, hasPhoto } = commentInfo;
   const label = `${total} ${total === 1 ? 'comentario' : 'comentarios'}`;
+  // whiteSpace: 'nowrap' — con dos íconos de más, el texto ("N
+  // comentarios") ya no siempre entraba en el ancho de esta columna y el
+  // pill se partía en dos líneas desalineadas (el ícono arriba, la
+  // palabra "comentarios" suelta abajo). Sin wrap, la columna crece lo
+  // que haga falta para el pill entero — hay de sobra del lado de la
+  // etiqueta del capítulo, que es corta.
   return isAhead ? (
     <button
       type="button"
       onClick={onCommentTap}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--neutral-100)',
+        display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--neutral-100)', whiteSpace: 'nowrap',
         border: '1px solid var(--neutral-200)', borderRadius: 'var(--radius-pill)', padding: '3px 10px 3px 8px', cursor: 'pointer',
       }}
     >
@@ -440,7 +446,7 @@ function SideExtras({ commentInfo, isAhead, onCommentTap, href }) {
     <Link
       href={href}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface-card)',
+        display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface-card)', whiteSpace: 'nowrap',
         border: '1px solid var(--border-default)', borderRadius: 'var(--radius-pill)', padding: '3px 10px 3px 8px', textDecoration: 'none',
       }}
     >
