@@ -52,7 +52,7 @@ function ReplyRow({ reply, indented, onReply }) {
   const name = reply.profiles?.display_name ?? 'Alguien';
   return (
     <div style={{ display: 'flex', gap: 8, marginLeft: indented ? 28 : 0 }}>
-      <Avatar name={name} size={indented ? 20 : 24} />
+      <Avatar name={name} src={reply.profiles?.avatar_url} size={indented ? 20 : 24} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-primary)' }}>
           {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(reply.created_at)}</span>
