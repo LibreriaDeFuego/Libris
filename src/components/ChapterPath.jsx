@@ -130,7 +130,7 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
     if (chapter.id === activeId || pending) return;
     setError(null);
     setOptimisticId(chapter.id);
-    setToast(`Ahora vas por ${chapterLabel(chapter)}`);
+    setToast(`Listo, vas por el ${chapterLabel(chapter)}`);
     setPreview(null);
     setSpoilerWarning(null);
 
