@@ -57,7 +57,7 @@ export function OnboardingScreen({ showBack = false, initialMode = 'Crear club' 
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>¿Cuántos capítulos tiene?</div>
             <Input name="chapterCount" type="number" min={1} max={300} defaultValue={12} />
             <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>
-              Después puedes agregar más desde “Actualizar progreso”.
+              Después puedes agregar más desde “Gestionar capítulos”.
             </div>
           </div>
           <div>
