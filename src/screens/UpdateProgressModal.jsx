@@ -13,8 +13,8 @@ import { groupChaptersByVolume, chapterDisplayLabel } from '@/lib/orderChapters'
 // camino. Este modal, al que se llega únicamente desde "Actualizar por
 // página", ya no necesita elegir entre esas otras dos formas.
 //
-// Sí pregunta, aparte, en qué capítulo vas — opcional (elegir "Prefiero
-// no decirlo" limpia la selección) porque no todo el mundo lo tiene claro
+// Sí pregunta, aparte, en qué capítulo vas — opcional (elegir "No estoy
+// seguro" limpia la selección) porque no todo el mundo lo tiene claro
 // mirando solo la página. Con eso, aunque actualices por página, "Tu
 // camino" también muestra el nodo correcto — el % sigue saliendo de la
 // página, esto solo ubica dónde estás. Un `<select>` nativo, agrupado por
@@ -110,7 +110,7 @@ export function UpdateProgressModal({ clubBookId, chapters = [], volumes = [], i
                   appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
                 }}
               >
-                <option value="">Prefiero no decirlo</option>
+                <option value="">No estoy seguro</option>
                 {chapterGroups.map((group) => (
                   group.volume ? (
                     <optgroup key={group.volume.id} label={group.volume.name}>
