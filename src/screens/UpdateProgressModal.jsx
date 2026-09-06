@@ -89,7 +89,7 @@ export function UpdateProgressModal({ clubBookId, chapters = [], volumes = [], i
                 fontSize: 'var(--fs-2xs)', fontWeight: 600, color: 'var(--text-link)', fontFamily: 'var(--font-body)',
               }}
             >
-              ¿Cambiaste de edición? Actualizar el total de páginas
+              Actualizar el total de páginas
             </button>
           )}
         </div>
