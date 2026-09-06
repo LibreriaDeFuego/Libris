@@ -48,7 +48,7 @@ export function VisibilityPicker({ current, onChange }) {
         current={current}
         onChange={onChange}
         icon="eye"
-        title="Público"
+        title="Abierto"
         description="Los otros clubes ven el nombre del club y cuántos miembros tiene. Cualquiera se puede unir directo, sin pedir permiso. Los comentarios y el progreso siguen siendo privados."
       />
       <VisibilityOption
