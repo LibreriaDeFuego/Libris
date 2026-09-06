@@ -23,7 +23,7 @@ export default async function Page({ params, searchParams }) {
   const [{ data: comments }, { data: chapters }, { data: volumes }, { data: me }] = await Promise.all([
     supabase
       .from('comments')
-      .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, parent_comment_id, reply_to_id, shared_to_feed, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, image_url, profiles(display_name)')
+      .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, parent_comment_id, reply_to_id, shared_to_feed, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, comment_photos(path, position), profiles(display_name)')
       .eq('club_book_id', clubBook.id)
       // repost_id is null (migración 040) — un comentario dejado en el
       // repost de algo de este club vive scopeado a ese repost, no acá:
@@ -69,9 +69,11 @@ export default async function Page({ params, searchParams }) {
     audio_url: c.voice_url ? signedByPath.get(c.voice_url) ?? null : null,
     like_count: likesByComment.get(c.id)?.count ?? 0,
     liked_by_me: likesByComment.get(c.id)?.likedByMe ?? false,
+    // "comment_photos" llega como el embed de Supabase (un array por
+    // fila, sin orden garantizado) — se ordena por posición y se queda
+    // solo con el path; todavía sin firmar (bucket privado).
+    image_urls: (c.comment_photos ?? []).slice().sort((a, b) => a.position - b.position).map((p) => p.path),
   }));
-  // "image_url" acá todavía es el path guardado en la fila, no una URL —
-  // se firma recién ahora (bucket privado, ver src/lib/commentPhotos.js).
   const withPhotos = await signCommentImageUrls(supabase, withAudio);
 
   return (

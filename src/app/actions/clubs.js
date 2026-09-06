@@ -610,10 +610,12 @@ function chapterCommentPreviewText(comment) {
 // src/lib/quoteCard.js.
 const VALID_QUOTE_STYLES = ['cover', 'dark', 'editorial'];
 const MAX_QUOTE_IMAGE_BYTES = 8 * 1024 * 1024; // de sobra: el JPEG que arma quoteCard.js pesa mucho menos.
-// Foto adjunta a un comentario de capítulo (migración 041) — jpeg/png/webp
-// como las fotos de Perfil, más gif (mismo criterio que PostComposer: no
-// pasa por ningún recorte, un GIF no sobrevive a un <canvas>).
+// Fotos adjuntas a un comentario de capítulo (migración 041, carrusel en
+// la 042) — jpeg/png/webp como las fotos de Perfil, más gif (mismo
+// criterio que PostComposer: no pasa por ningún recorte, un GIF no
+// sobrevive a un <canvas>). Hasta 6, como un carrusel razonable.
 const MAX_COMMENT_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_COMMENT_IMAGES = 6;
 const COMMENT_IMAGE_EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
 
 function isFile(value) {
@@ -626,12 +628,14 @@ function isFile(value) {
 // imagen ya dibujada en ese estilo (bucket "quote-cards"), para que el feed
 // muestre la tarjeta real en vez de recrearla con el tratamiento genérico.
 //
-// Un comentario de texto puede llevar, opcionalmente, una foto o GIF
-// propios (migración 041) — a diferencia de "quote-cards" (público, la
-// imagen se arma para compartir en Instagram), esto va al bucket PRIVADO
-// "comment-photos": es una conversación de adentro de un club, mismo
-// criterio que ya usan las notas de voz. "image_url" en la fila guarda el
-// PATH del archivo, no una URL — se firma recién al leerla (ver
+// Un comentario de texto puede llevar, opcionalmente, hasta
+// MAX_COMMENT_IMAGES fotos o GIF propios — un carrusel (migración 042; la
+// 041 lo agregó como una sola foto). A diferencia de "quote-cards"
+// (público, la imagen se arma para compartir en Instagram), esto va al
+// bucket PRIVADO "comment-photos": es una conversación de adentro de un
+// club, mismo criterio que ya usan las notas de voz. Cada fila de
+// "comment_photos" guarda el PATH del archivo (no una URL) y su posición
+// en el carrusel — se firman recién al leerlas (ver
 // src/lib/commentPhotos.js), en Comentarios del club y en Inicio/Perfil si
 // ese comentario se compartió al feed.
 export async function postComment(formData) {
@@ -663,22 +667,7 @@ export async function postComment(formData) {
     }
   }
 
-  // Misma lógica de "mejor esfuerzo" — solo para comentarios de texto, no
-  // para citas (esas ya tienen su propia imagen armada arriba).
-  let imagePath = null;
-  const image = formData.get('image');
-  if (kind === 'text' && isFile(image) && image.size > 0 && image.size <= MAX_COMMENT_IMAGE_BYTES) {
-    const extension = COMMENT_IMAGE_EXTENSIONS[image.type];
-    if (extension) {
-      const path = `${clubBookId}/${user.id}/${crypto.randomUUID()}.${extension}`;
-      const { error: uploadError } = await supabase.storage
-        .from('comment-photos')
-        .upload(path, image, { contentType: image.type });
-      if (!uploadError) imagePath = path;
-    }
-  }
-
-  const { error } = await supabase.from('comments').insert({
+  const { data: inserted, error } = await supabase.from('comments').insert({
     club_book_id: clubBookId,
     chapter_id: chapterId,
     profile_id: user.id,
@@ -687,9 +676,30 @@ export async function postComment(formData) {
     is_spoiler: isSpoiler,
     quote_style: quoteStyle,
     quote_image_url: quoteImageUrl,
-    image_url: imagePath,
-  });
+  }).select('id').single();
   if (error) return { error: friendlyDbError(error) };
+
+  // Mismo "mejor esfuerzo" que la imagen de la cita — solo para
+  // comentarios de texto (una cita ya tiene la suya, arriba). Necesita el
+  // id del comentario recién creado, así que va después del insert.
+  if (kind === 'text') {
+    const images = formData.getAll('images').filter((f) => isFile(f) && f.size > 0).slice(0, MAX_COMMENT_IMAGES);
+    const photoRows = [];
+    for (let i = 0; i < images.length; i++) {
+      const image = images[i];
+      if (image.size > MAX_COMMENT_IMAGE_BYTES) continue;
+      const extension = COMMENT_IMAGE_EXTENSIONS[image.type];
+      if (!extension) continue;
+      const path = `${clubBookId}/${user.id}/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from('comment-photos')
+        .upload(path, image, { contentType: image.type });
+      if (!uploadError) photoRows.push({ comment_id: inserted.id, path, position: i });
+    }
+    if (photoRows.length > 0) {
+      await supabase.from('comment_photos').insert(photoRows);
+    }
+  }
 
   revalidatePath('/', 'layout');
   return { error: null, quoteStyle, quoteImageUrl };
@@ -813,21 +823,22 @@ export async function updateComment(formData) {
   return { error: null };
 }
 
-// Borra tu propio comentario de capítulo — la fila y, si tenía una foto
-// adjunta (migración 041), también el archivo en "comment-photos", para no
-// dejarlo huérfano (mismo criterio que deletePost con "post-photos").
+// Borra tu propio comentario de capítulo — la fila y, si tenía fotos
+// adjuntas (carrusel, migración 042), también los archivos en
+// "comment-photos", para no dejarlos huérfanos (mismo criterio que
+// deletePost con "post-photos"). Las filas de "comment_photos" se van
+// solas (on delete cascade), pero eso no borra el archivo real en Storage
+// — eso hay que pedirlo aparte, y antes de borrar la fila (después ya no
+// hay forma de saber qué paths tenía).
 export async function deleteComment(commentId) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
   if (!commentId) return { error: 'Falta el comentario.' };
 
-  const { data: existing } = await supabase
-    .from('comments')
-    .select('image_url')
-    .eq('id', commentId)
-    .eq('profile_id', user.id)
-    .eq('kind', 'text')
-    .maybeSingle();
+  const { data: photos } = await supabase
+    .from('comment_photos')
+    .select('path')
+    .eq('comment_id', commentId);
 
   const { error } = await supabase
     .from('comments')
@@ -837,8 +848,8 @@ export async function deleteComment(commentId) {
     .eq('kind', 'text');
   if (error) return { error: friendlyDbError(error) };
 
-  if (existing?.image_url) {
-    await supabase.storage.from('comment-photos').remove([existing.image_url]);
+  if (photos?.length) {
+    await supabase.storage.from('comment-photos').remove(photos.map((p) => p.path));
   }
 
   revalidatePath('/', 'layout');

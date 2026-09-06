@@ -71,30 +71,43 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
   // descargar la tarjeta ahí mismo.
   const [published, setPublished] = useState(null);
   const formRef = useRef(null);
-  // Foto o GIF adjunto a un comentario de texto (migración 041) — "image"
-  // ya es el archivo listo para subir (comprimido, salvo que sea GIF); la
-  // vista previa es su propio object URL, liberado al sacarla o reemplazarla.
-  const [image, setImage] = useState(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+  // Carrusel de foto/GIF en un comentario de texto (migración 042 — la 041
+  // dejaba una sola). Cada entrada ya es el archivo listo para subir
+  // (comprimido, salvo que sea GIF) + su propio object URL de vista previa,
+  // liberado al sacarla o al vaciar todo. MAX_COMMENT_IMAGES espeja el tope
+  // del servidor (clubs.js) — acá es solo para no dejar elegir de más.
+  const MAX_COMMENT_IMAGES = 6;
+  const [images, setImages] = useState([]);
   const imageInputRef = useRef(null);
 
-  async function handlePickImage(e) {
-    const file = e.target.files?.[0];
+  async function handlePickImages(e) {
+    const files = Array.from(e.target.files ?? []);
     e.target.value = '';
-    if (!file) return;
-    // Un GIF no pasa por compressImage: ese <canvas> solo captura un
-    // frame, lo dejaría animado por dentro pero estático al mostrarlo —
-    // mismo criterio que ya usa PostComposer con las fotos de Perfil.
-    const prepared = file.type === 'image/gif' ? file : await compressImage(file);
-    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-    setImage(prepared);
-    setImagePreviewUrl(URL.createObjectURL(prepared));
+    if (files.length === 0) return;
+    const room = MAX_COMMENT_IMAGES - images.length;
+    const prepared = await Promise.all(
+      files.slice(0, room).map(async (file) => {
+        // Un GIF no pasa por compressImage: ese <canvas> solo captura un
+        // frame, lo dejaría animado por dentro pero estático al mostrarlo
+        // — mismo criterio que ya usa PostComposer con las fotos de Perfil.
+        const blob = file.type === 'image/gif' ? file : await compressImage(file);
+        return { key: `${Date.now()}-${Math.random()}`, blob, previewUrl: URL.createObjectURL(blob) };
+      })
+    );
+    setImages((prev) => [...prev, ...prepared]);
   }
 
-  function removeImage() {
-    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
-    setImage(null);
-    setImagePreviewUrl(null);
+  function removeImage(key) {
+    setImages((prev) => {
+      const target = prev.find((img) => img.key === key);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((img) => img.key !== key);
+    });
+  }
+
+  function clearImages() {
+    images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+    setImages([]);
   }
 
   function handleSubmit(e) {
@@ -105,7 +118,11 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
     if (chapterId) formData.set('chapterId', chapterId);
     if (isSpoiler) formData.set('isSpoiler', 'on');
     if (kind === 'quote') formData.set('quoteStyle', quoteStyle);
-    if (kind === 'text' && image) formData.set('image', image, image.type === 'image/gif' ? 'foto.gif' : 'foto.jpg');
+    if (kind === 'text') {
+      images.forEach((img, i) => {
+        formData.append('images', img.blob, img.blob.type === 'image/gif' ? `foto-${i}.gif` : `foto-${i}.jpg`);
+      });
+    }
     const quoteBody = body.trim();
 
     startTransition(async () => {
@@ -132,7 +149,7 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
         setPublished({ body: quoteBody, style: result.quoteStyle ?? quoteStyle, imageUrl: result.quoteImageUrl ?? null });
       } else {
         setBody('');
-        removeImage();
+        clearImages();
         formRef.current?.reset();
       }
     });
@@ -199,25 +216,26 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
         </div>
       )}
       {kind === 'text' && (
-        <div>
-          {imagePreviewUrl ? (
-            <div style={{ position: 'relative', display: 'inline-block' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {images.map((img) => (
+            <div key={img.key} style={{ position: 'relative', display: 'inline-block' }}>
               {/* eslint-disable-next-line @next/next/no-img-element -- vista previa local de un blob recién elegido, no una URL persistida. */}
-              <img src={imagePreviewUrl} alt="" style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 'var(--radius-md)', display: 'block' }} />
+              <img src={img.previewUrl} alt="" style={{ width: 76, height: 76, objectFit: 'cover', borderRadius: 'var(--radius-md)', display: 'block' }} />
               <button
                 type="button"
-                onClick={removeImage}
+                onClick={() => removeImage(img.key)}
                 aria-label="Quitar la foto"
                 style={{
-                  position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: '50%',
+                  position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%',
                   background: 'var(--neutral-900)', color: '#fff', border: 'none', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                <Icon name="x" size={12} color="#fff" />
+                <Icon name="x" size={11} color="#fff" />
               </button>
             </div>
-          ) : (
+          ))}
+          {images.length < MAX_COMMENT_IMAGES && (
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}
@@ -225,17 +243,19 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
                 display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 'var(--radius-md)',
                 border: '1px dashed var(--border-default)', background: 'none', color: 'var(--text-secondary)',
                 fontSize: 'var(--fs-xs)', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)',
+                alignSelf: images.length > 0 ? 'stretch' : 'flex-start',
               }}
             >
               <Icon name="image-plus" size={15} />
-              Agregar foto o GIF
+              {images.length > 0 ? 'Agregar más' : 'Agregar foto o GIF'}
             </button>
           )}
           <input
             ref={imageInputRef}
             type="file"
+            multiple
             accept="image/jpeg,image/png,image/webp,image/gif"
-            onChange={handlePickImage}
+            onChange={handlePickImages}
             style={{ display: 'none' }}
           />
         </div>

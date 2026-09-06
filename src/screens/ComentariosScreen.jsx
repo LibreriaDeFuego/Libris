@@ -11,6 +11,7 @@ import { SpoilerBlock } from '@/design-system/components/content/SpoilerBlock.js
 import { VoiceNotePlayer } from '@/design-system/components/content/VoiceNotePlayer.jsx';
 import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
+import { PhotoCarousel } from '@/components/PhotoCarousel';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { BookReviewCard } from '@/components/BookReviewCard';
 import { PostMenu } from '@/components/PostMenu';
@@ -62,13 +63,10 @@ function CommentBody({ comment, book, clubName }) {
       <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>
         {comment.body}
       </p>
-      {comment.image_url && (
-        // eslint-disable-next-line @next/next/no-img-element -- URL firmada de Storage (bucket privado), no algo que next/image pueda optimizar sin repetir la firma.
-        <img
-          src={comment.image_url}
-          alt=""
-          style={{ marginTop: 8, width: '100%', maxWidth: 320, borderRadius: 'var(--radius-md)', display: 'block' }}
-        />
+      {comment.image_urls?.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <PhotoCarousel urls={comment.image_urls} aspectRatio="4 / 3" maxWidth={320} />
+        </div>
       )}
     </div>
   );

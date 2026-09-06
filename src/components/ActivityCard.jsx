@@ -14,6 +14,7 @@ import { LikeButton } from '@/components/LikeButton';
 import { RepostButton } from '@/components/RepostButton';
 import { EngagementBlock } from '@/components/EngagementBlock';
 import { PhotoCommentsBlock } from '@/components/PhotoCommentsBlock';
+import { PhotoCarousel } from '@/components/PhotoCarousel';
 import { deleteBookReview, deleteQuote, toggleCommentLike } from '@/app/actions/clubs';
 import { deletePost } from '@/app/actions/posts';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
@@ -127,10 +128,12 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
   // donde falló la subida en su momento) siguen con el tratamiento
   // genérico: portada del libro de fondo + la cita como texto abajo.
   const hasQuoteImage = isQuote && Boolean(activity.quote_image_url);
-  // Un comentario de texto puede llevar, opcional, una foto o GIF propios
-  // (migración 041) — se muestra igual que la portada del libro que ya
-  // ocupaba ese lugar, solo que ahora es la foto real cuando existe.
-  const hasCommentImage = activity.kind === 'text' && Boolean(activity.image_url);
+  // Un comentario de texto puede llevar, opcional, un carrusel de fotos o
+  // GIF propios (migraciones 041/042) — reemplaza a la portada del libro
+  // que ocupaba ese lugar por default, con PhotoCarousel en vez del <div>
+  // de fondo de siempre (soporta más de una foto, ese no).
+  const commentImages = activity.kind === 'text' ? activity.image_urls : null;
+  const hasCommentImages = Array.isArray(commentImages) && commentImages.length > 0;
   const showAsImage = isPhoto || hasQuoteImage;
   const text = isPhoto
     ? activity.body
@@ -146,13 +149,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
     if (!textRef.current) return;
     setIsTruncated(textRef.current.scrollHeight > textRef.current.clientHeight + 1);
   }, [text]);
-  const backgroundUrl = isPhoto
-    ? activity.photo_url
-    : hasQuoteImage
-      ? activity.quote_image_url
-      : hasCommentImage
-        ? activity.image_url
-        : activity.book_cover_url;
+  const backgroundUrl = isPhoto ? activity.photo_url : hasQuoteImage ? activity.quote_image_url : activity.book_cover_url;
 
   // Las citas con imagen guardada de antes de que los tres estilos se
   // unificaran a 3:4 quedaron con su proporción vieja (Portada/Editorial en
@@ -333,13 +330,22 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
             )}
           </div>
 
-          {/* La imagen va sola, sin nada escrito encima — igual que un posteo. */}
-          <div
-            style={{
-              aspectRatio: '3 / 4', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
-              boxShadow: 'var(--shadow-sm)', flexShrink: 0, background,
-            }}
-          />
+          {/* La imagen va sola, sin nada escrito encima — igual que un posteo.
+              Un comentario con más de una foto es un carrusel (PhotoCarousel,
+              con sus puntitos); el resto sigue siendo el <div> de fondo de
+              siempre, una sola imagen fija. */}
+          {hasCommentImages ? (
+            <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', flexShrink: 0 }}>
+              <PhotoCarousel urls={commentImages} />
+            </div>
+          ) : (
+            <div
+              style={{
+                aspectRatio: '3 / 4', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+                boxShadow: 'var(--shadow-sm)', flexShrink: 0, background,
+              }}
+            />
+          )}
 
           {isPhoto ? (
             <PhotoCommentsBlock

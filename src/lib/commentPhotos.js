@@ -1,24 +1,25 @@
-// La foto que se puede adjuntar a un comentario de capítulo (migración
-// 041) vive en un bucket PRIVADO ("comment-photos") — es una conversación
-// de adentro de un club, mismo criterio que ya usan las notas de voz
-// (voice-notes). Por eso "comments.image_url" guarda el PATH del archivo,
-// no una URL pública: hay que firmarla del lado del servidor antes de
-// mandarla al navegador, en cualquier lugar donde un comentario pueda
-// llegar con su foto — Comentarios del club, y también Inicio/Perfil si
-// ese comentario se compartió al feed con una foto puesta.
-//
-// Recibe cualquier arreglo de filas con un campo "image_url" (paths, no
-// URLs) y devuelve una copia con esos paths reemplazados por su URL
-// firmada — sin tocar las filas que no tengan imagen.
+// Las fotos que se pueden adjuntar a un comentario de capítulo (migración
+// 041, carrusel en la 042) viven en un bucket PRIVADO ("comment-photos")
+// — es una conversación de adentro de un club, mismo criterio que ya usan
+// las notas de voz (voice-notes). Por eso cada fila de "recent_activity"/
+// "profile_activity"/la consulta directa a "comments" trae "image_urls"
+// como un arreglo de PATHS, no de URLs — hay que firmarlos del lado del
+// servidor antes de mandarlos al navegador, en cualquier lugar donde un
+// comentario pueda llegar con sus fotos: Comentarios del club, y también
+// Inicio/Perfil si ese comentario se compartió al feed.
 export async function signCommentImageUrls(supabase, rows) {
   const list = rows ?? [];
-  const paths = list.filter((r) => r.image_url).map((r) => r.image_url);
-  if (paths.length === 0) return list;
+  const allPaths = list.flatMap((r) => (Array.isArray(r.image_urls) ? r.image_urls : []));
+  if (allPaths.length === 0) return list;
 
-  const { data: signed } = await supabase.storage.from('comment-photos').createSignedUrls(paths, 60 * 60);
+  const { data: signed } = await supabase.storage.from('comment-photos').createSignedUrls(allPaths, 60 * 60);
   const signedByPath = new Map();
   for (const entry of signed ?? []) {
     if (entry.signedUrl) signedByPath.set(entry.path, entry.signedUrl);
   }
-  return list.map((r) => (r.image_url ? { ...r, image_url: signedByPath.get(r.image_url) ?? null } : r));
+  return list.map((r) => (
+    Array.isArray(r.image_urls) && r.image_urls.length > 0
+      ? { ...r, image_urls: r.image_urls.map((p) => signedByPath.get(p)).filter(Boolean) }
+      : r
+  ));
 }
