@@ -17,7 +17,7 @@ function CommentRow({ comment }) {
   const name = comment.profiles?.display_name ?? 'Alguien';
   return (
     <div style={{ display: 'flex', gap: 8 }}>
-      <Avatar name={name} size={24} />
+      <Avatar name={name} src={comment.profiles?.avatar_url} size={24} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-primary)' }}>
           {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(comment.created_at)}</span>

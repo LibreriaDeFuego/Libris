@@ -649,6 +649,14 @@ Se encontró revisando los logs de Vercel en vivo (`get_runtime_errors`/`get_run
 
 **La pastilla de "N comentarios" (Tu camino) ahora también dice si hay nota de voz o foto/GIF.** Antes era un solo número sin distinguir tipo. Se armaron 3 mockups visuales (un artifact aparte, con los colores/tipografía reales de la app) para elegir cómo se vería — pastilla por tipo, una sola pastilla con íconos + total, o la pastilla de siempre con puntitos de color — y se eligió la del medio: una sola pastilla, con el ícono de "mic" y/o "image" antes del ícono de comentario, seguidos del total (sin desglosar cuántos hay de cada tipo). `getChapterCommentCounts` (`src/lib/clubDetail.js`) pasó de devolver un número por capítulo a `{ total, hasVoice, hasPhoto }` — trae `kind` y el embed `comment_photos(id)` de cada fila (solo para saber si existe alguna, no cuántas) y arma esas tres banderas acá mismo. `SideExtras` (`ChapterPath.jsx`) agrega esos íconos sin color propio — ni "mic" ni "image" tienen uno en ningún otro lugar de la app (`AvatarUploader`, `VoiceRecorder`), así que tampoco se les inventa acá: van del mismo color que el resto de la pastilla.
 
+**La foto de perfil real, no solo iniciales, en comentarios y respuestas.** `Avatar` (`src/design-system/components/core/Avatar.jsx`) siempre soportó una foto real vía su prop `src` — cae a las iniciales solo si no se la pasan — pero en tres lugares distintos nunca se la pasaban, así que siempre mostraban iniciales tuviera o no foto de perfil quien comentó:
+
+- **`ComentariosScreen.jsx`** (comentarios y reseñas finales del club) — la consulta en `comentarios/page.js` ni siquiera traía `avatar_url` (`profiles(display_name)`, sin el campo); se agrega, y los dos `<Avatar>` (comentario, reseña) pasan `src={comment.profiles?.avatar_url}` / `src={review.profiles?.avatar_url}`.
+- **`EngagementBlock.jsx`** (respuestas anidadas, tanto en Comentarios del club como en el feed de Inicio/Perfil) — el dato ya estaba disponible para Comentarios del club (mismo array de arriba), solo faltaba pasarlo al `<Avatar>` de cada respuesta.
+- **`PhotoCommentsBlock.jsx`** (comentarios de una foto, en el feed) — mismo caso.
+
+Para el feed de Inicio/Perfil, el dato ni siquiera existía: `recent_activity`/`profile_activity` arman cada respuesta a mano con `jsonb_build_object`, y su `'profiles'` anidado solo llevaba `'display_name'`. Migración 044 agrega `'avatar_url'` a esas 8 respuestas armadas a mano (4 ramas × 2 funciones) — sin tocar ninguna otra cosa: como `replies` ya era una columna `jsonb`, esto solo enriquece lo que hay adentro de ese jsonb, no cambia el `returns table(...)` de ninguna función.
+
 ### Contenido editorial
 
 `editorial_items` alimenta las solapas Guías/Cursos de **Recursos**. No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.
