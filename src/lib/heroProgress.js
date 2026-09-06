@@ -18,7 +18,7 @@ export function computeHeroProgress({ chapters, myProgress }) {
   } else if (myProgress?.current_page != null && myProgress?.total_pages) {
     progressMeta = `Pág. ${myProgress.current_page} de ${myProgress.total_pages}`;
   } else if (totalChapters > 0) {
-    progressMeta = `${totalChapters} ${totalChapters === 1 ? 'capítulo' : 'capítulos'}`;
+    progressMeta = 'Todavía no empezaste';
   } else {
     progressMeta = 'Sin capítulos todavía';
   }
