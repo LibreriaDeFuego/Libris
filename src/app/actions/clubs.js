@@ -681,28 +681,52 @@ export async function postComment(formData) {
 
   // Mismo "mejor esfuerzo" que la imagen de la cita — solo para
   // comentarios de texto (una cita ya tiene la suya, arriba). Necesita el
-  // id del comentario recién creado, así que va después del insert.
+  // id del comentario recién creado, así que va después del insert. Antes
+  // esto tragaba cualquier error en silencio (ni un log): si fallaba la
+  // subida o el insert en comment_photos, el comentario quedaba publicado
+  // igual pero sin ninguna pista de qué pasó. Ahora se registra con
+  // console.error (queda en los logs del servidor) y, si se perdió alguna
+  // foto, se avisa en la respuesta — el comentario se publica igual, pero
+  // el formulario puede mostrar el aviso en vez de quedarse callado.
+  let photosSkipped = 0;
   if (kind === 'text') {
     const images = formData.getAll('images').filter((f) => isFile(f) && f.size > 0).slice(0, MAX_COMMENT_IMAGES);
     const photoRows = [];
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
-      if (image.size > MAX_COMMENT_IMAGE_BYTES) continue;
+      if (image.size > MAX_COMMENT_IMAGE_BYTES) {
+        console.error(`postComment: foto ${i} descartada, pesa ${image.size} bytes (máximo ${MAX_COMMENT_IMAGE_BYTES}).`);
+        photosSkipped++;
+        continue;
+      }
       const extension = COMMENT_IMAGE_EXTENSIONS[image.type];
-      if (!extension) continue;
+      if (!extension) {
+        console.error(`postComment: foto ${i} descartada, tipo "${image.type}" no soportado.`);
+        photosSkipped++;
+        continue;
+      }
       const path = `${clubBookId}/${user.id}/${crypto.randomUUID()}.${extension}`;
       const { error: uploadError } = await supabase.storage
         .from('comment-photos')
         .upload(path, image, { contentType: image.type });
-      if (!uploadError) photoRows.push({ comment_id: inserted.id, path, position: i });
+      if (uploadError) {
+        console.error(`postComment: falló la subida de la foto ${i} a comment-photos:`, uploadError);
+        photosSkipped++;
+        continue;
+      }
+      photoRows.push({ comment_id: inserted.id, path, position: i });
     }
     if (photoRows.length > 0) {
-      await supabase.from('comment_photos').insert(photoRows);
+      const { error: photosError } = await supabase.from('comment_photos').insert(photoRows);
+      if (photosError) {
+        console.error('postComment: falló el insert en comment_photos:', photosError);
+        photosSkipped += photoRows.length;
+      }
     }
   }
 
   revalidatePath('/', 'layout');
-  return { error: null, quoteStyle, quoteImageUrl };
+  return { error: null, quoteStyle, quoteImageUrl, photosSkipped };
 }
 
 // Edita el texto (y opcionalmente el estilo) de tu propia cita — migración

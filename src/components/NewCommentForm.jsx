@@ -66,6 +66,9 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [quoteStyle, setQuoteStyle] = useState('cover');
   const [error, setError] = useState(null);
+  // Aviso no bloqueante: el comentario se publicó igual, pero alguna(s)
+  // foto(s) no se pudieron subir o guardar (ver postComment, clubs.js).
+  const [photoWarning, setPhotoWarning] = useState(null);
   const [pending, startTransition] = useTransition();
   // Tras publicar una cita, en vez de limpiar el formulario de una, se ofrece
   // descargar la tarjeta ahí mismo.
@@ -145,6 +148,11 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
         return;
       }
       setError(null);
+      setPhotoWarning(
+        result?.photosSkipped > 0
+          ? `El comentario se publicó, pero ${result.photosSkipped === 1 ? '1 foto no se pudo guardar' : `${result.photosSkipped} fotos no se pudieron guardar`}. Probá de nuevo.`
+          : null
+      );
       if (kind === 'quote') {
         setPublished({ body: quoteBody, style: result.quoteStyle ?? quoteStyle, imageUrl: result.quoteImageUrl ?? null });
       } else {
@@ -267,6 +275,11 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
       {error && (
         <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 10 }}>
           {error}
+        </div>
+      )}
+      {photoWarning && (
+        <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', padding: 10 }}>
+          {photoWarning}
         </div>
       )}
       <Button variant="primary" size="md" type="submit" disabled={pending}>
