@@ -406,7 +406,7 @@ function NodeLabel({ chapter, isCurrent, isDone, align }) {
       <div style={style}>
         <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>Cap. {chapter.number}</div>
         {chapter.title && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>{chapter.title}</div>}
-        <div style={{ fontSize: 11, color: 'var(--accent-500)', fontWeight: 700, marginTop: 1, letterSpacing: '.02em' }}>TU CAPÍTULO</div>
+        <div style={{ fontSize: 11, color: 'var(--accent-500)', fontWeight: 700, marginTop: 1, letterSpacing: '.02em' }}>AQUÍ VAS</div>
       </div>
     );
   }
