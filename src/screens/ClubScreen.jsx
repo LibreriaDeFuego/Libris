@@ -80,7 +80,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
           fontSize: 'var(--fs-2xs)', fontWeight: 700, textDecoration: 'none',
         }}
       >
-        {club.meeting_mode === 'lugar' ? 'Cómo llegar' : 'Unirse'}
+        {club.meeting_mode === 'lugar' ? 'Cómo llegar' : 'Entrar a la videollamada'}
         <Icon name="external-link" size={12} color="var(--text-on-accent)" />
       </a>
     </div>
