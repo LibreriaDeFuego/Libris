@@ -422,38 +422,43 @@ function SideExtras({ commentInfo, isAhead, onCommentTap, href }) {
   if (!commentInfo?.total) return null;
   const { total, hasVoice, hasPhoto } = commentInfo;
   const label = `${total} ${total === 1 ? 'comentario' : 'comentarios'}`;
-  // whiteSpace: 'nowrap' — con dos íconos de más, el texto ("N
-  // comentarios") ya no siempre entraba en el ancho de esta columna y el
-  // pill se partía en dos líneas desalineadas (el ícono arriba, la
-  // palabra "comentarios" suelta abajo). Sin wrap, la columna crece lo
-  // que haga falta para el pill entero — hay de sobra del lado de la
-  // etiqueta del capítulo, que es corta.
+  // El intento anterior (whiteSpace: 'nowrap' en todo el pill) alargaba la
+  // columna para que entrara en una sola línea, y eso corría el círculo
+  // del capítulo — el camino deja de ser una columna recta. En vez de
+  // eso: flexWrap 'wrap' + justifyContent 'flex-end' deja que los
+  // ÍCONOS y el texto (como un solo bloque, whiteSpace nowrap SOLO en el
+  // span de "N comentarios" para que no se parta a mitad de palabra)
+  // caigan en una segunda línea completa cuando no entran, ambas líneas
+  // alineadas al mismo borde derecho — la columna no crece, el círculo no
+  // se mueve.
   return isAhead ? (
     <button
       type="button"
       onClick={onCommentTap}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--neutral-100)', whiteSpace: 'nowrap',
-        border: '1px solid var(--neutral-200)', borderRadius: 'var(--radius-pill)', padding: '3px 10px 3px 8px', cursor: 'pointer',
+        display: 'inline-flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', gap: 4,
+        background: 'var(--neutral-100)', border: '1px solid var(--neutral-200)',
+        borderRadius: 'var(--radius-pill)', padding: '3px 10px 3px 8px', cursor: 'pointer',
       }}
     >
       <Icon name="triangle-alert" size={11} color="var(--text-tertiary)" />
       {hasVoice && <Icon name="mic" size={11} color="var(--text-tertiary)" />}
       {hasPhoto && <Icon name="image" size={11} color="var(--text-tertiary)" />}
-      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{label}</span>
+      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>{label}</span>
     </button>
   ) : (
     <Link
       href={href}
       style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface-card)', whiteSpace: 'nowrap',
-        border: '1px solid var(--border-default)', borderRadius: 'var(--radius-pill)', padding: '3px 10px 3px 8px', textDecoration: 'none',
+        display: 'inline-flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', gap: 4,
+        background: 'var(--surface-card)', border: '1px solid var(--border-default)',
+        borderRadius: 'var(--radius-pill)', padding: '3px 10px 3px 8px', textDecoration: 'none',
       }}
     >
       <Icon name="message-circle" size={11} color="var(--text-secondary)" />
       {hasVoice && <Icon name="mic" size={11} color="var(--text-secondary)" />}
       {hasPhoto && <Icon name="image" size={11} color="var(--text-secondary)" />}
-      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</span>
+      <span style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{label}</span>
     </Link>
   );
 }
