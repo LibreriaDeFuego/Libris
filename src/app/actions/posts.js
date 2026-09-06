@@ -36,7 +36,7 @@ export async function createPost(prevState, formData) {
   const { error: uploadError } = await supabase.storage
     .from('post-photos')
     .upload(path, file, { contentType: file.type });
-  if (uploadError) return { error: uploadError.message };
+  if (uploadError) return { error: friendlyDbError(uploadError) };
 
   const { data: { publicUrl } } = supabase.storage.from('post-photos').getPublicUrl(path);
 

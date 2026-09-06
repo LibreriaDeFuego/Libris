@@ -30,7 +30,7 @@ async function findOrCreateBook(supabase, title, author) {
     .insert({ title, author })
     .select('id')
     .single();
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyDbError(error) };
   return { id: created.id };
 }
 
@@ -72,13 +72,13 @@ export async function createClub(prevState, formData) {
     .insert({ name: clubName, created_by: user.id, join_mode: joinMode, is_private: joinMode !== 'open' })
     .select('id')
     .single();
-  if (clubError) return { error: clubError.message };
+  if (clubError) return { error: friendlyDbError(clubError) };
 
   // Quien crea el club es su primer administrador — puede nombrar hasta 2 más.
   const { error: memberError } = await supabase
     .from('club_members')
     .insert({ club_id: club.id, profile_id: user.id, role: 'admin' });
-  if (memberError) return { error: memberError.message };
+  if (memberError) return { error: friendlyDbError(memberError) };
 
   // Reutilizamos el libro si ya existe con el mismo título y autor. Sin esto,
   // dos clubes leyendo "Rayuela" quedarían apuntando a dos filas distintas y
@@ -91,12 +91,12 @@ export async function createClub(prevState, formData) {
     .insert({ club_id: club.id, book_id: book.id, is_active: true })
     .select('id')
     .single();
-  if (clubBookError) return { error: clubBookError.message };
+  if (clubBookError) return { error: friendlyDbError(clubBookError) };
 
   const { error: chapterError } = await supabase
     .from('chapters')
     .insert(chapterRows(clubBook.id, 1, chapterCount));
-  if (chapterError) return { error: chapterError.message };
+  if (chapterError) return { error: friendlyDbError(chapterError) };
 
   revalidatePath('/', 'layout');
   redirect('/');

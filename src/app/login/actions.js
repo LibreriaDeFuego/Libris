@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { headers, cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { friendlyAuthError } from '@/lib/friendlyError';
 import { safeNext } from '@/lib/safeNext';
 import { isValidUsername, normalizeUsername, USERNAME_HELP, USERNAME_COOKIE } from '@/lib/username';
 
@@ -21,7 +22,7 @@ export async function signIn(prevState, formData) {
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyAuthError(error) };
 
   redirect(next);
 }
@@ -54,7 +55,7 @@ export async function signUp(prevState, formData) {
     if (error.message?.includes('duplicate key') || error.message?.includes('username')) {
       return { error: 'Ese nombre de usuario ya está en uso.' };
     }
-    return { error: error.message };
+    return { error: friendlyAuthError(error) };
   }
 
   // Con "Confirm email" activado (default de Supabase) signUp no devuelve
@@ -80,7 +81,7 @@ export async function signInWithGoogle(prevState, formData) {
     provider: 'google',
     options: { redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}` },
   });
-  if (error) return { error: error.message };
+  if (error) return { error: friendlyAuthError(error) };
   if (!data?.url) return { error: 'No pudimos abrir el login de Google.' };
 
   redirect(data.url);

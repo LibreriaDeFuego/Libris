@@ -505,6 +505,15 @@ Se repasaron los ~20 textos de toda esta zona (Tu camino, el modal de página, l
 - Aviso de fotos que no se pudieron guardar (`NewCommentForm.jsx`): **"Probá de nuevo."** → **"Prueba de nuevo."**
 - Placeholder de la descripción de una foto (`PostComposer.jsx` y `EditPostModal.jsx`, mismo texto en los dos): **"Escribí algo sobre esta foto (opcional)"** → **"Escribe algo..."**
 
+**Después, un barrido de claridad más amplio** (no solo dialecto) — un agente exploró toda la app buscando textos genuinamente confusos (no solo de estilo): pronombres sin referente claro, el mismo concepto llamado de dos formas distintas en pantallas diferentes, jerga técnica filtrándose, botones cuya acción no queda clara. El más grave, con arreglo real (no solo de texto):
+
+- **Errores técnicos crudos de Supabase se filtraban directo al usuario**, salteando `friendlyDbError` — en login/registro (`src/app/login/actions.js`), al crear un club (`createClub`/`findOrCreateBook`, `clubs.js`), y en cada subida a Storage que fallara (portada, avatar, nota de voz, foto de Perfil — `media.js`/`posts.js`). El motivo: `friendlyDbError` solo traducía errores de RLS ("no tienes permiso...") — cualquier otra cosa (una restricción única violada, un límite de tamaño de Storage, un problema de conexión) se devolvía tal cual, muchas veces en inglés, justo en el flujo de login/registro, el más transitado de toda la app.
+  - `friendlyDbError` (`src/lib/friendlyError.js`) ahora reconoce los 3 mensajes que sí armamos a mano en los triggers de Postgres (`KNOWN_DB_MESSAGES` — ya están en español, se dejan pasar tal cual), reconoce un par de errores comunes de Storage (archivo demasiado pesado, tipo no soportado / bucket mal configurado), y para cualquier otra cosa no reconocida devuelve un mensaje genérico en español en vez del string crudo del driver.
+  - Nueva función hermana, **`friendlyAuthError`** — mismo espíritu, para errores de Supabase Auth (contraseña incorrecta, email sin confirmar, cuenta ya registrada, límite de intentos), que no tienen nada que ver con RLS y antes tampoco se traducían.
+  - Aplicado en los 4 `return { error: ... }` sueltos de `createClub`/`findOrCreateBook`, los 4 `uploadError.message` sueltos de `media.js`/`posts.js`, y los 3 `error.message` sueltos de `login/actions.js` (ahora `friendlyAuthError`).
+
+Quedan pendientes de revisar (encontrados en el mismo barrido, sin tocar todavía): el onboarding manda a agregar capítulos desde un lugar que no existe con ese nombre y no cumple esa función; la visibilidad de un club se llama "Público" en un lado y "Abierto" en otro; Preferencias promete que el club "aparece en Descubrir" pero ningún botón/pestaña visible se llama así; el botón "Unirse" significa "unirte a un club" en todos lados menos en uno, donde abre una videollamada; y el sujeto de una frase en la pantalla de elegir usuario queda ambiguo.
+
 ### Actividad del club
 
 Debajo del encabezado, la pantalla del club sigue con estas piezas (completando la dirección de diseño "Centro del club" del handoff):

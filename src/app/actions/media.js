@@ -37,7 +37,7 @@ export async function uploadBookCover(prevState, formData) {
   const { error: uploadError } = await supabase.storage
     .from('book-covers')
     .upload(path, file, { contentType: file.type });
-  if (uploadError) return { error: uploadError.message };
+  if (uploadError) return { error: friendlyDbError(uploadError) };
 
   const { data: { publicUrl } } = supabase.storage.from('book-covers').getPublicUrl(path);
 
@@ -67,7 +67,7 @@ export async function uploadAvatar(prevState, formData) {
   const { error: uploadError } = await supabase.storage
     .from('avatars')
     .upload(path, file, { contentType: file.type });
-  if (uploadError) return { error: uploadError.message };
+  if (uploadError) return { error: friendlyDbError(uploadError) };
 
   const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
 
@@ -105,7 +105,7 @@ export async function postVoiceComment(formData) {
   const { error: uploadError } = await supabase.storage
     .from('voice-notes')
     .upload(path, audio, { contentType: baseType });
-  if (uploadError) return { error: uploadError.message };
+  if (uploadError) return { error: friendlyDbError(uploadError) };
 
   const { error } = await supabase.from('comments').insert({
     club_book_id: clubBookId,
