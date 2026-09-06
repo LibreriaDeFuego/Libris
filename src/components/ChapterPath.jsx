@@ -45,10 +45,13 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // (migración 035) vive integrada en el nodo actual, no aparte.
 //
 // Junto a cada capítulo, cuántos comentarios tiene — siempre a la vista,
-// sin botón (es información útil de entrada). Si el capítulo queda MÁS
-// ADELANTE de tu propio progreso, tocar la pastilla no lleva a los
-// comentarios directo: avisa que podría haber spoilers primero. Al día o
-// atrás, es un link directo.
+// sin botón (es información útil de entrada). Si el capítulo es TU
+// CAPÍTULO ACTUAL o queda más adelante, tocar la pastilla no lleva a los
+// comentarios directo: avisa que podría haber spoilers primero — estar
+// "en" un capítulo no significa haberlo terminado, así que sus propios
+// comentarios podrían adelantar algo que todavía no leíste de ese mismo
+// capítulo. Solo en los capítulos ya pasados (marcados como leídos) es
+// un link directo.
 //
 // Además, cada vez que marcás un capítulo como leído, aparece un panel
 // con los últimos comentarios de ESE capítulo (o la invitación a dejar el
@@ -199,7 +202,7 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
             </button>
           )}
         </div>
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Tocá un capítulo para marcarlo como el tuyo</div>
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Toca el capítulo en el que vas</div>
       </div>
 
       <div style={{ position: 'relative', padding: '10px 24px 4px' }}>
@@ -208,7 +211,12 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
             const originalIndex = chapters.findIndex((c) => c.id === chapter.id);
             const isCurrent = chapter.id === activeId;
             const isDone = currentIndex !== -1 && originalIndex < currentIndex;
-            const isAhead = currentIndex !== -1 && originalIndex > currentIndex;
+            // "isAhead" = todavía no está marcado como leído — incluye tu
+            // capítulo actual (>=, no solo >): estar "en" un capítulo no
+            // significa haberlo terminado, así que sus comentarios también
+            // avisan de spoilers en vez de ir directo. Solo lo YA leído
+            // (isDone) es un link directo.
+            const isAhead = currentIndex !== -1 && originalIndex >= currentIndex;
             const isSaving = pending && optimisticId === chapter.id;
             const showFlame = isCurrent && streakCount >= 2;
             const commentInfo = commentCounts[chapter.id];
@@ -479,7 +487,7 @@ function SpoilerWarning({ label, href, onDismiss }) {
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
         <Icon name="triangle-alert" size={15} color="#8A5A00" />
         <div style={{ fontSize: 12.5, color: '#5A3D00', lineHeight: 1.4 }}>
-          De acá para allá no has marcado como leído — puede que encuentres spoilers de {label}.
+          Todavía no marcaste {label} como leído — puede que encuentres spoilers ahí.
         </div>
       </div>
       <div style={{ display: 'flex', gap: 14 }}>
