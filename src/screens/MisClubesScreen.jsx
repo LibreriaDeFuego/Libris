@@ -156,7 +156,7 @@ function ClubHeroCard({ club, index, currentUserId }) {
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 8.5, letterSpacing: '.1em', textTransform: 'uppercase', color: CREAM, opacity: 0.7, fontWeight: 800 }}>
-                Leyendo ahora
+                Estás leyendo
               </div>
               <div
                 style={{
