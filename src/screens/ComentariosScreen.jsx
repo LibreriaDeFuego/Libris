@@ -98,7 +98,7 @@ function ReviewCard({ review, book, isOwn, onEdit, replies }) {
   );
   return (
     <div style={{ display: 'flex', gap: 10 }}>
-      <Avatar name={name} size={30} />
+      <Avatar name={name} src={review.profiles?.avatar_url} size={30} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -243,7 +243,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
             const isOwn = comment.profile_id === myProfileId;
             return (
               <div key={comment.id} style={{ display: 'flex', gap: 10 }}>
-                <Avatar name={name} size={36} />
+                <Avatar name={name} src={comment.profiles?.avatar_url} size={36} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
