@@ -690,7 +690,16 @@ export async function postComment(formData) {
   // el formulario puede mostrar el aviso en vez de quedarse callado.
   let photosSkipped = 0;
   if (kind === 'text') {
-    const images = formData.getAll('images').filter((f) => isFile(f) && f.size > 0).slice(0, MAX_COMMENT_IMAGES);
+    const rawImages = formData.getAll('images');
+    const images = rawImages.filter((f) => isFile(f) && f.size > 0).slice(0, MAX_COMMENT_IMAGES);
+    // Log temporal (sin condición de error) para diagnosticar el reporte
+    // "subí fotos y no aparecieron" — sacar una vez que se entienda qué
+    // está pasando. Necesitamos ver esto pase lo que pase, no solo cuando
+    // algo tira error, porque el síntoma reportado no dejó ningún error.
+    console.log(
+      `postComment: comentario ${inserted.id} — ${rawImages.length} entrada(s) en "images" del formData, ${images.length} válida(s) tras filtrar.`,
+      images.map((f) => ({ type: f.type, size: f.size }))
+    );
     const photoRows = [];
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
@@ -716,11 +725,14 @@ export async function postComment(formData) {
       }
       photoRows.push({ comment_id: inserted.id, path, position: i });
     }
+    console.log(`postComment: comentario ${inserted.id} — ${photoRows.length} foto(s) subida(s) a Storage, listas para insertar en comment_photos.`);
     if (photoRows.length > 0) {
       const { error: photosError } = await supabase.from('comment_photos').insert(photoRows);
       if (photosError) {
         console.error('postComment: falló el insert en comment_photos:', photosError);
         photosSkipped += photoRows.length;
+      } else {
+        console.log(`postComment: comentario ${inserted.id} — ${photoRows.length} fila(s) insertada(s) en comment_photos sin error.`);
       }
     }
   }

@@ -12,10 +12,19 @@ export async function signCommentImageUrls(supabase, rows) {
   const allPaths = list.flatMap((r) => (Array.isArray(r.image_urls) ? r.image_urls : []));
   if (allPaths.length === 0) return list;
 
-  const { data: signed } = await supabase.storage.from('comment-photos').createSignedUrls(allPaths, 60 * 60);
+  const { data: signed, error } = await supabase.storage.from('comment-photos').createSignedUrls(allPaths, 60 * 60);
+  if (error) {
+    // Antes esto se tragaba en silencio: si createSignedUrls fallaba (por
+    // ejemplo, un problema de RLS de Storage al firmar), cada image_urls
+    // terminaba en un array vacío sin ningún rastro de por qué — el
+    // comentario se veía bien, pero sin fotos, como si nunca se hubieran
+    // subido.
+    console.error('signCommentImageUrls: falló createSignedUrls:', error);
+  }
   const signedByPath = new Map();
   for (const entry of signed ?? []) {
     if (entry.signedUrl) signedByPath.set(entry.path, entry.signedUrl);
+    else if (entry.error) console.error(`signCommentImageUrls: no se pudo firmar "${entry.path}":`, entry.error);
   }
   return list.map((r) => (
     Array.isArray(r.image_urls) && r.image_urls.length > 0

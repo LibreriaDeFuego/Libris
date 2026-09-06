@@ -20,7 +20,7 @@ export default async function Page({ params, searchParams }) {
   const clubBook = await getActiveClubBook(supabase, clubId);
   if (!clubBook) redirect(`/club/${clubId}`);
 
-  const [{ data: comments }, { data: chapters }, { data: volumes }, { data: me }] = await Promise.all([
+  const [{ data: comments, error: commentsError }, { data: chapters }, { data: volumes }, { data: me }] = await Promise.all([
     supabase
       .from('comments')
       .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, parent_comment_id, reply_to_id, shared_to_feed, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, comment_photos(path, position), profiles(display_name)')
@@ -35,6 +35,13 @@ export default async function Page({ params, searchParams }) {
     supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
     supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle(),
   ]);
+  // Este select nunca chequeaba su propio error — si el embed de
+  // "comment_photos(path, position)" fallara (por ejemplo, el caché de
+  // esquema de PostgREST sin refrescar tras crear la tabla a mano en el
+  // SQL Editor), "comments" quedaba en null y toda la pantalla se veía
+  // vacía sin ninguna pista de por qué. Log temporal para diagnosticar el
+  // reporte "subí fotos y no aparecieron" — sacar una vez resuelto.
+  if (commentsError) console.error('comentarios/page.js: falló el select de comments:', commentsError);
 
   // El bucket de audio es privado: cada nota necesita una URL firmada, que
   // solo se genera si la política de Storage confirma la membresía.
@@ -74,6 +81,15 @@ export default async function Page({ params, searchParams }) {
     // solo con el path; todavía sin firmar (bucket privado).
     image_urls: (c.comment_photos ?? []).slice().sort((a, b) => a.position - b.position).map((p) => p.path),
   }));
+  // Log temporal: cuántos comentarios traen algún path sin firmar todavía
+  // (confirma si comment_photos tiene filas) — sacar una vez resuelto.
+  const withSomePhoto = withAudio.filter((c) => c.image_urls.length > 0);
+  if (withSomePhoto.length > 0) {
+    console.log(
+      `comentarios/page.js: ${withSomePhoto.length} comentario(s) con paths sin firmar:`,
+      withSomePhoto.map((c) => ({ id: c.id, image_urls: c.image_urls }))
+    );
+  }
   const withPhotos = await signCommentImageUrls(supabase, withAudio);
 
   return (
