@@ -97,7 +97,7 @@ export function UpdateProgressModal({ clubBookId, chapters = [], volumes = [], i
         {chapters.length > 0 && (
           <div>
             <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>
-              Para que también se vea en Tu camino, ¿nos cuentas en qué capítulo vas?
+              ¿En qué capítulo vas?
             </div>
             <div style={{ position: 'relative' }}>
               <select
