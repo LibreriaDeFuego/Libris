@@ -166,17 +166,19 @@ function BookCover({ book }) {
 // (booksRead, profile_books_read) va arriba de todo, uno al lado del
 // otro en orden, deslizable si no entran todos; el avatar queda
 // centrado, superpuesto sobre su borde inferior. Sin libros leídos
-// todavía, el avatar se muestra solo, sin estantería.
-function ProfileHero({ profile, booksRead }) {
+// todavía, el avatar se muestra solo, sin estantería. Se llega a "Mi
+// biblioteca" tocando la estantería (o el número "Libros", más abajo) —
+// migración 046.
+function ProfileHero({ profile, booksRead, libraryHref }) {
   if (booksRead.length === 0) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <Link href={libraryHref} style={{ display: 'flex', justifyContent: 'center' }}>
         <Avatar name={profile.display_name} src={profile.avatar_url} size={84} />
-      </div>
+      </Link>
     );
   }
   return (
-    <div style={{ position: 'relative' }}>
+    <Link href={libraryHref} style={{ position: 'relative', display: 'block' }}>
       <div
         style={{
           display: 'flex', gap: 12, height: 142, overflowX: 'auto', overflowY: 'hidden',
@@ -193,13 +195,14 @@ function ProfileHero({ profile, booksRead }) {
       >
         <Avatar name={profile.display_name} src={profile.avatar_url} size={84} />
       </div>
-    </div>
+    </Link>
   );
 }
 
 export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, booksRead = [], myClubIds, myProfileId }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
+  const libraryHref = isOwn ? '/perfil/biblioteca' : `/perfil/${profile.id}/biblioteca`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: '20px 18px 24px' }}>
@@ -216,7 +219,7 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, boo
       )}
 
       <div>
-        <ProfileHero profile={profile} booksRead={booksRead} />
+        <ProfileHero profile={profile} booksRead={booksRead} libraryHref={libraryHref} />
 
         <div style={{ marginTop: booksRead.length > 0 ? 40 : 14, textAlign: 'center' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -233,12 +236,12 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, boo
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'center', gap: 34, marginTop: 14 }}>
-          <div style={{ textAlign: 'center' }}>
+          <Link href={libraryHref} style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>
               {stats.book_count}
             </div>
             <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>Libros</div>
-          </div>
+          </Link>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>
               {stats.follower_count}
