@@ -35,6 +35,8 @@ export function AddPersonalBookForm() {
   const [coverBlob, setCoverBlob] = useState(null);
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
+  const [startedAt, setStartedAt] = useState('');
+  const [finishedAt, setFinishedAt] = useState('');
   const [error, setError] = useState(null);
   const [pending, startTransition] = useTransition();
 
@@ -44,6 +46,8 @@ export function AddPersonalBookForm() {
     setCoverBlob(null);
     setTitle('');
     setAuthor('');
+    setStartedAt('');
+    setFinishedAt('');
     setError(null);
   }
 
@@ -62,6 +66,8 @@ export function AddPersonalBookForm() {
     const formData = new FormData();
     formData.set('title', title.trim());
     formData.set('author', author.trim());
+    formData.set('startedAt', startedAt);
+    formData.set('finishedAt', finishedAt);
     if (coverBlob) formData.set('cover', coverBlob, 'portada.jpg');
 
     startTransition(async () => {
@@ -117,6 +123,24 @@ export function AddPersonalBookForm() {
                 <Input placeholder="Autor (opcional)" value={author} onChange={(e) => setAuthor(e.target.value)} />
               </div>
             </div>
+
+            {/* Las dos son opcionales — sin fecha de fin, el libro cuenta
+                como que se lo sigue leyendo (no entra al Recuento de
+                ningún año hasta que se le ponga una). */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>Empezaste</span>
+                <Input type="date" value={startedAt} onChange={(e) => setStartedAt(e.target.value)} />
+              </label>
+              <label style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>Terminaste</span>
+                <Input type="date" value={finishedAt} onChange={(e) => setFinishedAt(e.target.value)} />
+              </label>
+            </div>
+            <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>
+              Si todavía lo estás leyendo, deja “Terminaste” en blanco.
+            </div>
+
             {error && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-2xs)' }}>{error}</div>}
             <div style={{ display: 'flex', gap: 10 }}>
               <Button variant="secondary" size="md" type="button" onClick={reset} disabled={pending}>

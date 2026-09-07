@@ -2,10 +2,13 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { AddPersonalBookForm } from '@/components/AddPersonalBookForm';
+import { EditPersonalBookForm } from '@/components/EditPersonalBookForm';
 import { deletePersonalBook } from '@/app/actions/library';
+import { formatDateRange } from '@/lib/bookDates';
 
 const FILTERS = [
   { id: 'all', label: 'Todos' },
@@ -17,10 +20,21 @@ const FILTERS = [
 // (BookCover, PerfilScreen.jsx) para un libro sin portada subida: color
 // sólido + el título encima, porque acá la portada es lo único que hay
 // (el título también se repite abajo, aparte, pero adentro del
-// rectángulo no hay más pista que esa si falta la imagen real).
-function BookTile({ book, isOwn, onDelete }) {
+// rectángulo no hay más pista que esa si falta la imagen real). Un
+// agregado a mano, en la propia biblioteca, se puede tocar para editar
+// título/autor/fechas (migración 047) — una reseña de club no, esa se
+// administra desde el club.
+function BookTile({ book, isOwn, onDelete, onEdit }) {
+  const editable = isOwn && book.source === 'personal';
+  const dateLabel = formatDateRange(book.started_at, book.finished_at);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div
+      onClick={editable ? onEdit : undefined}
+      role={editable ? 'button' : undefined}
+      tabIndex={editable ? 0 : undefined}
+      style={{ display: 'flex', flexDirection: 'column', cursor: editable ? 'pointer' : 'default' }}
+    >
       <div style={{ position: 'relative' }}>
         <div
           style={{
@@ -39,12 +53,13 @@ function BookTile({ book, isOwn, onDelete }) {
           )}
         </div>
         {/* Solo se puede borrar lo agregado a mano — una reseña final se
-            maneja desde el club, no acá. */}
-        {isOwn && book.source === 'personal' && (
+            maneja desde el club, no acá. stopPropagation para no abrir
+            también el editor al tocar la ×. */}
+        {editable && (
           <button
             type="button"
             aria-label={`Quitar "${book.title}" de mi biblioteca`}
-            onClick={onDelete}
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
             style={{
               position: 'absolute', top: 4, right: 4, width: 20, height: 20, borderRadius: '50%',
               background: 'rgba(27,27,31,.55)', border: 'none', cursor: 'pointer',
@@ -61,6 +76,9 @@ function BookTile({ book, isOwn, onDelete }) {
       {book.author && (
         <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 1 }}>{book.author}</div>
       )}
+      {dateLabel && (
+        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 1 }}>{dateLabel}</div>
+      )}
     </div>
   );
 }
@@ -68,13 +86,17 @@ function BookTile({ book, isOwn, onDelete }) {
 // "Mi biblioteca" (o la de otra persona, sin el botón de agregar) — se
 // llega tocando la estantería del Perfil o el número "Libros". Junta en
 // una sola grilla los libros de reseña final de un club con los
-// agregados a mano (profile_books_read, migración 046, campo "source").
+// agregados a mano (profile_books_read, migración 046, campo "source"),
+// cada uno con su fecha de empezado/terminado si la tiene (migración
+// 047) — de ahí se pasa al Recuento del año.
 export function BibliotecaScreen({ profile, isOwn, booksRead }) {
   const router = useRouter();
   const [filter, setFilter] = useState('all');
+  const [editingBook, setEditingBook] = useState(null);
   const [, startTransition] = useTransition();
 
   const visible = filter === 'all' ? booksRead : booksRead.filter((b) => b.source === filter);
+  const recuentoHref = isOwn ? '/perfil/biblioteca/recuento' : `/perfil/${profile.id}/biblioteca/recuento`;
 
   function handleDelete(book) {
     if (!window.confirm(`¿Quitar "${book.title}" de tu biblioteca?`)) return;
@@ -103,22 +125,34 @@ export function BibliotecaScreen({ profile, isOwn, booksRead }) {
       {isOwn && <AddPersonalBookForm />}
 
       {booksRead.length > 0 && (
-        <div style={{ display: 'flex', gap: 8 }}>
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => setFilter(f.id)}
-              style={{
-                padding: '6px 13px', borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-2xs)', fontWeight: 700,
-                border: `1px solid ${filter === f.id ? 'var(--neutral-900)' : 'var(--border-default)'}`,
-                background: filter === f.id ? 'var(--neutral-900)' : 'var(--surface-card)',
-                color: filter === f.id ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'var(--font-body)',
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto' }}>
+            {FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setFilter(f.id)}
+                style={{
+                  flexShrink: 0, padding: '6px 13px', borderRadius: 'var(--radius-pill)', fontSize: 'var(--fs-2xs)', fontWeight: 700,
+                  border: `1px solid ${filter === f.id ? 'var(--neutral-900)' : 'var(--border-default)'}`,
+                  background: filter === f.id ? 'var(--neutral-900)' : 'var(--surface-card)',
+                  color: filter === f.id ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'var(--font-body)',
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <Link
+            href={recuentoHref}
+            style={{
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4,
+              fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--accent-500)', whiteSpace: 'nowrap',
+            }}
+          >
+            Recuento del año
+            <Icon name="chevron-right" size={13} color="var(--accent-500)" />
+          </Link>
         </div>
       )}
 
@@ -129,9 +163,19 @@ export function BibliotecaScreen({ profile, isOwn, booksRead }) {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px 12px' }}>
           {visible.map((book) => (
-            <BookTile key={book.book_id} book={book} isOwn={isOwn} onDelete={() => handleDelete(book)} />
+            <BookTile
+              key={book.book_id}
+              book={book}
+              isOwn={isOwn}
+              onDelete={() => handleDelete(book)}
+              onEdit={() => setEditingBook(book)}
+            />
           ))}
         </div>
+      )}
+
+      {editingBook && (
+        <EditPersonalBookForm book={editingBook} onClose={() => setEditingBook(null)} />
       )}
     </div>
   );
