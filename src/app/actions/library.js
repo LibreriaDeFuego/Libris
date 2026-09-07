@@ -112,6 +112,40 @@ export async function updatePersonalBook(prevState, formData) {
   return { error: null };
 }
 
+// Corrige a mano la fecha de empezado/terminado de un libro DE CLUB —
+// pensado sobre todo para lo que ya advierte la migración 047: un libro
+// de club registrado antes de esa migración quedó con "empezaste" en el
+// día en que se corrió, no en el real, y no hay forma de reconstruirla
+// sola. Solo las fechas: título/autor/portada son del libro del club (la
+// misma edición que ven todos los del club), no se editan desde acá.
+// Empezaste no se puede dejar en blanco — reading_progress.started_at
+// no admite null (migración 047); terminaste si, aunque tenga poco
+// sentido vaciarla habiendo ya una reseña.
+export async function updateClubBookDates(prevState, formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const clubBookId = formData.get('clubBookId')?.toString();
+  const startedAt = readOptionalDate(formData, 'startedAt');
+  const finishedAt = readOptionalDate(formData, 'finishedAt');
+
+  if (!clubBookId) return { error: 'Falta el libro del club.' };
+  if (!startedAt) return { error: 'Indica cuándo empezaste a leerlo.' };
+  const dateError = validateDateOrder(startedAt, finishedAt);
+  if (dateError) return { error: dateError };
+
+  const { error } = await supabase
+    .from('reading_progress')
+    .update({ started_at: startedAt, finished_at: finishedAt })
+    .eq('club_book_id', clubBookId)
+    .eq('profile_id', user.id);
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/perfil');
+  revalidatePath('/perfil/biblioteca');
+  return { error: null };
+}
+
 // Quita un libro agregado a mano — solo esos: uno que viene de una reseña
 // de club se maneja desde el club, no acá (BibliotecaScreen ya solo ofrece
 // el botón de borrar para source === 'personal'; esto es el cinturón y

@@ -7,6 +7,7 @@ import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { AddPersonalBookForm } from '@/components/AddPersonalBookForm';
 import { EditPersonalBookForm } from '@/components/EditPersonalBookForm';
+import { EditClubBookDatesForm } from '@/components/EditClubBookDatesForm';
 import { deletePersonalBook } from '@/app/actions/library';
 import { formatDateRange } from '@/lib/bookDates';
 
@@ -20,20 +21,22 @@ const FILTERS = [
 // (BookCover, PerfilScreen.jsx) para un libro sin portada subida: color
 // sólido + el título encima, porque acá la portada es lo único que hay
 // (el título también se repite abajo, aparte, pero adentro del
-// rectángulo no hay más pista que esa si falta la imagen real). Un
-// agregado a mano, en la propia biblioteca, se puede tocar para editar
-// título/autor/fechas (migración 047) — una reseña de club no, esa se
-// administra desde el club.
+// rectángulo no hay más pista que esa si falta la imagen real). En la
+// propia biblioteca, tocar una portada abre el editor de fechas
+// (migración 047/048) — de título/autor también si es un agregado a
+// mano; si es de un club, solo las fechas (título/autor/portada son del
+// libro del club, no se editan desde acá). Borrar solo existe para lo
+// agregado a mano — una reseña de club se administra desde el club.
 function BookTile({ book, isOwn, onDelete, onEdit }) {
-  const editable = isOwn && book.source === 'personal';
+  const deletable = isOwn && book.source === 'personal';
   const dateLabel = formatDateRange(book.started_at, book.finished_at);
 
   return (
     <div
-      onClick={editable ? onEdit : undefined}
-      role={editable ? 'button' : undefined}
-      tabIndex={editable ? 0 : undefined}
-      style={{ display: 'flex', flexDirection: 'column', cursor: editable ? 'pointer' : 'default' }}
+      onClick={isOwn ? onEdit : undefined}
+      role={isOwn ? 'button' : undefined}
+      tabIndex={isOwn ? 0 : undefined}
+      style={{ display: 'flex', flexDirection: 'column', cursor: isOwn ? 'pointer' : 'default' }}
     >
       <div style={{ position: 'relative' }}>
         <div
@@ -52,10 +55,8 @@ function BookTile({ book, isOwn, onDelete, onEdit }) {
             </>
           )}
         </div>
-        {/* Solo se puede borrar lo agregado a mano — una reseña final se
-            maneja desde el club, no acá. stopPropagation para no abrir
-            también el editor al tocar la ×. */}
-        {editable && (
+        {/* stopPropagation para no abrir también el editor al tocar la ×. */}
+        {deletable && (
           <button
             type="button"
             aria-label={`Quitar "${book.title}" de mi biblioteca`}
@@ -174,8 +175,11 @@ export function BibliotecaScreen({ profile, isOwn, booksRead }) {
         </div>
       )}
 
-      {editingBook && (
+      {editingBook && editingBook.source === 'personal' && (
         <EditPersonalBookForm book={editingBook} onClose={() => setEditingBook(null)} />
+      )}
+      {editingBook && editingBook.source === 'club' && (
+        <EditClubBookDatesForm book={editingBook} onClose={() => setEditingBook(null)} />
       )}
     </div>
   );
