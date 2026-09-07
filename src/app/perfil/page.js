@@ -24,6 +24,7 @@ export default async function Page() {
       isFollowing={data.isFollowing}
       stats={data.stats}
       activity={data.activity}
+      booksRead={data.booksRead}
       myClubIds={new Set(clubs.map((c) => c.id))}
       myProfileId={user.id}
     />

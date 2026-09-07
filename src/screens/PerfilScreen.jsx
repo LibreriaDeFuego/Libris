@@ -133,7 +133,71 @@ function ProfileMenu({ profileId, onEdit }) {
 }
 
 
-export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myClubIds, myProfileId }) {
+// Una portada dentro de la estantería del encabezado — mismo criterio de
+// siempre para un libro sin portada subida (fondo sólido accent-500, ver
+// PreferenciasScreen/MisClubesScreen), pero acá SE LE SUMA el título
+// encima: a diferencia de esos otros lugares (que muestran el título
+// aparte, como texto), acá la portada es lo único que hay — sin el
+// título, un libro sin portada sería un rectángulo de color sin ninguna
+// pista de cuál es.
+function BookCover({ book }) {
+  return (
+    <div
+      style={{
+        flex: '0 0 104px', height: 142, borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)',
+        overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'flex-end', padding: 10,
+        background: book.cover_url ? `center/cover no-repeat url(${book.cover_url})` : 'var(--accent-500)',
+      }}
+    >
+      {!book.cover_url && (
+        <>
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 52%, rgba(0,0,0,.52) 100%)' }} />
+          <span style={{ position: 'relative', fontFamily: 'var(--font-display)', fontSize: 12.5, lineHeight: 1.25, color: '#fff' }}>
+            {book.title}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+// El encabezado del perfil — mockup aprobado en el chat ("Perfil y
+// Estantería"): la estantería con los libros que la persona terminó
+// (booksRead, profile_books_read) va arriba de todo, uno al lado del
+// otro en orden, deslizable si no entran todos; el avatar queda
+// centrado, superpuesto sobre su borde inferior. Sin libros leídos
+// todavía, el avatar se muestra solo, sin estantería.
+function ProfileHero({ profile, booksRead }) {
+  if (booksRead.length === 0) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <Avatar name={profile.display_name} src={profile.avatar_url} size={84} />
+      </div>
+    );
+  }
+  return (
+    <div style={{ position: 'relative' }}>
+      <div
+        style={{
+          display: 'flex', gap: 12, height: 142, overflowX: 'auto', overflowY: 'hidden',
+          WebkitOverflowScrolling: 'touch', padding: '2px 2px 10px',
+        }}
+      >
+        {booksRead.map((book) => <BookCover key={book.book_id} book={book} />)}
+      </div>
+      <div
+        style={{
+          position: 'absolute', left: '50%', bottom: -26, transform: 'translateX(-50%)',
+          padding: 4, borderRadius: 'var(--radius-round)', background: 'var(--surface-page)', boxShadow: 'var(--shadow-md)',
+        }}
+      >
+        <Avatar name={profile.display_name} src={profile.avatar_url} size={84} />
+      </div>
+    </div>
+  );
+}
+
+export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, booksRead = [], myClubIds, myProfileId }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
 
@@ -152,55 +216,50 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, myC
       )}
 
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-          <Avatar name={profile.display_name} src={profile.avatar_url} size={78} />
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'space-around' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {stats.book_count}
-              </div>
-              <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>Libros</div>
+        <ProfileHero profile={profile} booksRead={booksRead} />
+
+        <div style={{ marginTop: booksRead.length > 0 ? 40 : 14, textAlign: 'center' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+            {profile.display_name}
+          </div>
+          {profile.username && (
+            <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>@{profile.username}</div>
+          )}
+          {profile.bio && (
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 6, lineHeight: 'var(--lh-snug)', maxWidth: 280, marginInline: 'auto' }}>
+              {profile.bio}
             </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {stats.follower_count}
-              </div>
-              <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>Seguidores</div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 34, marginTop: 14 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>
+              {stats.book_count}
             </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {stats.following_count}
-              </div>
-              <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>Siguiendo</div>
+            <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>Libros</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>
+              {stats.follower_count}
             </div>
+            <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>Seguidores</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-primary)' }}>
+              {stats.following_count}
+            </div>
+            <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>Siguiendo</div>
           </div>
         </div>
 
-        <div style={{ marginTop: 14, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
-              {profile.display_name}
-            </div>
-            {profile.username && (
-              <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>@{profile.username}</div>
-            )}
-            {profile.bio && (
-              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: 2, lineHeight: 'var(--lh-snug)' }}>
-                {profile.bio}
-              </div>
-            )}
-          </div>
-          {isOwn && <PostComposer />}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
+          {isOwn ? <PostComposer /> : <FollowButton profileId={profile.id} initialFollowing={isFollowing} />}
         </div>
 
         {isOwn && editing && (
           <div style={{ marginTop: 14 }}>
             <EditProfileFields profile={profile} onClose={() => setEditing(false)} />
-          </div>
-        )}
-        {!isOwn && (
-          <div style={{ marginTop: 14 }}>
-            <FollowButton profileId={profile.id} initialFollowing={isFollowing} />
           </div>
         )}
       </div>
