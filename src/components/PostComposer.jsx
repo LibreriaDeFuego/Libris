@@ -94,8 +94,9 @@ export function PostComposer({ profile }) {
         onClick={() => inputRef.current?.click()}
         style={{
           display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-          padding: '8px 10px', borderRadius: 'var(--radius-pill)', border: 'none', cursor: 'pointer',
-          background: 'var(--surface-sunken)', textAlign: 'left', fontFamily: 'var(--font-body)',
+          padding: '8px 10px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+          background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-sm)',
+          textAlign: 'left', fontFamily: 'var(--font-body)',
         }}
       >
         <Avatar name={profile.display_name} src={profile.avatar_url} size={28} />
