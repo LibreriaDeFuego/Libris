@@ -256,9 +256,11 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, boo
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
-          {isOwn ? <PostComposer /> : <FollowButton profileId={profile.id} initialFollowing={isFollowing} />}
-        </div>
+        {!isOwn && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
+            <FollowButton profileId={profile.id} initialFollowing={isFollowing} />
+          </div>
+        )}
 
         {isOwn && editing && (
           <div style={{ marginTop: 14 }}>
@@ -268,6 +270,11 @@ export function PerfilScreen({ profile, isOwn, isFollowing, stats, activity, boo
       </div>
 
       <div>
+        {isOwn && (
+          <div style={{ marginBottom: 16 }}>
+            <PostComposer profile={profile} />
+          </div>
+        )}
         {activity.length === 0 ? (
           <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '24px 0', textAlign: 'center' }}>
             {isOwn ? 'Todavía no comentaste ni compartiste nada.' : 'Todavía no compartió nada que puedas ver.'}

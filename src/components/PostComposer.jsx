@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { createPost } from '@/app/actions/posts';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
+import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
@@ -19,17 +20,21 @@ function PreviewImage({ blob }) {
   );
 }
 
-// Círculo chico con "+" junto al nombre: un solo input de archivo, sin
-// "capture" — así el propio celular abre su selector nativo, que ya junta
-// la cámara y la galería en un solo lugar (como en Instagram), en vez de
-// obligar a elegir antes entre dos botones propios. De ahí se pasa directo
-// al recorte vertical (3:4) y a un texto corto opcional antes de publicar.
-// Aparece mezclada con comentarios y notas de voz en la Actividad del perfil.
+// Barra de "compartir", arriba del feed de Actividad de tu propio perfil —
+// mismo patrón de compose-bar de cualquier red social, con tu avatar y un
+// texto fantasma ("¿Qué estás leyendo?"), en vez del círculo con + suelto
+// que tenía antes (ese quedaba debajo de las estadísticas, sin relación
+// visual con el feed donde termina apareciendo la foto). Un solo input de
+// archivo, sin "capture" — así el propio celular abre su selector nativo,
+// que ya junta la cámara y la galería en un solo lugar (como en
+// Instagram), en vez de obligar a elegir antes entre dos botones propios.
+// De ahí se pasa directo al recorte vertical (3:4) y a un texto corto
+// opcional antes de publicar.
 //
 // GIF (migración 039) es la excepción: no pasa por el recorte (canvas solo
 // captura un frame, lo dejaría estático) — va directo a la vista previa
 // con el archivo tal cual se eligió, y se sube sin tocar.
-export function PostComposer() {
+export function PostComposer({ profile }) {
   const inputRef = useRef(null);
   const [step, setStep] = useState('closed'); // closed | cropping | composing
   const [pendingFile, setPendingFile] = useState(null);
@@ -88,12 +93,21 @@ export function PostComposer() {
         aria-label="Agregar una foto"
         onClick={() => inputRef.current?.click()}
         style={{
-          flexShrink: 0, width: 30, height: 30, borderRadius: 'var(--radius-round)',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          background: 'var(--accent-500)', border: 'none', color: '#fff', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+          padding: '8px 10px', borderRadius: 'var(--radius-pill)', border: 'none', cursor: 'pointer',
+          background: 'var(--surface-sunken)', textAlign: 'left', fontFamily: 'var(--font-body)',
         }}
       >
-        <Icon name="plus" size={14} color="#fff" />
+        <Avatar name={profile.display_name} src={profile.avatar_url} size={28} />
+        <span style={{ flex: 1, fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>¿Qué estás leyendo?</span>
+        <span
+          style={{
+            flexShrink: 0, width: 26, height: 26, borderRadius: 'var(--radius-round)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-500)',
+          }}
+        >
+          <Icon name="image" size={13} color="#fff" />
+        </span>
       </button>
       <input
         ref={inputRef}
