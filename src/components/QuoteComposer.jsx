@@ -7,6 +7,8 @@ import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
+import { CardStylePicker } from '@/components/CardStylePicker';
+import { DEFAULT_CARD_STYLE, DEFAULT_CARD_COLOR_BY_STYLE } from '@/lib/quoteFeedCard';
 
 // Una fila de la lista de libros para elegir — mismo criterio de siempre
 // para uno sin portada (color sólido), en miniatura.
@@ -42,15 +44,17 @@ function BookRow({ book, onClick }) {
 // que primero hay que elegir DE QUÉ libro es: la lista sale de
 // profile_quotable_books — los libros de tus clubes (cualquiera, no
 // necesariamente terminado) más los agregados a mano en Mi Biblioteca.
-// Alcance chico a propósito: sin estilo de tarjeta para compartir (eso es
-// cosa de las citas de club, ver quoteCard.js) — el feed la muestra con
-// el tratamiento genérico (portada + texto en cursiva) que ya usa
-// cualquier cita sin imagen guardada.
+// Después de elegir el libro y escribir la cita, un estilo propio para
+// verse en el feed (migración 050, CardStylePicker) — alcance chico a
+// propósito: sin la tarjeta-imagen para compartir en Instagram (eso es
+// cosa de las citas de club, quoteCard.js).
 export function QuoteComposer({ onClose }) {
   const router = useRouter();
   const [books, setBooks] = useState(null); // null = cargando
   const [selectedBook, setSelectedBook] = useState(null);
   const [quoteText, setQuoteText] = useState('');
+  const [cardStyle, setCardStyle] = useState(DEFAULT_CARD_STYLE);
+  const [cardColor, setCardColor] = useState(DEFAULT_CARD_COLOR_BY_STYLE[DEFAULT_CARD_STYLE]);
   const [error, setError] = useState(null);
   const [pending, startTransition] = useTransition();
 
@@ -76,6 +80,8 @@ export function QuoteComposer({ onClose }) {
     formData.set('bookAuthor', selectedBook.author ?? '');
     formData.set('bookCoverUrl', selectedBook.cover_url ?? '');
     formData.set('quoteText', quoteText.trim());
+    formData.set('cardStyle', cardStyle);
+    formData.set('cardColor', cardColor);
 
     startTransition(async () => {
       const result = await createProfileQuote(null, formData);
@@ -127,6 +133,13 @@ export function QuoteComposer({ onClose }) {
               value={quoteText}
               onChange={(e) => setQuoteText(e.target.value)}
               rows={4}
+            />
+            <CardStylePicker
+              style={cardStyle}
+              color={cardColor}
+              onChange={({ style, color }) => { setCardStyle(style); setCardColor(color); }}
+              quoteText={quoteText}
+              book={selectedBook}
             />
           </>
         )}

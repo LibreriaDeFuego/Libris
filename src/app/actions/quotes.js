@@ -12,6 +12,12 @@ import { friendlyDbError } from '@/lib/friendlyError';
 // chico que una cita de club: se puede publicar/borrar/dar "me gusta",
 // pero no tiene hilo de respuestas ni se puede repostear todavía.
 
+// Estética propia de la cita ADENTRO de la app (migración 050) — deben
+// coincidir con los CHECK de profile_quotes.card_style/card_color y con
+// CARD_STYLES/CARD_COLORS en src/lib/quoteFeedCard.js.
+const VALID_CARD_STYLES = ['comilla', 'franja', 'centrado', 'papel'];
+const VALID_CARD_COLORS = ['blanco', 'crema', 'coral', 'dorado', 'noche'];
+
 // Los libros que se pueden citar: los de tus clubes (cualquiera, no
 // necesariamente terminado) más los que agregaste a mano en Mi Biblioteca
 // — ver profile_quotable_books.
@@ -32,6 +38,10 @@ export async function createProfileQuote(prevState, formData) {
   const bookAuthor = formData.get('bookAuthor')?.toString().trim() || null;
   const bookCoverUrl = formData.get('bookCoverUrl')?.toString().trim() || null;
   const quoteText = formData.get('quoteText')?.toString().trim();
+  const cardStyleRaw = formData.get('cardStyle')?.toString() || null;
+  const cardColorRaw = formData.get('cardColor')?.toString() || null;
+  const cardStyle = VALID_CARD_STYLES.includes(cardStyleRaw) ? cardStyleRaw : null;
+  const cardColor = VALID_CARD_COLORS.includes(cardColorRaw) ? cardColorRaw : null;
 
   if (!bookTitle) return { error: 'Elige un libro.' };
   if (!quoteText) return { error: 'Escribe la cita.' };
@@ -42,6 +52,8 @@ export async function createProfileQuote(prevState, formData) {
     book_author: bookAuthor,
     book_cover_url: bookCoverUrl,
     quote_text: quoteText,
+    card_style: cardStyle,
+    card_color: cardColor,
   });
   if (error) return { error: friendlyDbError(error) };
 

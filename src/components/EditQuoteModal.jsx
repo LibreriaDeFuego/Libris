@@ -7,6 +7,8 @@ import { Button } from '@/design-system/components/core/Button.jsx';
 import { QUOTE_STYLES, renderQuoteCard } from '@/lib/quoteCard';
 import { QuoteCardPreview } from '@/components/QuoteCardPreview';
 import { StyleSwatch } from '@/components/NewCommentForm';
+import { CardStylePicker } from '@/components/CardStylePicker';
+import { DEFAULT_CARD_STYLE, DEFAULT_CARD_COLOR_BY_STYLE } from '@/lib/quoteFeedCard';
 import { updateQuote } from '@/app/actions/clubs';
 
 // Editar tu propia cita: mismo texto + selector de estilo + vista previa
@@ -16,6 +18,8 @@ import { updateQuote } from '@/app/actions/clubs';
 export function EditQuoteModal({ quote, book, clubName, personName, onClose }) {
   const [body, setBody] = useState(quote.body ?? '');
   const [quoteStyle, setQuoteStyle] = useState(quote.quote_style ?? 'cover');
+  const [cardStyle, setCardStyle] = useState(quote.card_style ?? DEFAULT_CARD_STYLE);
+  const [cardColor, setCardColor] = useState(quote.card_color ?? DEFAULT_CARD_COLOR_BY_STYLE[quote.card_style ?? DEFAULT_CARD_STYLE]);
   const [isSpoiler, setIsSpoiler] = useState(quote.is_spoiler ?? false);
   const [error, setError] = useState(null);
   const [pending, startTransition] = useTransition();
@@ -32,6 +36,8 @@ export function EditQuoteModal({ quote, book, clubName, personName, onClose }) {
       formData.set('commentId', quote.id);
       formData.set('body', text);
       formData.set('quoteStyle', quoteStyle);
+      formData.set('cardStyle', cardStyle);
+      formData.set('cardColor', cardColor);
       if (isSpoiler) formData.set('isSpoiler', 'on');
 
       // Mismo "mejor esfuerzo" que al publicar: si esto falla, se guarda
@@ -69,6 +75,19 @@ export function EditQuoteModal({ quote, book, clubName, personName, onClose }) {
           </div>
         </div>
         <QuoteCardPreview style={quoteStyle} quoteText={body} book={book} clubName={clubName} personName={personName} />
+        <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+        <div>
+          <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+            Cómo se ve en el feed
+          </div>
+          <CardStylePicker
+            style={cardStyle}
+            color={cardColor}
+            onChange={({ style, color }) => { setCardStyle(style); setCardColor(color); }}
+            quoteText={body}
+            book={book}
+          />
+        </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
           <input type="checkbox" checked={isSpoiler} onChange={(e) => setIsSpoiler(e.target.checked)} />
           Contiene spoilers

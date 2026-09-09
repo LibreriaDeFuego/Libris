@@ -10,6 +10,8 @@ import { QUOTE_STYLES, renderQuoteCard } from '@/lib/quoteCard';
 import { compressImage } from '@/lib/imageProcessing';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { QuoteCardPreview } from '@/components/QuoteCardPreview';
+import { CardStylePicker } from '@/components/CardStylePicker';
+import { DEFAULT_CARD_STYLE, DEFAULT_CARD_COLOR_BY_STYLE } from '@/lib/quoteFeedCard';
 
 // Miniatura de cada estilo — no es el render real de la tarjeta (eso lo hace
 // quoteCard.js recién al descargar), solo una vista aproximada para elegir.
@@ -65,6 +67,8 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
   const [body, setBody] = useState('');
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [quoteStyle, setQuoteStyle] = useState('cover');
+  const [cardStyle, setCardStyle] = useState(DEFAULT_CARD_STYLE);
+  const [cardColor, setCardColor] = useState(DEFAULT_CARD_COLOR_BY_STYLE[DEFAULT_CARD_STYLE]);
   const [error, setError] = useState(null);
   // Aviso no bloqueante: el comentario se publicó igual, pero alguna(s)
   // foto(s) no se pudieron subir o guardar (ver postComment, clubs.js).
@@ -120,7 +124,11 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
     formData.set('kind', kind);
     if (chapterId) formData.set('chapterId', chapterId);
     if (isSpoiler) formData.set('isSpoiler', 'on');
-    if (kind === 'quote') formData.set('quoteStyle', quoteStyle);
+    if (kind === 'quote') {
+      formData.set('quoteStyle', quoteStyle);
+      formData.set('cardStyle', cardStyle);
+      formData.set('cardColor', cardColor);
+    }
     if (kind === 'text') {
       images.forEach((img, i) => {
         formData.append('images', img.blob, img.blob.type === 'image/gif' ? `foto-${i}.gif` : `foto-${i}.jpg`);
@@ -221,6 +229,19 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
             </div>
           </div>
           <QuoteCardPreview style={quoteStyle} quoteText={body} book={book} clubName={clubName} personName={personName} />
+          <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+          <div>
+            <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+              Cómo se ve en el feed
+            </div>
+            <CardStylePicker
+              style={cardStyle}
+              color={cardColor}
+              onChange={({ style, color }) => { setCardStyle(style); setCardColor(color); }}
+              quoteText={body}
+              book={book}
+            />
+          </div>
         </div>
       )}
       {kind === 'text' && (

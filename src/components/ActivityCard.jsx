@@ -15,6 +15,7 @@ import { RepostButton } from '@/components/RepostButton';
 import { EngagementBlock } from '@/components/EngagementBlock';
 import { PhotoCommentsBlock } from '@/components/PhotoCommentsBlock';
 import { PhotoCarousel } from '@/components/PhotoCarousel';
+import { QuoteFeedCard } from '@/components/QuoteFeedCard';
 import { deleteBookReview, deleteQuote, toggleCommentLike } from '@/app/actions/clubs';
 import { deletePost } from '@/app/actions/posts';
 import { deleteProfileQuote, toggleQuoteLike } from '@/app/actions/quotes';
@@ -141,6 +142,13 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
   // tienen tarjeta armada todavía) siguen con el tratamiento genérico:
   // portada del libro de fondo + la cita como texto abajo.
   const hasQuoteImage = isQuote && Boolean(activity.quote_image_url);
+  // La estética propia de una cita (migración 050) — se usa en vez del
+  // tratamiento genérico solo si NO hay una tarjeta-imagen guardada (esa
+  // sigue ganando, es lo más fiel a lo que se eligió al publicar) y la
+  // cita SÍ tiene un card_style guardado — una cita de antes de esta
+  // migración no tiene ninguno, y sigue cayendo en el tratamiento
+  // genérico de siempre, sin cambios.
+  const hasCardStyle = isQuote && !hasQuoteImage && Boolean(activity.card_style);
   // Un comentario de texto puede llevar, opcional, un carrusel de fotos o
   // GIF propios (migraciones 041/042) — reemplaza a la portada del libro
   // que ocupaba ese lugar por default, con PhotoCarousel en vez del <div>
@@ -311,59 +319,78 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
             </div>
           )}
 
-          {/* El texto va antes que la imagen — como un posteo de X, no de
-              Instagram (donde la foto sola encabeza la tarjeta). */}
-          <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
-            {!showAsImage && (
-              <>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
-                  {activity.book_title}
-                </div>
-                <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                  {activity.book_author}
-                </div>
-              </>
-            )}
-            {!hasQuoteImage && text && (
-              <div
-                ref={textRef}
-                style={{
-                  fontSize: 'var(--fs-sm)', marginTop: isPhoto ? 4 : 8, lineHeight: 'var(--lh-snug)',
-                  color: isQuote ? 'var(--gold-700)' : 'var(--text-secondary)',
-                  fontStyle: isQuote ? 'italic' : 'normal',
-                  whiteSpace: 'pre-wrap',
-                  display: '-webkit-box',
-                  WebkitLineClamp: expanded ? 'unset' : TEXT_LINE_CLAMP,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: expanded ? 'visible' : 'hidden',
-                }}
-              >
-                {isPhoto ? text : `“${text}”`}
-                {!expanded && isTruncated && (
-                  <span style={{ fontWeight: 700, color: 'var(--text-tertiary)' }}> más</span>
+          {/* Con estética propia (migración 050), la tarjeta reemplaza a la
+              vez el bloque de texto Y el de imagen de abajo — ya trae
+              adentro la cita, la portada (o su respaldo) y el
+              título/autor, todo junto. Sin línea de "más": el recorte a
+              TEXT_LINE_CLAMP es para comentarios largos, una cita
+              destacada suele ser corta de por sí. */}
+          {hasCardStyle ? (
+            <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
+              <QuoteFeedCard
+                style={activity.card_style}
+                color={activity.card_color}
+                quoteText={text}
+                book={{ title: activity.book_title, author: activity.book_author, cover_url: activity.book_cover_url }}
+              />
+            </div>
+          ) : (
+            <>
+              {/* El texto va antes que la imagen — como un posteo de X, no de
+                  Instagram (donde la foto sola encabeza la tarjeta). */}
+              <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
+                {!showAsImage && (
+                  <>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
+                      {activity.book_title}
+                    </div>
+                    <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>
+                      {activity.book_author}
+                    </div>
+                  </>
+                )}
+                {!hasQuoteImage && text && (
+                  <div
+                    ref={textRef}
+                    style={{
+                      fontSize: 'var(--fs-sm)', marginTop: isPhoto ? 4 : 8, lineHeight: 'var(--lh-snug)',
+                      color: isQuote ? 'var(--gold-700)' : 'var(--text-secondary)',
+                      fontStyle: isQuote ? 'italic' : 'normal',
+                      whiteSpace: 'pre-wrap',
+                      display: '-webkit-box',
+                      WebkitLineClamp: expanded ? 'unset' : TEXT_LINE_CLAMP,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: expanded ? 'visible' : 'hidden',
+                    }}
+                  >
+                    {isPhoto ? text : `“${text}”`}
+                    {!expanded && isTruncated && (
+                      <span style={{ fontWeight: 700, color: 'var(--text-tertiary)' }}> más</span>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* La imagen va sola, sin nada escrito encima — igual que un posteo.
-              Un comentario con más de una foto es un carrusel (PhotoCarousel,
-              con sus puntitos); el resto sigue siendo el <div> de fondo de
-              siempre, una sola imagen fija. Una publicación de solo texto
-              (isPhoto sin photo_url, migración 049) no tiene nada que
-              mostrar acá — el texto ya se ve arriba. */}
-          {hasCommentImages ? (
-            <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', flexShrink: 0 }}>
-              <PhotoCarousel urls={commentImages} />
-            </div>
-          ) : !(isPhoto && !hasPhoto) ? (
-            <div
-              style={{
-                aspectRatio: '3 / 4', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
-                boxShadow: 'var(--shadow-sm)', flexShrink: 0, background,
-              }}
-            />
-          ) : null}
+              {/* La imagen va sola, sin nada escrito encima — igual que un
+                  posteo. Un comentario con más de una foto es un carrusel
+                  (PhotoCarousel, con sus puntitos); el resto sigue siendo el
+                  <div> de fondo de siempre, una sola imagen fija. Una
+                  publicación de solo texto (isPhoto sin photo_url, migración
+                  049) no tiene nada que mostrar acá — el texto ya se ve arriba. */}
+              {hasCommentImages ? (
+                <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', flexShrink: 0 }}>
+                  <PhotoCarousel urls={commentImages} />
+                </div>
+              ) : !(isPhoto && !hasPhoto) ? (
+                <div
+                  style={{
+                    aspectRatio: '3 / 4', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+                    boxShadow: 'var(--shadow-sm)', flexShrink: 0, background,
+                  }}
+                />
+              ) : null}
+            </>
+          )}
 
           {isPhoto ? (
             <PhotoCommentsBlock
@@ -429,7 +456,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
 
           {editingQuote && (
             <EditQuoteModal
-              quote={{ id: activity.id, body: activity.body, quote_style: activity.quote_style }}
+              quote={{ id: activity.id, body: activity.body, quote_style: activity.quote_style, card_style: activity.card_style, card_color: activity.card_color }}
               book={{ title: activity.book_title, author: activity.book_author, cover_url: activity.book_cover_url }}
               clubName={activity.club_name}
               personName={personName}

@@ -609,6 +609,13 @@ function chapterCommentPreviewText(comment) {
 // CHECK de comments.quote_style (migración 019) y con QUOTE_STYLES en
 // src/lib/quoteCard.js.
 const VALID_QUOTE_STYLES = ['cover', 'dark', 'editorial'];
+// Estética propia de la cita ADENTRO de la app (migración 050) — deben
+// coincidir con los CHECK de comments.card_style/card_color y con
+// CARD_STYLES/CARD_COLORS en src/lib/quoteFeedCard.js. Nada que ver con
+// VALID_QUOTE_STYLES de arriba (esa es la tarjeta para compartir en
+// Instagram, otro sistema).
+const VALID_CARD_STYLES = ['comilla', 'franja', 'centrado', 'papel'];
+const VALID_CARD_COLORS = ['blanco', 'crema', 'coral', 'dorado', 'noche'];
 const MAX_QUOTE_IMAGE_BYTES = 8 * 1024 * 1024; // de sobra: el JPEG que arma quoteCard.js pesa mucho menos.
 // Fotos adjuntas a un comentario de capítulo (migración 041, carrusel en
 // la 042) — jpeg/png/webp como las fotos de Perfil, más gif (mismo
@@ -649,6 +656,10 @@ export async function postComment(formData) {
   const isSpoiler = formData.get('isSpoiler') === 'on';
   const quoteStyleRaw = formData.get('quoteStyle')?.toString() || null;
   const quoteStyle = kind === 'quote' && VALID_QUOTE_STYLES.includes(quoteStyleRaw) ? quoteStyleRaw : null;
+  const cardStyleRaw = formData.get('cardStyle')?.toString() || null;
+  const cardColorRaw = formData.get('cardColor')?.toString() || null;
+  const cardStyle = kind === 'quote' && VALID_CARD_STYLES.includes(cardStyleRaw) ? cardStyleRaw : null;
+  const cardColor = kind === 'quote' && VALID_CARD_COLORS.includes(cardColorRaw) ? cardColorRaw : null;
   if (!body) return { error: 'Escribe algo antes de publicar.' };
 
   // La imagen es un "mejor esfuerzo": si no llega, o falla la subida, la
@@ -676,6 +687,8 @@ export async function postComment(formData) {
     is_spoiler: isSpoiler,
     quote_style: quoteStyle,
     quote_image_url: quoteImageUrl,
+    card_style: cardStyle,
+    card_color: cardColor,
   }).select('id').single();
   if (error) return { error: friendlyDbError(error) };
 
@@ -743,6 +756,10 @@ export async function updateQuote(formData) {
   const isSpoiler = formData.get('isSpoiler') === 'on';
   const quoteStyleRaw = formData.get('quoteStyle')?.toString() || null;
   const quoteStyle = VALID_QUOTE_STYLES.includes(quoteStyleRaw) ? quoteStyleRaw : null;
+  const cardStyleRaw = formData.get('cardStyle')?.toString() || null;
+  const cardColorRaw = formData.get('cardColor')?.toString() || null;
+  const cardStyle = VALID_CARD_STYLES.includes(cardStyleRaw) ? cardStyleRaw : null;
+  const cardColor = VALID_CARD_COLORS.includes(cardColorRaw) ? cardColorRaw : null;
   if (!commentId) return { error: 'Falta la cita.' };
   if (!body) return { error: 'Escribe algo antes de guardar.' };
 
@@ -772,7 +789,7 @@ export async function updateQuote(formData) {
 
   const { error } = await supabase
     .from('comments')
-    .update({ body, is_spoiler: isSpoiler, quote_style: quoteStyle, quote_image_url: quoteImageUrl })
+    .update({ body, is_spoiler: isSpoiler, quote_style: quoteStyle, quote_image_url: quoteImageUrl, card_style: cardStyle, card_color: cardColor })
     .eq('id', commentId)
     .eq('profile_id', user.id)
     .eq('kind', 'quote');
