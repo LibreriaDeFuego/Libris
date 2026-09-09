@@ -6,8 +6,10 @@ import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { updatePost } from '@/app/actions/posts';
 
-// Editar tu propia foto: la imagen queda fija (vista previa de solo
-// lectura arriba) — lo único editable es el texto que la acompaña.
+// Editar tu propia publicación: si tiene foto, queda fija (vista previa
+// de solo lectura arriba) — lo único editable es el texto. Una
+// publicación de solo texto (migración 049, sin photoUrl) edita nomás el
+// texto, sin ninguna vista previa arriba.
 export function EditPostModal({ postId, photoUrl, initialCaption, onClose }) {
   const [caption, setCaption] = useState(initialCaption ?? '');
   const [error, setError] = useState(null);
@@ -25,19 +27,21 @@ export function EditPostModal({ postId, photoUrl, initialCaption, onClose }) {
   }
 
   return (
-    <Modal title="Editar foto" onClose={onClose}>
+    <Modal title={photoUrl ? 'Editar foto' : 'Editar texto'} onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- vista previa de la foto ya publicada, en Storage. */}
-        <img
-          src={photoUrl}
-          alt=""
-          style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 'var(--radius-md)', display: 'block' }}
-        />
+        {photoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- vista previa de la foto ya publicada, en Storage.
+          <img
+            src={photoUrl}
+            alt=""
+            style={{ width: '100%', aspectRatio: '3 / 4', objectFit: 'cover', borderRadius: 'var(--radius-md)', display: 'block' }}
+          />
+        )}
         <Textarea
-          placeholder="Escribe algo sobre esta foto (opcional)"
+          placeholder={photoUrl ? 'Escribe algo sobre esta foto (opcional)' : '¿Qué estás leyendo?'}
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          rows={2}
+          rows={photoUrl ? 2 : 4}
         />
         {error && (
           <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 10 }}>

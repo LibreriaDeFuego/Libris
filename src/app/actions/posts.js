@@ -16,33 +16,41 @@ function isFile(value) {
   return value && typeof value !== 'string' && typeof value.size === 'number';
 }
 
-// Publica una foto de lo que se está leyendo en la Actividad del propio
-// perfil. Sube la imagen (ya recortada y comprimida del lado del navegador)
-// al bucket "post-photos", en la carpeta propia, y crea la fila en "posts".
+// Publica algo en la Actividad del propio perfil — texto, una foto de lo
+// que se está leyendo, o las dos cosas (migración 049: antes la foto era
+// obligatoria). Si hay foto, ya viene recortada y comprimida del lado del
+// navegador — se sube al bucket "post-photos", en la carpeta propia, y se
+// crea la fila en "posts".
 export async function createPost(prevState, formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
   const file = formData.get('file');
   const caption = formData.get('caption')?.toString().trim() || null;
+  const hasFile = isFile(file) && file.size > 0;
 
-  if (!isFile(file) || file.size === 0) return { error: 'Elige una foto.' };
-  if (file.size > MAX_PHOTO_BYTES) return { error: 'La foto no puede pesar más de 8 MB.' };
+  if (!hasFile && !caption) return { error: 'Escribe algo o agrega una foto antes de publicar.' };
 
-  const extension = PHOTO_EXTENSIONS[file.type];
-  if (!extension) return { error: 'La foto tiene que ser JPG, PNG o WEBP.' };
+  let imageUrl = null;
+  if (hasFile) {
+    if (file.size > MAX_PHOTO_BYTES) return { error: 'La foto no puede pesar más de 8 MB.' };
 
-  const path = `${user.id}/${crypto.randomUUID()}.${extension}`;
-  const { error: uploadError } = await supabase.storage
-    .from('post-photos')
-    .upload(path, file, { contentType: file.type });
-  if (uploadError) return { error: friendlyDbError(uploadError) };
+    const extension = PHOTO_EXTENSIONS[file.type];
+    if (!extension) return { error: 'La foto tiene que ser JPG, PNG o WEBP.' };
 
-  const { data: { publicUrl } } = supabase.storage.from('post-photos').getPublicUrl(path);
+    const path = `${user.id}/${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from('post-photos')
+      .upload(path, file, { contentType: file.type });
+    if (uploadError) return { error: friendlyDbError(uploadError) };
+
+    const { data: { publicUrl } } = supabase.storage.from('post-photos').getPublicUrl(path);
+    imageUrl = publicUrl;
+  }
 
   const { error } = await supabase.from('posts').insert({
     profile_id: user.id,
-    image_url: publicUrl,
+    image_url: imageUrl,
     caption,
   });
   if (error) return { error: friendlyDbError(error) };
@@ -61,6 +69,15 @@ export async function updatePost(formData) {
   const postId = formData.get('postId')?.toString();
   const caption = formData.get('caption')?.toString().trim() || null;
   if (!postId) return { error: 'Falta la publicación.' };
+
+  // Una publicación de solo texto (migración 049, sin foto) no puede
+  // quedarse sin caption tampoco — la base lo rechazaría igual
+  // (posts_content_check), pero acá se valida antes para dar un mensaje
+  // claro en vez del genérico de friendlyDbError.
+  if (!caption) {
+    const { data: existing } = await supabase.from('posts').select('image_url').eq('id', postId).maybeSingle();
+    if (existing && !existing.image_url) return { error: 'Escribe algo antes de guardar.' };
+  }
 
   const { error } = await supabase
     .from('posts')

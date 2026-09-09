@@ -17,6 +17,7 @@ import { PhotoCommentsBlock } from '@/components/PhotoCommentsBlock';
 import { PhotoCarousel } from '@/components/PhotoCarousel';
 import { deleteBookReview, deleteQuote, toggleCommentLike } from '@/app/actions/clubs';
 import { deletePost } from '@/app/actions/posts';
+import { deleteProfileQuote, toggleQuoteLike } from '@/app/actions/quotes';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
 // Una tarjeta de actividad, al estilo timeline de X en vez de Instagram (ver
@@ -113,20 +114,32 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
     });
   }
 
+  // Una cita de club (comments.kind='quote', club_id siempre presente —
+  // esa columna es NOT NULL) tiene hilo de respuestas y se puede
+  // repostear; una cita del PERFIL (profile_quotes, migración 049,
+  // club_id siempre null porque no cuelga de ningún club_book) no tiene
+  // ninguna de las dos todavía — se distinguen por si trae club_id.
   function handleDeleteQuote() {
     if (!window.confirm('¿Eliminar esta cita? No se puede deshacer.')) return;
     startTransition(async () => {
-      await deleteQuote(activity.id);
+      if (activity.club_id) await deleteQuote(activity.id);
+      else await deleteProfileQuote(activity.id);
     });
   }
+
   const isPhoto = activity.kind === 'photo';
   const isQuote = activity.kind === 'quote';
+  const isProfileQuote = isQuote && !activity.club_id;
   const isReview = activity.kind === 'review';
+  // Una publicación de solo texto (migración 049) es isPhoto con
+  // photo_url null — no hay ninguna imagen que mostrar de fondo.
+  const hasPhoto = isPhoto && Boolean(activity.photo_url);
   // Si la cita se publicó con la tarjeta ya armada (migración 021), esa
   // imagen ES el contenido — no hace falta repetir la cita como texto abajo
   // (ya está dibujada adentro). Las citas de antes de esa migración (o
-  // donde falló la subida en su momento) siguen con el tratamiento
-  // genérico: portada del libro de fondo + la cita como texto abajo.
+  // donde falló la subida en su momento, o una cita del perfil — esas no
+  // tienen tarjeta armada todavía) siguen con el tratamiento genérico:
+  // portada del libro de fondo + la cita como texto abajo.
   const hasQuoteImage = isQuote && Boolean(activity.quote_image_url);
   // Un comentario de texto puede llevar, opcional, un carrusel de fotos o
   // GIF propios (migraciones 041/042) — reemplaza a la portada del libro
@@ -134,7 +147,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
   // de fondo de siempre (soporta más de una foto, ese no).
   const commentImages = activity.kind === 'text' ? activity.image_urls : null;
   const hasCommentImages = Array.isArray(commentImages) && commentImages.length > 0;
-  const showAsImage = isPhoto || hasQuoteImage;
+  const showAsImage = hasPhoto || hasQuoteImage;
   const text = isPhoto
     ? activity.body
     : activity.kind === 'voice'
@@ -278,16 +291,19 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
               {nameLink}
               {isPhoto && isOwn && (
                 <PostMenu
-                  editLabel="Editar foto"
+                  editLabel={hasPhoto ? 'Editar foto' : 'Editar texto'}
                   onEdit={() => setEditingPhoto(true)}
-                  deleteLabel="Eliminar foto"
+                  deleteLabel={hasPhoto ? 'Eliminar foto' : 'Eliminar publicación'}
                   onDelete={handleDeletePhoto}
                 />
               )}
               {isQuote && isOwn && (
                 <PostMenu
                   editLabel="Editar cita"
-                  onEdit={() => setEditingQuote(true)}
+                  // Sin edición todavía para una cita del perfil (ver
+                  // README) — PostMenu ya sabe no mostrar la opción de
+                  // Editar cuando onEdit es undefined.
+                  onEdit={isProfileQuote ? undefined : () => setEditingQuote(true)}
                   deleteLabel="Eliminar cita"
                   onDelete={handleDeleteQuote}
                 />
@@ -333,19 +349,21 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
           {/* La imagen va sola, sin nada escrito encima — igual que un posteo.
               Un comentario con más de una foto es un carrusel (PhotoCarousel,
               con sus puntitos); el resto sigue siendo el <div> de fondo de
-              siempre, una sola imagen fija. */}
+              siempre, una sola imagen fija. Una publicación de solo texto
+              (isPhoto sin photo_url, migración 049) no tiene nada que
+              mostrar acá — el texto ya se ve arriba. */}
           {hasCommentImages ? (
             <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', flexShrink: 0 }}>
               <PhotoCarousel urls={commentImages} />
             </div>
-          ) : (
+          ) : !(isPhoto && !hasPhoto) ? (
             <div
               style={{
                 aspectRatio: '3 / 4', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
                 boxShadow: 'var(--shadow-sm)', flexShrink: 0, background,
               }}
             />
-          )}
+          ) : null}
 
           {isPhoto ? (
             <PhotoCommentsBlock
@@ -357,6 +375,12 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
               repostId={repostId}
               compact
             />
+          ) : isProfileQuote ? (
+            // Sin hilo de respuestas ni repost todavía (ver README) — solo
+            // "me gusta", sobre profile_quote_likes.
+            <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+              <LikeButton liked={activity.liked_by_me} count={activity.like_count} onToggle={() => toggleQuoteLike(activity.id)} compact />
+            </div>
           ) : isQuote ? (
             <EngagementBlock
               commentId={activity.id}
