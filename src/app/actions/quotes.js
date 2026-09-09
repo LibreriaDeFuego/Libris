@@ -11,12 +11,33 @@ import { friendlyDbError } from '@/lib/friendlyError';
 // estar mirando ningún libro puntual. Alcance elegido a propósito, más
 // chico que una cita de club: se puede publicar/borrar/dar "me gusta",
 // pero no tiene hilo de respuestas ni se puede repostear todavía.
+//
+// El libro puede ser uno "de la lista" (profile_quotable_books —
+// bookCoverUrl, ya con su portada si tiene) o uno "a mano" (migración
+// 051, QuoteComposer — cualquier libro que no esté ahí: bookTitle/
+// bookAuthor sueltos + una portada opcional recién elegida, ver "cover"
+// más abajo). En los dos casos se guarda directo en la fila de la cita
+// — no hay relación con "books" ni "personal_books".
 
 // Estética propia de la cita ADENTRO de la app (migración 050) — deben
 // coincidir con los CHECK de profile_quotes.card_style/card_color y con
 // CARD_STYLES/CARD_COLORS en src/lib/quoteFeedCard.js.
 const VALID_CARD_STYLES = ['comilla', 'franja', 'centrado', 'papel'];
 const VALID_CARD_COLORS = ['blanco', 'crema', 'coral', 'dorado', 'noche'];
+
+// Portada de un libro "a mano" (migración 051, QuoteComposer) — mismo
+// bucket y mismo límite que Mi Biblioteca (personal-book-covers,
+// migración 046): es el mismo tipo de archivo (una foto de portada que
+// subís vos, no una que ya esté guardada en "books"/"personal_books"),
+// así que no hacía falta un bucket propio. No queda ninguna referencia
+// a "personal_books" — la fila de la cita guarda directo la URL pública,
+// nada más.
+const MAX_COVER_BYTES = 5 * 1024 * 1024;
+const COVER_EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+
+function isFile(value) {
+  return value && typeof value !== 'string' && typeof value.size === 'number';
+}
 
 // Los libros que se pueden citar: los de tus clubes (cualquiera, no
 // necesariamente terminado) más los que agregaste a mano en Mi Biblioteca
@@ -36,7 +57,7 @@ export async function createProfileQuote(prevState, formData) {
 
   const bookTitle = formData.get('bookTitle')?.toString().trim();
   const bookAuthor = formData.get('bookAuthor')?.toString().trim() || null;
-  const bookCoverUrl = formData.get('bookCoverUrl')?.toString().trim() || null;
+  let bookCoverUrl = formData.get('bookCoverUrl')?.toString().trim() || null;
   const quoteText = formData.get('quoteText')?.toString().trim();
   const cardStyleRaw = formData.get('cardStyle')?.toString() || null;
   const cardColorRaw = formData.get('cardColor')?.toString() || null;
@@ -45,6 +66,25 @@ export async function createProfileQuote(prevState, formData) {
 
   if (!bookTitle) return { error: 'Elige un libro.' };
   if (!quoteText) return { error: 'Escribe la cita.' };
+
+  // Un libro "de la lista" ya trae bookCoverUrl (o ninguno); uno "a mano"
+  // trae en cambio el archivo ya recortado, todavía sin subir — se sube
+  // acá, recién al publicar (mismo patrón que addPersonalBook).
+  const cover = formData.get('cover');
+  if (isFile(cover) && cover.size > 0) {
+    if (cover.size > MAX_COVER_BYTES) return { error: 'La portada no puede pesar más de 5 MB.' };
+    const extension = COVER_EXTENSIONS[cover.type];
+    if (!extension) return { error: 'La portada tiene que ser JPG, PNG o WEBP.' };
+
+    const path = `${user.id}/${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from('personal-book-covers')
+      .upload(path, cover, { contentType: cover.type });
+    if (uploadError) return { error: friendlyDbError(uploadError) };
+
+    const { data: { publicUrl } } = supabase.storage.from('personal-book-covers').getPublicUrl(path);
+    bookCoverUrl = publicUrl;
+  }
 
   const { error } = await supabase.from('profile_quotes').insert({
     profile_id: user.id,
