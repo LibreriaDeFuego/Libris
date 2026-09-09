@@ -456,10 +456,8 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
 
           {editingQuote && (
             <EditQuoteModal
-              quote={{ id: activity.id, body: activity.body, quote_style: activity.quote_style, card_style: activity.card_style, card_color: activity.card_color }}
+              quote={{ id: activity.id, body: activity.body, card_style: activity.card_style, card_color: activity.card_color }}
               book={{ title: activity.book_title, author: activity.book_author, cover_url: activity.book_cover_url }}
-              clubName={activity.club_name}
-              personName={personName}
               onClose={() => setEditingQuote(false)}
             />
           )}

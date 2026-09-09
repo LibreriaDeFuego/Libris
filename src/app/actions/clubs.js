@@ -605,18 +605,16 @@ function chapterCommentPreviewText(comment) {
   return comment.body;
 }
 
-// Estilos válidos para la tarjeta de una cita — deben coincidir con el
-// CHECK de comments.quote_style (migración 019) y con QUOTE_STYLES en
-// src/lib/quoteCard.js.
-const VALID_QUOTE_STYLES = ['cover', 'dark', 'editorial'];
 // Estética propia de la cita ADENTRO de la app (migración 050) — deben
 // coincidir con los CHECK de comments.card_style/card_color y con
-// CARD_STYLES/CARD_COLORS en src/lib/quoteFeedCard.js. Nada que ver con
-// VALID_QUOTE_STYLES de arriba (esa es la tarjeta para compartir en
-// Instagram, otro sistema).
+// CARD_STYLES/CARD_COLORS en src/lib/quoteFeedCard.js. El selector de
+// "estilo de la tarjeta" para compartir en Instagram (quote_style/
+// quote_image_url, comments.quote_style, migración 019/021) se sacó —
+// una cita vieja que ya tenía uno guardado lo conserva (quoteCard.js,
+// DownloadQuoteImageButton siguen mostrándolo donde ya estaba), pero no
+// hay forma de elegirlo de nuevo ni de generarlo para una cita nueva.
 const VALID_CARD_STYLES = ['comilla', 'franja', 'centrado', 'papel'];
 const VALID_CARD_COLORS = ['blanco', 'crema', 'coral', 'dorado', 'noche'];
-const MAX_QUOTE_IMAGE_BYTES = 8 * 1024 * 1024; // de sobra: el JPEG que arma quoteCard.js pesa mucho menos.
 // Fotos adjuntas a un comentario de capítulo (migración 041, carrusel en
 // la 042) — jpeg/png/webp como las fotos de Perfil, más gif (mismo
 // criterio que PostComposer: no pasa por ningún recorte, un GIF no
@@ -654,30 +652,17 @@ export async function postComment(formData) {
   const kind = formData.get('kind') || 'text';
   const body = formData.get('body')?.toString().trim();
   const isSpoiler = formData.get('isSpoiler') === 'on';
-  const quoteStyleRaw = formData.get('quoteStyle')?.toString() || null;
-  const quoteStyle = kind === 'quote' && VALID_QUOTE_STYLES.includes(quoteStyleRaw) ? quoteStyleRaw : null;
   const cardStyleRaw = formData.get('cardStyle')?.toString() || null;
   const cardColorRaw = formData.get('cardColor')?.toString() || null;
   const cardStyle = kind === 'quote' && VALID_CARD_STYLES.includes(cardStyleRaw) ? cardStyleRaw : null;
   const cardColor = kind === 'quote' && VALID_CARD_COLORS.includes(cardColorRaw) ? cardColorRaw : null;
   if (!body) return { error: 'Escribe algo antes de publicar.' };
 
-  // La imagen es un "mejor esfuerzo": si no llega, o falla la subida, la
-  // cita se publica igual — solo que el feed la va a mostrar con el
-  // tratamiento genérico (portada + texto), como las citas de antes.
-  let quoteImageUrl = null;
-  const quoteImage = formData.get('quoteImage');
-  if (quoteStyle && isFile(quoteImage) && quoteImage.size > 0 && quoteImage.size <= MAX_QUOTE_IMAGE_BYTES && quoteImage.type === 'image/jpeg') {
-    const path = `${user.id}/${crypto.randomUUID()}.jpg`;
-    const { error: uploadError } = await supabase.storage
-      .from('quote-cards')
-      .upload(path, quoteImage, { contentType: 'image/jpeg' });
-    if (!uploadError) {
-      const { data: { publicUrl } } = supabase.storage.from('quote-cards').getPublicUrl(path);
-      quoteImageUrl = publicUrl;
-    }
-  }
-
+  // quote_style/quote_image_url (la tarjeta-imagen para Instagram) ya no
+  // se piden acá — se sacó ese selector (ver README); una cita nueva
+  // queda sin ninguno de los dos, así que el feed la muestra siempre con
+  // el estilo propio (card_style/card_color) o, si tampoco eligió uno,
+  // con el tratamiento genérico de toda la vida.
   const { data: inserted, error } = await supabase.from('comments').insert({
     club_book_id: clubBookId,
     chapter_id: chapterId,
@@ -685,8 +670,6 @@ export async function postComment(formData) {
     kind,
     body,
     is_spoiler: isSpoiler,
-    quote_style: quoteStyle,
-    quote_image_url: quoteImageUrl,
     card_style: cardStyle,
     card_color: cardColor,
   }).select('id').single();
@@ -739,7 +722,7 @@ export async function postComment(formData) {
   }
 
   revalidatePath('/', 'layout');
-  return { error: null, quoteStyle, quoteImageUrl, photosSkipped };
+  return { error: null, photosSkipped };
 }
 
 // Edita el texto (y opcionalmente el estilo) de tu propia cita — migración
@@ -754,8 +737,6 @@ export async function updateQuote(formData) {
   const commentId = formData.get('commentId')?.toString();
   const body = formData.get('body')?.toString().trim();
   const isSpoiler = formData.get('isSpoiler') === 'on';
-  const quoteStyleRaw = formData.get('quoteStyle')?.toString() || null;
-  const quoteStyle = VALID_QUOTE_STYLES.includes(quoteStyleRaw) ? quoteStyleRaw : null;
   const cardStyleRaw = formData.get('cardStyle')?.toString() || null;
   const cardColorRaw = formData.get('cardColor')?.toString() || null;
   const cardStyle = VALID_CARD_STYLES.includes(cardStyleRaw) ? cardStyleRaw : null;
@@ -763,48 +744,20 @@ export async function updateQuote(formData) {
   if (!commentId) return { error: 'Falta la cita.' };
   if (!body) return { error: 'Escribe algo antes de guardar.' };
 
-  const { data: existing } = await supabase
-    .from('comments')
-    .select('quote_image_url')
-    .eq('id', commentId)
-    .eq('profile_id', user.id)
-    .eq('kind', 'quote')
-    .maybeSingle();
-
-  // Mismo "mejor esfuerzo" que al publicar: si la imagen nueva no llega o
-  // falla la subida, se guarda el texto/estilo igual, solo que sin imagen
-  // (el feed cae al tratamiento genérico).
-  let quoteImageUrl = null;
-  const quoteImage = formData.get('quoteImage');
-  if (quoteStyle && isFile(quoteImage) && quoteImage.size > 0 && quoteImage.size <= MAX_QUOTE_IMAGE_BYTES && quoteImage.type === 'image/jpeg') {
-    const path = `${user.id}/${crypto.randomUUID()}.jpg`;
-    const { error: uploadError } = await supabase.storage
-      .from('quote-cards')
-      .upload(path, quoteImage, { contentType: 'image/jpeg' });
-    if (!uploadError) {
-      const { data: { publicUrl } } = supabase.storage.from('quote-cards').getPublicUrl(path);
-      quoteImageUrl = publicUrl;
-    }
-  }
-
+  // quote_style/quote_image_url (la tarjeta-imagen para Instagram) ya no
+  // se tocan desde acá — se sacó ese selector (ver README). Una cita
+  // vieja que ya tenía una imagen guardada la conserva tal cual, editar
+  // el texto o el estilo del feed no la borra ni la regenera.
   const { error } = await supabase
     .from('comments')
-    .update({ body, is_spoiler: isSpoiler, quote_style: quoteStyle, quote_image_url: quoteImageUrl, card_style: cardStyle, card_color: cardColor })
+    .update({ body, is_spoiler: isSpoiler, card_style: cardStyle, card_color: cardColor })
     .eq('id', commentId)
     .eq('profile_id', user.id)
     .eq('kind', 'quote');
   if (error) return { error: friendlyDbError(error) };
 
-  // La imagen vieja queda huérfana si no se limpia — se borra recién acá,
-  // después de guardar bien la fila (mejor un archivo de más colgado si algo
-  // falla antes, que perder la referencia a uno que sigue en uso).
-  const oldPath = existing?.quote_image_url?.split('/quote-cards/')[1];
-  if (oldPath) {
-    await supabase.storage.from('quote-cards').remove([oldPath]);
-  }
-
   revalidatePath('/', 'layout');
-  return { error: null, quoteStyle, quoteImageUrl };
+  return { error: null };
 }
 
 // Borra tu propia cita — la fila y, si tenía imagen guardada, también el

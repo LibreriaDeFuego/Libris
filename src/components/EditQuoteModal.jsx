@@ -4,20 +4,15 @@ import { useState, useTransition } from 'react';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
-import { QUOTE_STYLES, renderQuoteCard } from '@/lib/quoteCard';
-import { QuoteCardPreview } from '@/components/QuoteCardPreview';
-import { StyleSwatch } from '@/components/NewCommentForm';
 import { CardStylePicker } from '@/components/CardStylePicker';
 import { DEFAULT_CARD_STYLE, DEFAULT_CARD_COLOR_BY_STYLE } from '@/lib/quoteFeedCard';
 import { updateQuote } from '@/app/actions/clubs';
 
-// Editar tu propia cita: mismo texto + selector de estilo + vista previa
-// real que ya usa NewCommentForm al publicar — acá regenera la tarjeta con
-// el texto nuevo y la reemplaza (updateQuote se encarga de borrar la
-// imagen vieja en Storage).
-export function EditQuoteModal({ quote, book, clubName, personName, onClose }) {
+// Editar tu propia cita: texto + estilo propio para el feed (migración
+// 050, CardStylePicker) — mismo selector que ya usa NewCommentForm al
+// publicar.
+export function EditQuoteModal({ quote, book, onClose }) {
   const [body, setBody] = useState(quote.body ?? '');
-  const [quoteStyle, setQuoteStyle] = useState(quote.quote_style ?? 'cover');
   const [cardStyle, setCardStyle] = useState(quote.card_style ?? DEFAULT_CARD_STYLE);
   const [cardColor, setCardColor] = useState(quote.card_color ?? DEFAULT_CARD_COLOR_BY_STYLE[quote.card_style ?? DEFAULT_CARD_STYLE]);
   const [isSpoiler, setIsSpoiler] = useState(quote.is_spoiler ?? false);
@@ -35,19 +30,9 @@ export function EditQuoteModal({ quote, book, clubName, personName, onClose }) {
       const formData = new FormData();
       formData.set('commentId', quote.id);
       formData.set('body', text);
-      formData.set('quoteStyle', quoteStyle);
       formData.set('cardStyle', cardStyle);
       formData.set('cardColor', cardColor);
       if (isSpoiler) formData.set('isSpoiler', 'on');
-
-      // Mismo "mejor esfuerzo" que al publicar: si esto falla, se guarda
-      // igual, solo que sin imagen (el feed cae al tratamiento genérico).
-      try {
-        const blob = await renderQuoteCard({ style: quoteStyle, quoteText: text, book, clubName, personName });
-        formData.set('quoteImage', blob, 'cita.jpg');
-      } catch {
-        // sigue sin la imagen.
-      }
 
       const result = await updateQuote(formData);
       if (result?.error) setError(result.error);
@@ -64,18 +49,6 @@ export function EditQuoteModal({ quote, book, clubName, personName, onClose }) {
           placeholder="Escribe una cita destacada..."
           rows={3}
         />
-        <div>
-          <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
-            Estilo de la tarjeta
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {QUOTE_STYLES.map((s) => (
-              <StyleSwatch key={s.id} id={s.id} label={s.label} selected={quoteStyle === s.id} onSelect={setQuoteStyle} coverUrl={book?.cover_url} />
-            ))}
-          </div>
-        </div>
-        <QuoteCardPreview style={quoteStyle} quoteText={body} book={book} clubName={clubName} personName={personName} />
-        <div style={{ height: 1, background: 'var(--border-subtle)' }} />
         <div>
           <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
             Cómo se ve en el feed
