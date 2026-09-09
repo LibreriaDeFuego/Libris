@@ -37,32 +37,61 @@ function PreviewImage({ blob, onRemove }) {
   );
 }
 
-const menuItemStyle = {
-  display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px',
-  fontSize: 'var(--fs-sm)', fontWeight: 500, color: 'var(--text-primary)',
-  background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)',
+const toolbarButtonStyle = {
+  width: 32, height: 32, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
+  background: 'var(--surface-card)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
 };
 
-// Barra de "compartir", arriba del feed de Actividad de tu propio perfil.
-// Tocar la tarjeta (avatar + texto fantasma) deja escribir directo, sin
-// abrir ningún selector — el ícono, aparte, ofrece agregar una foto o una
-// cita destacada (migración 049): antes el círculo entero abría el
-// selector de fotos apenas se tocaba, sin dejar escribir solo texto.
+// Fila de "adjuntar" adentro de la ventana de compartir: foto, GIF o cita
+// — mismo lugar, sin importar por dónde se entró (tocando la tarjeta o,
+// en teoría, directo). Solo se muestra si todavía no hay ninguna foto/GIF
+// adjunto (elegir "Cita" en ese punto, de todas formas, abandona el texto
+// que se estaba escribiendo — son dos publicaciones distintas, no se
+// pueden mezclar). Sin ícono de "GIF" en Lucide — se usa la sigla, mismo
+// criterio que ya usa X en su propio compositor (tampoco es un pictograma
+// ahí).
+function AttachmentToolbar({ onPickPhoto, onPickGif, onPickQuote }) {
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      <button type="button" aria-label="Agregar una foto" onClick={onPickPhoto} style={toolbarButtonStyle}>
+        <Icon name="image" size={16} color="var(--accent-600)" />
+      </button>
+      <button type="button" aria-label="Agregar un GIF" onClick={onPickGif} style={toolbarButtonStyle}>
+        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--accent-600)', fontFamily: 'var(--font-body)' }}>GIF</span>
+      </button>
+      <button type="button" aria-label="Agregar una cita" onClick={onPickQuote} style={toolbarButtonStyle}>
+        <Icon name="quote" size={16} color="var(--accent-600)" />
+      </button>
+    </div>
+  );
+}
+
+// Barra de "compartir", arriba del feed de Actividad de tu propio perfil —
+// tocarla (entera) abre la ventana para escribir. Adentro, una fila de
+// íconos deja adjuntar una foto, un GIF o pasar a una cita destacada
+// (migración 049/050): antes esas dos últimas opciones vivían en un menú
+// aparte, sobre la barra — ahora todo lo que se puede agregar a la
+// publicación se ve y se elige desde el mismo lugar donde se escribe.
 //
-// Un solo input de archivo, sin "capture" — así el propio celular abre su
-// selector nativo, que ya junta la cámara y la galería en un solo lugar
-// (como en Instagram). De ahí se pasa al recorte vertical (3:4) y se
+// Dos inputs de archivo (uno por tipo, sin "capture" — así el celular abre
+// su selector nativo de galería/cámara igual) en vez de uno solo: cada
+// ícono filtra de entrada lo que tiene sentido elegir ahí (el selector del
+// celular ya no ofrece GIF al tocar "Foto", ni fotos comunes al tocar
+// "GIF"), aunque las dos rutas terminan en el mismo handlePick — este ya
+// sabía distinguir por el tipo de archivo, así que sigue siendo el
+// respaldo si algún selector no filtrara bien.
+//
+// Una vez elegida la foto (no GIF) se pasa al recorte vertical (3:4) y se
 // vuelve al mismo compositor de texto, ahora con la foto adjunta —
 // también se puede sacar la foto sin perder lo escrito (PreviewImage, ×).
-//
 // GIF (migración 039) es la excepción: no pasa por el recorte (canvas solo
 // captura un frame, lo dejaría estático) — va directo a la vista previa
 // con el archivo tal cual se eligió, y se sube sin tocar.
 export function PostComposer({ profile }) {
   const router = useRouter();
-  const inputRef = useRef(null);
+  const photoInputRef = useRef(null);
+  const gifInputRef = useRef(null);
   const [step, setStep] = useState('closed'); // closed | cropping | composing | quoting
-  const [menuOpen, setMenuOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
   const [croppedBlob, setCroppedBlob] = useState(null);
   const [caption, setCaption] = useState('');
@@ -71,7 +100,6 @@ export function PostComposer({ profile }) {
 
   function reset() {
     setStep('closed');
-    setMenuOpen(false);
     setPendingFile(null);
     setCroppedBlob(null);
     setCaption('');
@@ -120,69 +148,23 @@ export function PostComposer({ profile }) {
 
   return (
     <>
-      <div
+      <button
+        type="button"
+        aria-label="Escribir algo sobre lo que estás leyendo"
+        onClick={() => setStep('composing')}
         style={{
           display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-          padding: '8px 10px', borderRadius: 'var(--radius-pill)',
+          padding: '8px 10px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
           background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-sm)',
+          textAlign: 'left', fontFamily: 'var(--font-body)',
         }}
       >
-        <button
-          type="button"
-          aria-label="Escribir algo sobre lo que estás leyendo"
-          onClick={() => setStep('composing')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, padding: 0,
-            border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)',
-          }}
-        >
-          <Avatar name={profile.display_name} src={profile.avatar_url} size={28} />
-          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>¿Qué estás leyendo?</span>
-        </button>
+        <Avatar name={profile.display_name} src={profile.avatar_url} size={28} />
+        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>¿Qué estás leyendo?</span>
+      </button>
 
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <button
-            type="button"
-            aria-label="Agregar una foto o una cita"
-            onClick={() => setMenuOpen((o) => !o)}
-            style={{
-              width: 26, height: 26, borderRadius: 'var(--radius-round)', border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-500)',
-            }}
-          >
-            <Icon name="image" size={13} color="#fff" />
-          </button>
-
-          {menuOpen && (
-            <>
-              <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 4 }} />
-              <div
-                style={{
-                  position: 'absolute', top: '110%', right: 0, zIndex: 5, minWidth: 180,
-                  background: 'var(--surface-card)', border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-md)', overflow: 'hidden',
-                }}
-              >
-                <button type="button" style={menuItemStyle} onClick={() => { setMenuOpen(false); inputRef.current?.click(); }}>
-                  <Icon name="image" size={14} /> Agregar foto
-                </button>
-                <div style={{ height: 1, background: 'var(--border-subtle)' }} />
-                <button type="button" style={menuItemStyle} onClick={() => { setMenuOpen(false); setStep('quoting'); }}>
-                  <Icon name="quote" size={14} /> Agregar cita
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
-        onChange={handlePick}
-        style={{ display: 'none' }}
-      />
+      <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePick} style={{ display: 'none' }} />
+      <input ref={gifInputRef} type="file" accept="image/gif" onChange={handlePick} style={{ display: 'none' }} />
 
       {step === 'cropping' && pendingFile && (
         <PhotoCropModal
@@ -207,17 +189,11 @@ export function PostComposer({ profile }) {
               rows={croppedBlob ? 2 : 4}
             />
             {!croppedBlob && (
-              <button
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-                  border: 'none', background: 'none', cursor: 'pointer', padding: 0,
-                  fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--accent-600)', fontFamily: 'var(--font-body)',
-                }}
-              >
-                <Icon name="image" size={14} color="var(--accent-600)" /> Agregar una foto
-              </button>
+              <AttachmentToolbar
+                onPickPhoto={() => photoInputRef.current?.click()}
+                onPickGif={() => gifInputRef.current?.click()}
+                onPickQuote={() => setStep('quoting')}
+              />
             )}
             {error && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-2xs)' }}>{error}</div>}
             <div style={{ display: 'flex', gap: 10 }}>
