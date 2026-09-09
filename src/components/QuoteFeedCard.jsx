@@ -111,17 +111,17 @@ function Centrado({ quoteText, book, tokens }) {
 }
 
 // Estilo "Papel" — fondo cálido, con una cinta decorativa arriba (como un
-// recorte pegado) y la cita dentro de un realce tenue, en vez de intentar
-// "subrayar" una frase puntual del texto (no hay forma de saber a mano
-// cuál sería, siendo texto libre de cada persona).
+// recorte pegado). La cita va directo sobre el mismo fondo que el resto
+// de la tarjeta — antes tenía, encima, un realce tenue en un dorado FIJO
+// (intentando algo tipo "resaltador"), que quedaba como un segundo
+// cuadrado de color propio en cuanto se elegía cualquier otro fondo. Se
+// sacó: al elegir un color, la tarjeta entera es de ese único color.
 function Papel({ quoteText, book, tokens }) {
   return (
     <div style={{ background: tokens.bg, border: tokens.border, borderRadius: 'var(--radius-md)', padding: '18px 16px', boxShadow: 'inset 0 0 0 1px rgba(27,27,31,.05)', position: 'relative' }}>
       <div style={{ width: 34, height: 14, background: 'var(--gold-300)', opacity: 0.85, margin: '-24px 0 10px 10px', transform: 'rotate(-3deg)', borderRadius: 2 }} />
-      <div style={{ background: tokens.dark ? 'rgba(255,221,122,.14)' : 'var(--gold-100)', borderRadius: 6, padding: '10px 12px' }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, lineHeight: 1.55, color: tokens.ink, whiteSpace: 'pre-wrap' }}>
-          {quoteText}
-        </div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, lineHeight: 1.55, color: tokens.ink, whiteSpace: 'pre-wrap' }}>
+        {quoteText}
       </div>
       {(book?.title || book?.author) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
