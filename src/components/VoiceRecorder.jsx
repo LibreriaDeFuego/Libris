@@ -25,7 +25,16 @@ function pickMimeType() {
   return null;
 }
 
-export function VoiceRecorder({ clubBookId, chapterId, onDone }) {
+// `postAction`/`extraFields`/`showSpoilerOption` dejan reusar el mismo
+// grabador desde otros lugares que publican una nota de voz de otra forma
+// (migración 052: el panel de "Agregar" del perfil, junto a
+// Comentario/Cita/Foto·GIF) — antes esto llamaba siempre a
+// `postVoiceComment` con `clubBookId`/`chapterId` fijos. `extraFields` se
+// vuelca tal cual en el FormData (por ejemplo `{ clubBookId, chapterId }`
+// para una nota de capítulo; nada para un post, que no necesita más
+// contexto que la sesión). `showSpoilerOption` esconde el checkbox de
+// spoiler donde no aplica — los posts del perfil no tienen ese concepto.
+export function VoiceRecorder({ postAction = postVoiceComment, extraFields, showSpoilerOption = true, onDone }) {
   const [status, setStatus] = useState('idle'); // idle | recording | ready
   const [seconds, setSeconds] = useState(0);
   const [audio, setAudio] = useState(null); // { blob, url }
@@ -104,15 +113,18 @@ export function VoiceRecorder({ clubBookId, chapterId, onDone }) {
   function publish() {
     if (!audio) return;
     const formData = new FormData();
-    formData.set('clubBookId', clubBookId);
-    if (chapterId) formData.set('chapterId', chapterId);
+    if (extraFields) {
+      for (const [key, value] of Object.entries(extraFields)) {
+        if (value != null) formData.set(key, value);
+      }
+    }
     formData.set('audio', audio.blob, `nota.${audio.blob.type.includes('mp4') ? 'm4a' : 'webm'}`);
     formData.set('duration', String(seconds));
     if (transcript.trim()) formData.set('transcript', transcript.trim());
-    if (isSpoiler) formData.set('isSpoiler', 'on');
+    if (showSpoilerOption && isSpoiler) formData.set('isSpoiler', 'on');
 
     startTransition(async () => {
-      const result = await postVoiceComment(formData);
+      const result = await postAction(formData);
       if (result?.error) {
         setError(result.error);
       } else {
@@ -157,10 +169,12 @@ export function VoiceRecorder({ clubBookId, chapterId, onDone }) {
             placeholder="Transcripción o resumen (opcional, ayuda a quien no puede escuchar)"
           />
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-            <input type="checkbox" checked={isSpoiler} onChange={(event) => setIsSpoiler(event.target.checked)} />
-            Contiene spoilers
-          </label>
+          {showSpoilerOption && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
+              <input type="checkbox" checked={isSpoiler} onChange={(event) => setIsSpoiler(event.target.checked)} />
+              Contiene spoilers
+            </label>
+          )}
 
           <Button variant="primary" size="md" onClick={publish} disabled={pending} type="button">
             {pending ? 'Publicando…' : `Publicar nota de ${formatSeconds(seconds)}`}

@@ -175,7 +175,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   const composeBlock = (
     <>
       <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} />
-      <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} />
+      <VoiceRecorder extraFields={{ clubBookId, chapterId }} />
     </>
   );
 

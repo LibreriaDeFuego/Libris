@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
+import { VoiceNotePlayer } from '@/design-system/components/content/VoiceNotePlayer.jsx';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { BookReviewCard } from '@/components/BookReviewCard';
 import { PostMenu } from '@/components/PostMenu';
@@ -82,6 +83,14 @@ import { formatRelativeTime } from '@/lib/formatRelativeTime';
 // solo la pista visible de que hay más para leer.
 const TEXT_LINE_CLAMP = 5;
 
+// Igual que en ComentariosScreen.jsx/EditVoiceModal.jsx — sin un util
+// compartido, tres líneas no ameritan sacar un archivo aparte.
+function formatDuration(seconds) {
+  if (!seconds && seconds !== 0) return '';
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
 // Repostear (migración 039) — reenviar la publicación de OTRA persona a tu
 // feed, con RepostButton (ícono+número, mismo trato que LikeButton) en la
 // fila de acciones. Cuando la tarjeta llega marcada como repost
@@ -135,6 +144,12 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
   // Una publicación de solo texto (migración 049) es isPhoto con
   // photo_url null — no hay ninguna imagen que mostrar de fondo.
   const hasPhoto = isPhoto && Boolean(activity.photo_url);
+  // Una nota de voz de post (migración 052) — a diferencia de una nota de
+  // voz de club compartida al feed (kind = 'voice', más abajo, que acá
+  // solo muestra la transcripción como texto porque el audio se reproduce
+  // en la pantalla de Comentarios), un post no tiene ninguna otra pantalla
+  // más que el feed — así que acá SÍ hay un reproductor de verdad.
+  const hasVoice = isPhoto && Boolean(activity.voice_url);
   // Si la cita se publicó con la tarjeta ya armada (migración 021), esa
   // imagen ES el contenido — no hace falta repetir la cita como texto abajo
   // (ya está dibujada adentro). Las citas de antes de esa migración (o
@@ -299,9 +314,9 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
               {nameLink}
               {isPhoto && isOwn && (
                 <PostMenu
-                  editLabel={hasPhoto ? 'Editar foto' : 'Editar texto'}
+                  editLabel={hasPhoto ? 'Editar foto' : hasVoice ? 'Editar nota de voz' : 'Editar texto'}
                   onEdit={() => setEditingPhoto(true)}
-                  deleteLabel={hasPhoto ? 'Eliminar foto' : 'Eliminar publicación'}
+                  deleteLabel={hasPhoto ? 'Eliminar foto' : hasVoice ? 'Eliminar nota de voz' : 'Eliminar publicación'}
                   onDelete={handleDeletePhoto}
                 />
               )}
@@ -374,13 +389,23 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
               {/* La imagen va sola, sin nada escrito encima — igual que un
                   posteo. Un comentario con más de una foto es un carrusel
                   (PhotoCarousel, con sus puntitos); el resto sigue siendo el
-                  <div> de fondo de siempre, una sola imagen fija. Una
-                  publicación de solo texto (isPhoto sin photo_url, migración
-                  049) no tiene nada que mostrar acá — el texto ya se ve arriba. */}
+                  <div> de fondo de siempre, una sola imagen fija. Una nota
+                  de voz de post (migración 052) ocupa ese mismo lugar con
+                  un reproductor de verdad — a diferencia de una nota de
+                  voz de club, acá no hay otra pantalla donde escucharla.
+                  Una publicación de solo texto (isPhoto sin photo_url ni
+                  voice_url, migración 049) no tiene nada que mostrar acá —
+                  el texto ya se ve arriba. */}
               {hasCommentImages ? (
                 <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)', flexShrink: 0 }}>
                   <PhotoCarousel urls={commentImages} />
                 </div>
+              ) : hasVoice ? (
+                <VoiceNotePlayer
+                  src={activity.voice_url}
+                  duration={formatDuration(activity.voice_duration_seconds)}
+                  transcript={activity.voice_transcript}
+                />
               ) : !(isPhoto && !hasPhoto) ? (
                 <div
                   style={{

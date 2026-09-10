@@ -10,6 +10,7 @@ import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { PhotoCropModal } from '@/components/PhotoCropModal';
 import { QuoteComposer } from '@/components/QuoteComposer';
+import { VoiceRecorder } from '@/components/VoiceRecorder';
 
 // Vista previa local de la foto ya recortada, antes de subirla — libera el
 // object URL anterior cada vez que cambia el blob o al desmontar. La ×
@@ -37,96 +38,66 @@ function PreviewImage({ blob, onRemove }) {
   );
 }
 
-const toolbarButtonStyle = {
-  width: 32, height: 32, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
-  background: 'var(--surface-card)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-};
-
-// Fila de "adjuntar" adentro de la ventana de compartir: foto, GIF o cita
-// — mismo lugar, sin importar por dónde se entró (tocando la tarjeta o,
-// en teoría, directo). Solo se muestra si todavía no hay ninguna foto/GIF
-// adjunto (elegir "Cita" en ese punto, de todas formas, abandona el texto
-// que se estaba escribiendo — son dos publicaciones distintas, no se
-// pueden mezclar). Sin ícono de "GIF" en Lucide — se usa la sigla, mismo
-// criterio que ya usa X en su propio compositor (tampoco es un pictograma
-// ahí).
-function AttachmentToolbar({ onPickPhoto, onPickGif, onPickQuote }) {
+// Una pestaña de TIPO del compositor — mismo componente, mismo estilo
+// (ícono + rótulo apilados, rayita coral bajo la activa) que ya usa el
+// panel de "Agregar" de Tu camino (ChapterPath.jsx, TypeTabButton).
+function TypeTabButton({ active, onClick, icon, label }) {
   return (
-    <div style={{ display: 'flex', gap: 8 }}>
-      <button type="button" aria-label="Agregar una foto" onClick={onPickPhoto} style={toolbarButtonStyle}>
-        <Icon name="image" size={16} color="var(--accent-600)" />
-      </button>
-      <button type="button" aria-label="Agregar un GIF" onClick={onPickGif} style={toolbarButtonStyle}>
-        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--accent-600)', fontFamily: 'var(--font-body)' }}>GIF</span>
-      </button>
-      <button type="button" aria-label="Agregar una cita" onClick={onPickQuote} style={toolbarButtonStyle}>
-        <Icon name="quote" size={16} color="var(--accent-600)" />
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+        fontSize: 9.5, fontWeight: 700, padding: '8px 2px 7px', border: 'none', background: 'none',
+        cursor: 'pointer', fontFamily: 'var(--font-body)', position: 'relative',
+        color: active ? 'var(--accent-600)' : 'var(--text-tertiary)',
+      }}
+    >
+      <Icon name={icon} size={14} color={active ? 'var(--accent-600)' : 'var(--text-tertiary)'} />
+      {label}
+      {active && (
+        <span style={{ position: 'absolute', left: 6, right: 6, bottom: -1, height: 2, background: 'var(--accent-500)', borderRadius: '2px 2px 0 0' }} />
+      )}
+    </button>
   );
 }
 
-// Barra de "compartir", arriba del feed de Actividad de tu propio perfil —
-// tocarla (entera) abre la ventana para escribir. Adentro, una fila de
-// íconos deja adjuntar una foto, un GIF o pasar a una cita destacada
-// (migración 049/050): antes esas dos últimas opciones vivían en un menú
-// aparte, sobre la barra — ahora todo lo que se puede agregar a la
-// publicación se ve y se elige desde el mismo lugar donde se escribe.
-//
-// Dos inputs de archivo (uno por tipo, sin "capture" — así el celular abre
-// su selector nativo de galería/cámara igual) en vez de uno solo: cada
-// ícono filtra de entrada lo que tiene sentido elegir ahí (el selector del
-// celular ya no ofrece GIF al tocar "Foto", ni fotos comunes al tocar
-// "GIF"), aunque las dos rutas terminan en el mismo handlePick — este ya
-// sabía distinguir por el tipo de archivo, así que sigue siendo el
-// respaldo si algún selector no filtrara bien.
-//
-// Una vez elegida la foto (no GIF) se pasa al recorte vertical (3:4) y se
-// vuelve al mismo compositor de texto, ahora con la foto adjunta —
-// también se puede sacar la foto sin perder lo escrito (PreviewImage, ×).
-// GIF (migración 039) es la excepción: no pasa por el recorte (canvas solo
-// captura un frame, lo dejaría estático) — va directo a la vista previa
-// con el archivo tal cual se eligió, y se sube sin tocar.
-export function PostComposer({ profile }) {
+// El compositor de texto + foto/GIF, compartido por las pestañas
+// "Comentario" y "Foto/GIF" — son la misma forma por dentro (createPost ya
+// acepta las dos cosas juntas o por separado, desde la migración 049); la
+// única diferencia es si el selector nativo de archivos se abre solo al
+// montar (autoOpenPicker) — en "Comentario" queda como un link chico para
+// abrirlo a mano, sin arrancar ahí. Un GIF no pasa por el recorte
+// (PhotoCropModal usa un <canvas>, que solo captura un frame — dejaría el
+// GIF animado por dentro pero estático al mostrarlo), una foto común sí.
+function TextOrPhotoTab({ autoOpenPicker, onDone }) {
   const router = useRouter();
-  const photoInputRef = useRef(null);
-  const gifInputRef = useRef(null);
-  const [step, setStep] = useState('closed'); // closed | cropping | composing | quoting
+  const fileInputRef = useRef(null);
   const [pendingFile, setPendingFile] = useState(null);
   const [croppedBlob, setCroppedBlob] = useState(null);
   const [caption, setCaption] = useState('');
   const [error, setError] = useState(null);
   const [pending, startTransition] = useTransition();
 
-  function reset() {
-    setStep('closed');
-    setPendingFile(null);
-    setCroppedBlob(null);
-    setCaption('');
-    setError(null);
-  }
+  useEffect(() => {
+    if (autoOpenPicker) fileInputRef.current?.click();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handlePick(event) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    // Un GIF no pasa por el recorte: PhotoCropModal dibuja en un <canvas>
-    // para recortar, y canvas solo puede capturar un frame — recortar un
-    // GIF ahí lo dejaría animado por dentro pero estático al mostrarlo. Va
-    // directo a la vista previa, tal cual se seleccionó.
     if (file.type === 'image/gif') {
       setCroppedBlob(file);
-      setStep('composing');
       return;
     }
     setPendingFile(file);
-    setStep('cropping');
   }
 
   function handleCropConfirm(blob) {
     setCroppedBlob(blob);
     setPendingFile(null);
-    setStep('composing');
   }
 
   function publish() {
@@ -140,10 +111,80 @@ export function PostComposer({ profile }) {
       const result = await createPost(null, formData);
       if (result?.error) setError(result.error);
       else {
-        reset();
         router.refresh();
+        onDone();
       }
     });
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {croppedBlob && <PreviewImage blob={croppedBlob} onRemove={() => setCroppedBlob(null)} />}
+      <Textarea
+        placeholder="¿Qué estás leyendo?"
+        value={caption}
+        onChange={(e) => setCaption(e.target.value)}
+        rows={croppedBlob ? 2 : 4}
+      />
+      {!croppedBlob && (
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+            border: 'none', background: 'none', cursor: 'pointer', padding: 0,
+            fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--accent-600)', fontFamily: 'var(--font-body)',
+          }}
+        >
+          <Icon name="image-plus" size={15} color="var(--accent-600)" /> Agregar foto o GIF
+        </button>
+      )}
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handlePick} style={{ display: 'none' }} />
+
+      {error && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-2xs)' }}>{error}</div>}
+      <Button variant="primary" size="md" type="button" onClick={publish} disabled={pending || (!caption.trim() && !croppedBlob)}>
+        {pending ? 'Publicando…' : 'Publicar'}
+      </Button>
+
+      {pendingFile && (
+        <PhotoCropModal
+          file={pendingFile}
+          aspect={3 / 4}
+          shape="square"
+          outputSize={960}
+          title="Ajusta la foto"
+          onConfirm={handleCropConfirm}
+          onCancel={() => setPendingFile(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Barra de "compartir", arriba del feed de Actividad de tu propio perfil —
+// tocarla (entera) abre la ventana para escribir, ya en la pestaña
+// "Comentario". Adentro, cuatro pestañas de tipo — Comentario · Cita ·
+// Foto/GIF · Voz (migración 052) — mismas cuatro y mismo estilo que ya
+// tiene el panel de "Agregar" de Tu camino (ChapterPath.jsx): antes esto
+// era una fila de íconos sueltos (AttachmentToolbar) que cambiaban el modo
+// del mismo compositor; ahora son pestañas explícitas, una decisión más
+// visible y consistente con el resto de la app.
+//
+// Cada pestaña remonta su propio componente (key={activeTab}) al
+// cambiarla — cambiar de tipo nunca arrastra texto, foto o audio de la
+// pestaña anterior, mismo criterio que ya sigue el panel de Tu camino.
+// "Comentario" y "Foto/GIF" son la misma forma por dentro (TextOrPhotoTab)
+// con distinta configuración: la segunda abre el selector nativo de
+// entrada, la primera lo deja como un link chico para abrirlo a mano —
+// las dos pueden terminar publicando texto solo, foto sola, o las dos
+// cosas juntas (createPost ya acepta cualquier combinación).
+export function PostComposer({ profile }) {
+  const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('comment'); // 'comment' | 'quote' | 'photo' | 'voice'
+
+  function close() {
+    setOpen(false);
+    setActiveTab('comment');
   }
 
   return (
@@ -151,7 +192,7 @@ export function PostComposer({ profile }) {
       <button
         type="button"
         aria-label="Escribir algo sobre lo que estás leyendo"
-        onClick={() => setStep('composing')}
+        onClick={() => setOpen(true)}
         style={{
           display: 'flex', alignItems: 'center', gap: 8, width: '100%',
           padding: '8px 10px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
@@ -163,52 +204,23 @@ export function PostComposer({ profile }) {
         <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>¿Qué estás leyendo?</span>
       </button>
 
-      <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePick} style={{ display: 'none' }} />
-      <input ref={gifInputRef} type="file" accept="image/gif" onChange={handlePick} style={{ display: 'none' }} />
-
-      {step === 'cropping' && pendingFile && (
-        <PhotoCropModal
-          file={pendingFile}
-          aspect={3 / 4}
-          shape="square"
-          outputSize={960}
-          title="Ajusta la foto"
-          onConfirm={handleCropConfirm}
-          onCancel={() => { setPendingFile(null); setStep('composing'); }}
-        />
-      )}
-
-      {step === 'composing' && (
-        <Modal title="Compartir" onClose={reset}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {croppedBlob && <PreviewImage blob={croppedBlob} onRemove={() => setCroppedBlob(null)} />}
-            <Textarea
-              placeholder="¿Qué estás leyendo?"
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              rows={croppedBlob ? 2 : 4}
-            />
-            {!croppedBlob && (
-              <AttachmentToolbar
-                onPickPhoto={() => photoInputRef.current?.click()}
-                onPickGif={() => gifInputRef.current?.click()}
-                onPickQuote={() => setStep('quoting')}
-              />
-            )}
-            {error && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-2xs)' }}>{error}</div>}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <Button variant="secondary" size="md" type="button" onClick={reset} disabled={pending}>
-                Cancelar
-              </Button>
-              <Button variant="primary" size="md" type="button" onClick={publish} disabled={pending || (!caption.trim() && !croppedBlob)}>
-                {pending ? 'Publicando…' : 'Publicar'}
-              </Button>
+      {open && (
+        <Modal title="Compartir" onClose={close}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', marginBottom: 10 }}>
+              <TypeTabButton active={activeTab === 'comment'} onClick={() => setActiveTab('comment')} icon="message-circle" label="Comentario" />
+              <TypeTabButton active={activeTab === 'quote'} onClick={() => setActiveTab('quote')} icon="quote" label="Cita" />
+              <TypeTabButton active={activeTab === 'photo'} onClick={() => setActiveTab('photo')} icon="image" label="Foto/GIF" />
+              <TypeTabButton active={activeTab === 'voice'} onClick={() => setActiveTab('voice')} icon="mic" label="Voz" />
             </div>
+
+            {activeTab === 'comment' && <TextOrPhotoTab key="comment" autoOpenPicker={false} onDone={close} />}
+            {activeTab === 'photo' && <TextOrPhotoTab key="photo" autoOpenPicker onDone={close} />}
+            {activeTab === 'quote' && <QuoteComposer embedded onClose={close} />}
+            {activeTab === 'voice' && <VoiceRecorder showSpoilerOption={false} onDone={close} />}
           </div>
         </Modal>
       )}
-
-      {step === 'quoting' && <QuoteComposer onClose={reset} />}
     </>
   );
 }

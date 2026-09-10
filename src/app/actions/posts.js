@@ -12,24 +12,45 @@ const MAX_PHOTO_BYTES = 8 * 1024 * 1024; // 8 MB — de sobra para una foto reco
 // dentro pero estático al mostrarlo). PostComposer lo sube tal cual llegó.
 const PHOTO_EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
 
+// Nota de voz de un post (migración 052) — mismo tope y formatos que ya usa
+// una nota de voz de club (media.js, MAX_AUDIO_BYTES/AUDIO_EXTENSIONS).
+const MAX_VOICE_BYTES = 10 * 1024 * 1024;
+const VOICE_EXTENSIONS = {
+  'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3',
+  'audio/ogg': 'ogg', 'audio/wav': 'wav',
+};
+
 function isFile(value) {
   return value && typeof value !== 'string' && typeof value.size === 'number';
 }
 
 // Publica algo en la Actividad del propio perfil — texto, una foto de lo
-// que se está leyendo, o las dos cosas (migración 049: antes la foto era
-// obligatoria). Si hay foto, ya viene recortada y comprimida del lado del
-// navegador — se sube al bucket "post-photos", en la carpeta propia, y se
-// crea la fila en "posts".
+// que se está leyendo, una nota de voz (migración 052), o cualquier
+// combinación con el texto (solo la foto y la voz son excluyentes entre sí:
+// el compositor de Perfil las ofrece como pestañas de tipo distintas, no
+// hay forma de adjuntar las dos a la vez). Si hay foto, ya viene recortada
+// y comprimida del lado del navegador. "post-voice-notes" es un bucket
+// PÚBLICO (a diferencia de "voice-notes", el de club) — un post ya es
+// visible para cualquier usuario autenticado, así que se guarda la URL
+// pública directa, igual que image_url, sin necesidad de firmar nada al
+// leerla.
 export async function createPost(prevState, formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
   const file = formData.get('file');
   const caption = formData.get('caption')?.toString().trim() || null;
+  // audio/duration/transcript: mismos nombres de campo que ya usa
+  // postVoiceComment (media.js) — VoiceRecorder es el mismo componente en
+  // los dos casos, así arma el FormData una sola vez sin distinguir quién
+  // lo va a leer.
+  const audio = formData.get('audio');
+  const voiceDuration = Number(formData.get('duration'));
+  const voiceTranscript = formData.get('transcript')?.toString().trim() || null;
   const hasFile = isFile(file) && file.size > 0;
+  const hasAudio = isFile(audio) && audio.size > 0;
 
-  if (!hasFile && !caption) return { error: 'Escribe algo o agrega una foto antes de publicar.' };
+  if (!hasFile && !hasAudio && !caption) return { error: 'Escribe algo, agrega una foto o graba una nota de voz antes de publicar.' };
 
   let imageUrl = null;
   if (hasFile) {
@@ -48,10 +69,31 @@ export async function createPost(prevState, formData) {
     imageUrl = publicUrl;
   }
 
+  let voiceUrl = null;
+  if (hasAudio) {
+    if (audio.size > MAX_VOICE_BYTES) return { error: 'La nota de voz es demasiado larga.' };
+
+    const baseType = audio.type.split(';')[0];
+    const extension = VOICE_EXTENSIONS[baseType];
+    if (!extension) return { error: 'Formato de audio no soportado.' };
+
+    const path = `${user.id}/${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from('post-voice-notes')
+      .upload(path, audio, { contentType: baseType });
+    if (uploadError) return { error: friendlyDbError(uploadError) };
+
+    const { data: { publicUrl } } = supabase.storage.from('post-voice-notes').getPublicUrl(path);
+    voiceUrl = publicUrl;
+  }
+
   const { error } = await supabase.from('posts').insert({
     profile_id: user.id,
     image_url: imageUrl,
     caption,
+    voice_url: voiceUrl,
+    voice_transcript: hasAudio ? voiceTranscript : null,
+    voice_duration_seconds: hasAudio && Number.isFinite(voiceDuration) ? Math.round(voiceDuration) : null,
   });
   if (error) return { error: friendlyDbError(error) };
 
@@ -70,13 +112,14 @@ export async function updatePost(formData) {
   const caption = formData.get('caption')?.toString().trim() || null;
   if (!postId) return { error: 'Falta la publicación.' };
 
-  // Una publicación de solo texto (migración 049, sin foto) no puede
-  // quedarse sin caption tampoco — la base lo rechazaría igual
-  // (posts_content_check), pero acá se valida antes para dar un mensaje
-  // claro en vez del genérico de friendlyDbError.
+  // Una publicación de solo texto (migración 049, sin foto) o de solo voz
+  // (migración 052, sin foto tampoco) no puede quedarse sin caption
+  // tampoco — la base lo rechazaría igual (posts_content_check), pero acá
+  // se valida antes para dar un mensaje claro en vez del genérico de
+  // friendlyDbError.
   if (!caption) {
-    const { data: existing } = await supabase.from('posts').select('image_url').eq('id', postId).maybeSingle();
-    if (existing && !existing.image_url) return { error: 'Escribe algo antes de guardar.' };
+    const { data: existing } = await supabase.from('posts').select('image_url, voice_url').eq('id', postId).maybeSingle();
+    if (existing && !existing.image_url && !existing.voice_url) return { error: 'Escribe algo antes de guardar.' };
   }
 
   const { error } = await supabase
@@ -92,8 +135,9 @@ export async function updatePost(formData) {
 
 // Borra tu propia foto — la fila y, a diferencia de la reseña (donde no
 // hay archivo propio: la portada es del libro), también el archivo en
-// Storage, para no dejarlo huérfano. "post-photos" es público, así que la
-// URL guardada ya trae el path completo después de "/post-photos/".
+// Storage, para no dejarlo huérfano. "post-photos"/"post-voice-notes" son
+// públicos, así que la URL guardada ya trae el path completo después de
+// "/<bucket>/".
 export async function deletePost(postId) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
@@ -101,7 +145,7 @@ export async function deletePost(postId) {
 
   const { data: post } = await supabase
     .from('posts')
-    .select('image_url')
+    .select('image_url, voice_url')
     .eq('id', postId)
     .eq('profile_id', user.id)
     .maybeSingle();
@@ -113,9 +157,13 @@ export async function deletePost(postId) {
     .eq('profile_id', user.id);
   if (error) return { error: friendlyDbError(error) };
 
-  const path = post?.image_url?.split('/post-photos/')[1];
-  if (path) {
-    await supabase.storage.from('post-photos').remove([path]);
+  const photoPath = post?.image_url?.split('/post-photos/')[1];
+  if (photoPath) {
+    await supabase.storage.from('post-photos').remove([photoPath]);
+  }
+  const voicePath = post?.voice_url?.split('/post-voice-notes/')[1];
+  if (voicePath) {
+    await supabase.storage.from('post-voice-notes').remove([voicePath]);
   }
 
   revalidatePath('/', 'layout');

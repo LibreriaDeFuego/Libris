@@ -678,7 +678,7 @@ function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss })
 
       <div style={{ padding: '10px 14px 14px' }}>
         {activeTab === 'voice' ? (
-          <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} onDone={onDismiss} />
+          <VoiceRecorder extraFields={{ clubBookId, chapterId }} onDone={onDismiss} />
         ) : (
           <NewCommentForm
             key={activeTab}

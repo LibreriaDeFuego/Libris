@@ -55,7 +55,15 @@ function BookRow({ book, onClick }) {
 //     la lista de "tus libros" — es solo para esta cita puntual.
 // Después de elegir el libro y escribir la cita, un estilo propio para
 // verse en el feed (migración 050, CardStylePicker).
-export function QuoteComposer({ onClose }) {
+//
+// `embedded` (migración 052) — sin su propio <Modal>, para vivir como el
+// contenido de la pestaña "Cita" dentro del panel de 4 pestañas de
+// PostComposer (Comentario/Cita/Foto·GIF/Voz), en vez de abrir una segunda
+// ventana encima de la primera. También esconde "Cancelar": en ese
+// contexto cerrar es trabajo de la "x" del panel que lo contiene, no de un
+// botón propio — mismo criterio que ya sigue NewCommentForm (sin Cancelar,
+// solo Publicar) dentro del panel de Tu camino.
+export function QuoteComposer({ onClose, embedded = false }) {
   const router = useRouter();
   const [books, setBooks] = useState(null); // null = cargando
   const [selectedBook, setSelectedBook] = useState(null);
@@ -157,8 +165,7 @@ export function QuoteComposer({ onClose }) {
     });
   }
 
-  return (
-    <Modal title="Agregar una cita" onClose={onClose}>
+  const content = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {!selectedBook && manualEntry && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -277,7 +284,7 @@ export function QuoteComposer({ onClose }) {
 
         {error && !manualEntry && <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-2xs)' }}>{error}</div>}
         <div style={{ display: 'flex', gap: 10 }}>
-          {!manualEntry && (
+          {!manualEntry && !embedded && (
             <Button variant="secondary" size="md" type="button" onClick={onClose} disabled={pending}>
               Cancelar
             </Button>
@@ -289,6 +296,13 @@ export function QuoteComposer({ onClose }) {
           )}
         </div>
       </div>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <Modal title="Agregar una cita" onClose={onClose}>
+      {content}
     </Modal>
   );
 }
