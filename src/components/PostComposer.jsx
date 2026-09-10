@@ -40,20 +40,23 @@ function PreviewImage({ blob, onRemove }) {
 
 // Una pestaña de TIPO del compositor — mismo componente, mismo estilo
 // (ícono + rótulo apilados, rayita coral bajo la activa) que ya usa el
-// panel de "Agregar" de Tu camino (ChapterPath.jsx, TypeTabButton).
+// panel de "Agregar" de Tu camino (ChapterPath.jsx, TypeTabButton). "icon"
+// es opcional — "Comentario" no lleva (el rótulo solo ya deja claro qué es,
+// un ícono ahí era redundante); minHeight mantiene las cuatro pestañas del
+// mismo alto aunque una no tenga ícono arriba del texto.
 function TypeTabButton({ active, onClick, icon, label }) {
   return (
     <button
       type="button"
       onClick={onClick}
       style={{
-        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-        fontSize: 9.5, fontWeight: 700, padding: '8px 2px 7px', border: 'none', background: 'none',
+        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+        minHeight: 36, fontSize: 9.5, fontWeight: 700, padding: '8px 2px 7px', border: 'none', background: 'none',
         cursor: 'pointer', fontFamily: 'var(--font-body)', position: 'relative',
         color: active ? 'var(--accent-600)' : 'var(--text-tertiary)',
       }}
     >
-      <Icon name={icon} size={14} color={active ? 'var(--accent-600)' : 'var(--text-tertiary)'} />
+      {icon && <Icon name={icon} size={14} color={active ? 'var(--accent-600)' : 'var(--text-tertiary)'} />}
       {label}
       {active && (
         <span style={{ position: 'absolute', left: 6, right: 6, bottom: -1, height: 2, background: 'var(--accent-500)', borderRadius: '2px 2px 0 0' }} />
@@ -65,12 +68,15 @@ function TypeTabButton({ active, onClick, icon, label }) {
 // El compositor de texto + foto/GIF, compartido por las pestañas
 // "Comentario" y "Foto/GIF" — son la misma forma por dentro (createPost ya
 // acepta las dos cosas juntas o por separado, desde la migración 049); la
-// única diferencia es si el selector nativo de archivos se abre solo al
-// montar (autoOpenPicker) — en "Comentario" queda como un link chico para
-// abrirlo a mano, sin arrancar ahí. Un GIF no pasa por el recorte
+// diferencia es si el selector nativo de archivos se abre solo al montar
+// (autoOpenPicker) y si queda además el link "Agregar foto o GIF" para
+// volver a abrirlo a mano (showAddPhotoLink) — en "Comentario" no se
+// muestra: ya existe la pestaña "Foto/GIF" dedicada a eso, tenerlo también
+// acá era redundante. En "Foto/GIF" sigue mostrándose, para poder elegir
+// otra foto si se saca la que había. Un GIF no pasa por el recorte
 // (PhotoCropModal usa un <canvas>, que solo captura un frame — dejaría el
 // GIF animado por dentro pero estático al mostrarlo), una foto común sí.
-function TextOrPhotoTab({ autoOpenPicker, onDone }) {
+function TextOrPhotoTab({ autoOpenPicker, showAddPhotoLink = true, onDone }) {
   const router = useRouter();
   const fileInputRef = useRef(null);
   const [pendingFile, setPendingFile] = useState(null);
@@ -126,7 +132,7 @@ function TextOrPhotoTab({ autoOpenPicker, onDone }) {
         onChange={(e) => setCaption(e.target.value)}
         rows={croppedBlob ? 2 : 4}
       />
-      {!croppedBlob && (
+      {!croppedBlob && showAddPhotoLink && (
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
@@ -208,13 +214,13 @@ export function PostComposer({ profile }) {
         <Modal title="Compartir" onClose={close}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', marginBottom: 10 }}>
-              <TypeTabButton active={activeTab === 'comment'} onClick={() => setActiveTab('comment')} icon="message-circle" label="Comentario" />
+              <TypeTabButton active={activeTab === 'comment'} onClick={() => setActiveTab('comment')} label="Comentario" />
               <TypeTabButton active={activeTab === 'quote'} onClick={() => setActiveTab('quote')} icon="quote" label="Cita" />
               <TypeTabButton active={activeTab === 'photo'} onClick={() => setActiveTab('photo')} icon="image" label="Foto/GIF" />
               <TypeTabButton active={activeTab === 'voice'} onClick={() => setActiveTab('voice')} icon="mic" label="Voz" />
             </div>
 
-            {activeTab === 'comment' && <TextOrPhotoTab key="comment" autoOpenPicker={false} onDone={close} />}
+            {activeTab === 'comment' && <TextOrPhotoTab key="comment" autoOpenPicker={false} showAddPhotoLink={false} onDone={close} />}
             {activeTab === 'photo' && <TextOrPhotoTab key="photo" autoOpenPicker onDone={close} />}
             {activeTab === 'quote' && <QuoteComposer embedded onClose={close} />}
             {activeTab === 'voice' && <VoiceRecorder showSpoilerOption={false} onDone={close} />}
