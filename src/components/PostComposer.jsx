@@ -40,23 +40,22 @@ function PreviewImage({ blob, onRemove }) {
 
 // Una pestaña de TIPO del compositor — mismo componente, mismo estilo
 // (ícono + rótulo apilados, rayita coral bajo la activa) que ya usa el
-// panel de "Agregar" de Tu camino (ChapterPath.jsx, TypeTabButton). "icon"
-// es opcional — "Comentario" no lleva (el rótulo solo ya deja claro qué es,
-// un ícono ahí era redundante); minHeight mantiene las cuatro pestañas del
-// mismo alto aunque una no tenga ícono arriba del texto.
+// panel de "Agregar" de Tu camino (ChapterPath.jsx, TypeTabButton). Solo
+// Cita/Foto·GIF/Voz tienen botón acá — "Comentario" no, ver el comentario
+// sobre PostComposer más abajo.
 function TypeTabButton({ active, onClick, icon, label }) {
   return (
     <button
       type="button"
       onClick={onClick}
       style={{
-        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
-        minHeight: 36, fontSize: 9.5, fontWeight: 700, padding: '8px 2px 7px', border: 'none', background: 'none',
+        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+        fontSize: 9.5, fontWeight: 700, padding: '8px 2px 7px', border: 'none', background: 'none',
         cursor: 'pointer', fontFamily: 'var(--font-body)', position: 'relative',
         color: active ? 'var(--accent-600)' : 'var(--text-tertiary)',
       }}
     >
-      {icon && <Icon name={icon} size={14} color={active ? 'var(--accent-600)' : 'var(--text-tertiary)'} />}
+      <Icon name={icon} size={14} color={active ? 'var(--accent-600)' : 'var(--text-tertiary)'} />
       {label}
       {active && (
         <span style={{ position: 'absolute', left: 6, right: 6, bottom: -1, height: 2, background: 'var(--accent-500)', borderRadius: '2px 2px 0 0' }} />
@@ -179,18 +178,30 @@ function TextOrPhotoTab({ autoOpenPicker, showAddPhotoLink = true, onDone }) {
 // Cada pestaña remonta su propio componente (key={activeTab}) al
 // cambiarla — cambiar de tipo nunca arrastra texto, foto o audio de la
 // pestaña anterior, mismo criterio que ya sigue el panel de Tu camino.
-// "Comentario" y "Foto/GIF" son la misma forma por dentro (TextOrPhotoTab)
-// con distinta configuración: la segunda abre el selector nativo de
-// entrada, la primera lo deja como un link chico para abrirlo a mano —
+//
+// "Comentario" no tiene su propio botón de pestaña — la caja de texto ya
+// es la vista por default al abrir el panel, así que marcarla como una
+// pestaña más (con o sin ícono) era redundante. Cita/Foto·GIF/Voz sí lo
+// son, porque reemplazan esa vista por otra cosa — y tocar la que ya está
+// activa vuelve al texto (no hay otra forma de "salir" de Cita o Voz sin
+// cerrar el panel entero). "Comentario"/"Foto·GIF" siguen siendo la misma
+// forma por dentro (TextOrPhotoTab) con distinta configuración: la segunda
+// abre el selector nativo de entrada apenas se monta, la primera no —
 // las dos pueden terminar publicando texto solo, foto sola, o las dos
 // cosas juntas (createPost ya acepta cualquier combinación).
 export function PostComposer({ profile }) {
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('comment'); // 'comment' | 'quote' | 'photo' | 'voice'
+  const [activeTab, setActiveTab] = useState('comment'); // 'comment' (default, sin pestaña propia) | 'quote' | 'photo' | 'voice'
 
   function close() {
     setOpen(false);
     setActiveTab('comment');
+  }
+
+  // Tocar una pestaña ya activa vuelve al texto — así se puede salir de
+  // Cita/Foto·GIF/Voz sin tener que cerrar el panel entero.
+  function toggleTab(tab) {
+    setActiveTab((current) => (current === tab ? 'comment' : tab));
   }
 
   return (
@@ -214,10 +225,9 @@ export function PostComposer({ profile }) {
         <Modal title="Compartir" onClose={close}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', marginBottom: 10 }}>
-              <TypeTabButton active={activeTab === 'comment'} onClick={() => setActiveTab('comment')} label="Comentario" />
-              <TypeTabButton active={activeTab === 'quote'} onClick={() => setActiveTab('quote')} icon="quote" label="Cita" />
-              <TypeTabButton active={activeTab === 'photo'} onClick={() => setActiveTab('photo')} icon="image" label="Foto/GIF" />
-              <TypeTabButton active={activeTab === 'voice'} onClick={() => setActiveTab('voice')} icon="mic" label="Voz" />
+              <TypeTabButton active={activeTab === 'quote'} onClick={() => toggleTab('quote')} icon="quote" label="Cita" />
+              <TypeTabButton active={activeTab === 'photo'} onClick={() => toggleTab('photo')} icon="image" label="Foto/GIF" />
+              <TypeTabButton active={activeTab === 'voice'} onClick={() => toggleTab('voice')} icon="mic" label="Voz" />
             </div>
 
             {activeTab === 'comment' && <TextOrPhotoTab key="comment" autoOpenPicker={false} showAddPhotoLink={false} onDone={close} />}
