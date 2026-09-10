@@ -10,7 +10,10 @@ import { compressImage } from '@/lib/imageProcessing';
 import { CardStylePicker } from '@/components/CardStylePicker';
 import { DEFAULT_CARD_STYLE, DEFAULT_CARD_COLOR_BY_STYLE } from '@/lib/quoteFeedCard';
 
-export function NewCommentForm({ clubBookId, chapterId, book, clubName, personName }) {
+// onPosted: opcional — se llama después de publicar (texto o cita) y de
+// vaciar el formulario. La usa ChapterPath para refrescar, sin salir de "Tu
+// camino", la vista previa de comentarios del capítulo.
+export function NewCommentForm({ clubBookId, chapterId, book, onPosted }) {
   const [kind, setKind] = useState('text');
   const [body, setBody] = useState('');
   const [isSpoiler, setIsSpoiler] = useState(false);
@@ -93,6 +96,7 @@ export function NewCommentForm({ clubBookId, chapterId, book, clubName, personNa
       setBody('');
       clearImages();
       formRef.current?.reset();
+      onPosted?.();
     });
   }
 

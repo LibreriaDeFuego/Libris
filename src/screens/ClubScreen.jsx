@@ -101,6 +101,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
                   <ChapterPath
                     clubId={club.id}
                     clubBookId={clubBookId}
+                    book={book}
                     chapters={orderedChapters}
                     volumes={volumes ?? []}
                     currentChapterId={myProgress?.chapter_id ?? null}

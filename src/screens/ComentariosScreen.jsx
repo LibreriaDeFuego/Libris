@@ -135,7 +135,7 @@ function ReviewCard({ review, book, isOwn, onEdit, replies }) {
 // club los ve. "Compartir" es aparte: solo aparece en tus propios
 // comentarios de capítulo y notas de voz (reseñas/citas ya aparecen
 // siempre en Inicio, no necesitan esto) y solo tú lo ves.
-export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myDisplayName, myProfileId, initialChapterId }) {
+export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myProfileId, initialChapterId }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
   // Las respuestas (parent_comment_id no nulo) no son "un comentario más" en
@@ -174,7 +174,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   // completo arriba, cuadro para comentar antes que la lista.
   const composeBlock = (
     <>
-      <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} clubName={clubName} personName={myDisplayName} />
+      <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} />
       <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} />
     </>
   );
@@ -326,8 +326,6 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
         <EditQuoteModal
           quote={editingQuote}
           book={book}
-          clubName={clubName}
-          personName={myDisplayName}
           onClose={() => setEditingQuote(null)}
         />
       )}

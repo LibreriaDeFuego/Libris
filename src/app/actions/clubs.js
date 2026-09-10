@@ -605,6 +605,55 @@ function chapterCommentPreviewText(comment) {
   return comment.body;
 }
 
+// "Quiénes están leyendo" — se había sacado del todo (ver README): quedaba
+// redundante frente a los integrantes del club que ya se ven en "Mis clubes
+// de lectura". Vuelve, pero solo en Tu camino y como algo que se elige ver o
+// no (ChapterPath llama a esto solo cuando alguien toca "Ver compañeros", no
+// en cada carga de la pantalla). Se apoya solo en las policies de siempre —
+// cualquier miembro del club ya puede leer club_members/reading_progress/
+// profiles de su propio club — así que no hace falta ninguna función
+// security definer nueva. Solo devuelve a quienes ya registraron progreso en
+// ESTE libro (sin fila en reading_progress, no hay dónde ubicarlos en el
+// camino) y nunca incluye al propio usuario (su posición ya se ve en el
+// camino sin necesidad de un avatar aparte).
+export async function getClubMembersProgress(clubBookId) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+  if (!clubBookId) return { members: [] };
+
+  const { data: clubBook } = await supabase
+    .from('club_books')
+    .select('club_id')
+    .eq('id', clubBookId)
+    .maybeSingle();
+  if (!clubBook) return { members: [] };
+
+  const [{ data: members }, { data: progress }] = await Promise.all([
+    supabase
+      .from('club_members')
+      .select('profile_id, profiles(display_name, avatar_url)')
+      .eq('club_id', clubBook.club_id)
+      .neq('profile_id', user.id),
+    supabase
+      .from('reading_progress')
+      .select('profile_id, chapter_id')
+      .eq('club_book_id', clubBookId),
+  ]);
+
+  const chapterByProfile = new Map((progress ?? []).map((p) => [p.profile_id, p.chapter_id]));
+
+  const result = (members ?? [])
+    .map((m) => ({
+      profileId: m.profile_id,
+      displayName: m.profiles?.display_name ?? 'Alguien',
+      avatarUrl: m.profiles?.avatar_url ?? null,
+      chapterId: chapterByProfile.get(m.profile_id) ?? null,
+    }))
+    .filter((m) => m.chapterId);
+
+  return { members: result };
+}
+
 // Estética propia de la cita ADENTRO de la app (migración 050) — deben
 // coincidir con los CHECK de comments.card_style/card_color y con
 // CARD_STYLES/CARD_COLORS en src/lib/quoteFeedCard.js. El selector de

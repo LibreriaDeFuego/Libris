@@ -1,9 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
-import { updateProgress, getChapterCommentsPreview } from '@/app/actions/clubs';
+import { Avatar } from '@/design-system/components/core/Avatar.jsx';
+import { updateProgress, getChapterCommentsPreview, getClubMembersProgress } from '@/app/actions/clubs';
+import { NewCommentForm } from '@/components/NewCommentForm';
+import { VoiceRecorder } from '@/components/VoiceRecorder';
 
 // Lo leído ya no es un color plano: el camino recorrido va de un gris
 // azulado frío (el capítulo más viejo) al coral de siempre — justo en
@@ -69,15 +72,35 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // capítulo suyo. (Se probó también un carril de color corrido al lado del
 // camino, pero se sacó: quedaba mejor sin esas líneas.) Con un solo
 // volumen (o ninguno, el caso de siempre) no se muestra nada.
-export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], currentChapterId, streakCount = 0, commentCounts = {}, onOpenFull, onFinishBook }) {
+//
+// Agregar algo en un capítulo, sin salir de acá — cada capítulo tiene su
+// propio botón "+" (junto a la pastilla de comentarios, o solo si todavía
+// no hay ninguno) que abre el mismo panel que ya aparecía solo al marcar un
+// capítulo como leído: los últimos comentarios, y ahora también el
+// formulario para sumar un comentario, una cita, una foto/GIF o grabar una
+// nota de voz — todo embebido (NewCommentForm + VoiceRecorder, los mismos
+// que usa la pantalla de Comentarios), sin navegar a otra pantalla. Publicar
+// desde acá refresca la vista previa (onPosted/onDone) para verlo al toque.
+//
+// "Quiénes están leyendo" — se había sacado del todo (ver README), quedaba
+// redundante frente a los integrantes del club en "Mis clubes de lectura".
+// Vuelve, pero como algo que se elige ver o no: un botón en el encabezado
+// ("Ver compañeros" / "Ocultar compañeros") que, recién al tocarlo, trae el
+// capítulo actual de cada compañero (getClubMembersProgress) y los muestra
+// como un stack de avatares chicos debajo del nodo donde va cada uno.
+export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, streakCount = 0, commentCounts = {}, onOpenFull, onFinishBook }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
   const [error, setError] = useState(null);
   const [spoilerWarning, setSpoilerWarning] = useState(null); // { chapterId, label } | null
+  const [composerChapterId, setComposerChapterId] = useState(null);
   const [preview, setPreview] = useState(null); // { chapterId, label, comments, total } | null
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [finishPending, setFinishPending] = useState(false);
+  const [showCompanions, setShowCompanions] = useState(false);
+  const [companions, setCompanions] = useState(null); // null = todavía no se pidió
+  const [loadingCompanions, setLoadingCompanions] = useState(false);
   const currentNodeRef = useRef(null);
 
   useEffect(() => {
@@ -92,6 +115,19 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
   useEffect(() => {
     currentNodeRef.current?.scrollIntoView({ block: 'center' });
   }, []);
+
+  // Agrupa a los compañeros ya traídos (getClubMembersProgress) por el
+  // capítulo donde está cada uno — solo tiene datos reales después de tocar
+  // "Ver compañeros" al menos una vez (antes, `companions` es null).
+  const companionsByChapter = useMemo(() => {
+    const map = new Map();
+    for (const m of companions ?? []) {
+      const list = map.get(m.chapterId) ?? [];
+      list.push(m);
+      map.set(m.chapterId, list);
+    }
+    return map;
+  }, [companions]);
 
   if (!chapters || chapters.length === 0) return null;
 
@@ -126,6 +162,49 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
     return chapter.title ? `Cap. ${chapter.number}` : (chapter.label ?? `Cap. ${chapter.number}`);
   }
 
+  // Trae (o refresca) la vista previa de comentarios de un capítulo — al
+  // marcarlo como leído, al abrir su "+", o después de publicar algo desde
+  // el propio panel (para verlo reflejado sin salir de Tu camino).
+  function refreshPreview(chapter) {
+    setLoadingPreview(true);
+    startTransition(async () => {
+      const data = await getChapterCommentsPreview(clubBookId, chapter.id);
+      setPreview({ chapterId: chapter.id, label: chapterLabel(chapter), ...data });
+      setLoadingPreview(false);
+    });
+  }
+
+  // El botón "+" de cada capítulo — abre (o cierra, si ya estaba abierto) el
+  // panel de ese capítulo: comentarios existentes + el formulario para sumar
+  // los propios, sin ir a la pantalla de Comentarios.
+  function openComposerFor(chapter) {
+    setSpoilerWarning(null);
+    if (composerChapterId === chapter.id) {
+      setComposerChapterId(null);
+      setPreview(null);
+      return;
+    }
+    setComposerChapterId(chapter.id);
+    setPreview(null);
+    refreshPreview(chapter);
+  }
+
+  function handleToggleCompanions() {
+    if (showCompanions) {
+      setShowCompanions(false);
+      return;
+    }
+    setShowCompanions(true);
+    if (companions == null) {
+      setLoadingCompanions(true);
+      startTransition(async () => {
+        const data = await getClubMembersProgress(clubBookId);
+        setCompanions(data.members ?? []);
+        setLoadingCompanions(false);
+      });
+    }
+  }
+
   function handleTap(chapter) {
     if (chapter.id === activeId || pending) return;
     setError(null);
@@ -147,6 +226,9 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
         setToast(null);
         return;
       }
+      // Después de marcar el capítulo, se abre directo su panel — mismo que
+      // el botón "+" — para ver qué se dijo y poder sumar lo tuyo al toque.
+      setComposerChapterId(chapter.id);
       setLoadingPreview(true);
       const data = await getChapterCommentsPreview(clubBookId, chapter.id);
       setPreview({ chapterId: chapter.id, label: chapterLabel(chapter), ...data });
@@ -202,7 +284,26 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
             </button>
           )}
         </div>
-        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Toca el capítulo en el que vas</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Toca el capítulo en el que vas</div>
+          <button
+            type="button"
+            onClick={handleToggleCompanions}
+            style={{
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none',
+              padding: '2px 0', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: 'var(--text-link)', fontFamily: 'var(--font-body)',
+            }}
+          >
+            <Icon name="users" size={12} />
+            {showCompanions ? 'Ocultar compañeros' : 'Ver compañeros'}
+          </button>
+        </div>
+        {showCompanions && loadingCompanions && (
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Buscando a tus compañeros…</div>
+        )}
+        {showCompanions && !loadingCompanions && companions?.length === 0 && (
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Nadie más registró su progreso todavía.</div>
+        )}
       </div>
 
       <div style={{ position: 'relative', padding: '10px 24px 4px' }}>
@@ -229,6 +330,7 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
 
             const volumeKey = volumeKeyOf(chapter);
             const isFirstOfVolume = showVolumeHeaders && (i === 0 || volumeKeyOf(path[i - 1]) !== volumeKey);
+            const chapterCompanions = showCompanions ? (companionsByChapter.get(chapter.id) ?? []) : [];
 
             const extras = (
               <SideExtras
@@ -236,6 +338,8 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
                 isAhead={isAhead}
                 onCommentTap={() => handleSpoilerTap(chapter)}
                 href={!isAhead ? `/club/${clubId}/comentarios?capitulo=${chapter.id}` : null}
+                composerOpen={composerChapterId === chapter.id}
+                onAddTap={() => openComposerFor(chapter)}
               />
             );
 
@@ -292,11 +396,35 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
                   </div>
                 </div>
 
+                {chapterCompanions.length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', margin: '2px 0' }}>
+                    <div />
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <CompanionAvatars companions={chapterCompanions} />
+                    </div>
+                    <div />
+                  </div>
+                )}
+
                 {spoilerWarning?.chapterId === chapter.id && (
                   <SpoilerWarning
                     label={spoilerWarning.label}
                     href={`/club/${clubId}/comentarios?capitulo=${chapter.id}`}
                     onDismiss={() => setSpoilerWarning(null)}
+                  />
+                )}
+
+                {composerChapterId === chapter.id && (
+                  <ChapterCommentsPanel
+                    clubId={clubId}
+                    clubBookId={clubBookId}
+                    book={book}
+                    chapterId={chapter.id}
+                    label={chapterLabel(chapter)}
+                    preview={preview?.chapterId === chapter.id ? preview : null}
+                    loading={loadingPreview && (!preview || preview.chapterId !== chapter.id)}
+                    onDismiss={() => { setComposerChapterId(null); setPreview(null); }}
+                    onPosted={() => refreshPreview(chapter)}
                   />
                 )}
 
@@ -384,15 +512,6 @@ export function ChapterPath({ clubId, clubBookId, chapters, volumes = [], curren
       {error && (
         <div style={{ margin: '2px 18px 0', color: 'var(--danger)', fontSize: 'var(--fs-xs)' }}>{error}</div>
       )}
-
-      {(preview || loadingPreview) && (
-        <ChapterCommentsPanel
-          clubId={clubId}
-          preview={preview}
-          loading={loadingPreview}
-          onDismiss={() => setPreview(null)}
-        />
-      )}
     </div>
   );
 }
@@ -419,24 +538,26 @@ function NodeLabel({ chapter, isCurrent, isDone, align }) {
 }
 
 // Lo que va del lado libre de cada nodo (opuesto a la etiqueta del
-// capítulo): la pastilla de comentarios, si el capítulo tiene alguno. Una
+// capítulo): la pastilla de comentarios (si el capítulo tiene alguno) y,
+// debajo, el botón "+" — siempre presente, con o sin comentarios previos —
+// que abre el panel para agregar los propios sin salir de Tu camino. Una
 // sola pastilla — antes solo con el ícono de "comentario"; ahora, si entre
 // los comentarios de este capítulo hay alguna nota de voz y/o alguna foto
 // o GIF, se les suma su propio ícono antes del total (mismo color que el
 // resto de la pastilla — ni "mic" ni "image" tienen un color propio en
 // ningún otro lugar de la app, así que no se les inventa uno acá). No
 // desglosa cuántos hay de cada tipo, solo cuáles hay.
-function SideExtras({ commentInfo, isAhead, onCommentTap, href }) {
-  if (!commentInfo?.total) return null;
-  const { total, hasVoice, hasPhoto } = commentInfo;
-  const label = `${total} ${total === 1 ? 'comentario' : 'comentarios'}`;
+function SideExtras({ commentInfo, isAhead, onCommentTap, href, composerOpen, onAddTap }) {
+  const hasComments = Boolean(commentInfo?.total);
+  const { total, hasVoice, hasPhoto } = commentInfo ?? {};
+  const label = hasComments ? `${total} ${total === 1 ? 'comentario' : 'comentarios'}` : null;
   // Diseño pedido: siempre en dos líneas fijas, no un pill de una sola
   // línea que a veces envuelve — arriba la fila de íconos, abajo el
   // total, las dos alineadas al borde IZQUIERDO entre sí (alignItems
   // 'flex-start'). Con contenido en columna, un radio de pill (999px) ya
   // no tiene sentido — pasa a un radio de tarjeta chica (radius-md), más
   // acorde a esta forma de chip de dos líneas que a una cápsula.
-  return isAhead ? (
+  const pill = !hasComments ? null : isAhead ? (
     <button
       type="button"
       onClick={onCommentTap}
@@ -469,6 +590,57 @@ function SideExtras({ commentInfo, isAhead, onCommentTap, href }) {
       </span>
       <span style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{label}</span>
     </Link>
+  );
+
+  return (
+    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+      {pill}
+      <button
+        type="button"
+        onClick={onAddTap}
+        aria-label={composerOpen ? 'Cerrar' : 'Comentar, grabar una nota o adjuntar una foto en este capítulo'}
+        aria-pressed={composerOpen}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%',
+          border: `1px dashed ${composerOpen ? 'var(--accent-500)' : 'var(--border-default)'}`,
+          background: composerOpen ? 'var(--accent-50)' : 'none',
+          color: composerOpen ? 'var(--accent-600)' : 'var(--text-tertiary)', cursor: 'pointer', padding: 0,
+        }}
+      >
+        <Icon name={composerOpen ? 'x' : 'plus'} size={12} />
+      </button>
+    </div>
+  );
+}
+
+// El stack de avatares de compañeros que están en ESTE capítulo ("Quiénes
+// están leyendo", ver README) — solo se pide y se muestra si se tocó "Ver
+// compañeros". Hasta 4 avatares superpuestos; el resto queda en un "+N". El
+// `title` nativo (tooltip al pasar el mouse) lista los nombres — no hace
+// falta nada más elaborado para algo tan chico.
+function CompanionAvatars({ companions }) {
+  const shown = companions.slice(0, 4);
+  const extra = companions.length - shown.length;
+  const names = companions.map((c) => c.displayName).join(', ');
+  return (
+    <div title={`Leyendo acá: ${names}`} style={{ display: 'flex', alignItems: 'center' }}>
+      {shown.map((c, i) => (
+        <div key={c.profileId} style={{ marginLeft: i === 0 ? 0 : -8, borderRadius: '50%', border: '2px solid var(--surface-page)', lineHeight: 0 }}>
+          <Avatar name={c.displayName} src={c.avatarUrl} size={22} />
+        </div>
+      ))}
+      {extra > 0 && (
+        <div
+          style={{
+            marginLeft: -8, width: 22, height: 22, borderRadius: '50%', background: 'var(--neutral-200)',
+            border: '2px solid var(--surface-page)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 9, fontWeight: 700, color: 'var(--text-secondary)',
+          }}
+        >
+          +{extra}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -506,42 +678,60 @@ function SpoilerWarning({ label, href, onDismiss }) {
   );
 }
 
-// El panel que aparece apenas marcás un capítulo como leído: lo que se dijo
-// ahí, o la invitación a dejar el primer comentario si todavía no hay nada.
-function ChapterCommentsPanel({ clubId, preview, loading, onDismiss }) {
-  const href = preview ? `/club/${clubId}/comentarios?capitulo=${preview.chapterId}` : null;
+// El panel de un capítulo puntual — se abre solo al marcar ese capítulo
+// como leído, o al tocar su "+" (ver SideExtras). Antes solo mostraba una
+// vista previa de lo ya dicho con un link para ir a comentar a otra
+// pantalla; ahora el formulario para comentar, citar, adjuntar foto/GIF
+// (NewCommentForm) y grabar una nota de voz (VoiceRecorder) viven acá
+// mismo, embebidos — los mismos componentes que usa la pantalla de
+// Comentarios, no una versión aparte. Publicar desde acá llama a onPosted,
+// que refresca la vista previa de este capítulo sin recargar la pantalla.
+function ChapterCommentsPanel({ clubId, clubBookId, book, chapterId, label, preview, loading, onDismiss, onPosted }) {
+  const href = `/club/${clubId}/comentarios?capitulo=${chapterId}`;
 
   return (
-    <div style={{ margin: '2px 18px 0', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+    <div style={{ margin: '2px 18px 10px', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px 8px' }}>
         <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>
-          Comentarios{preview ? ` · ${preview.label}` : ''}
+          Comentarios · {label}
         </div>
         <button type="button" onClick={onDismiss} aria-label="Cerrar" style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--text-tertiary)' }}>
           <Icon name="x" size={14} />
         </button>
       </div>
 
-      {loading ? (
-        <div style={{ padding: '4px 14px 14px', fontSize: 12, color: 'var(--text-tertiary)' }}>Buscando comentarios…</div>
-      ) : preview.total === 0 ? (
-        <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>Todavía no hay comentarios en este capítulo.</div>
-          <Link href={href} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}>Dejar el primero</Link>
+      <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {loading ? (
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Buscando comentarios…</div>
+        ) : preview?.total === 0 ? (
+          <div style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>Todavía no hay comentarios en este capítulo. Sé el primero.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {preview?.comments.map((c) => (
+              <div key={c.id} style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{c.authorName}</span>{' '}
+                {c.preview}
+              </div>
+            ))}
+            {preview?.total > preview.comments.length && (
+              <Link href={href} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}>
+                Ver los {preview.total} comentarios
+              </Link>
+            )}
+          </div>
+        )}
+
+        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} onPosted={onPosted} />
+          <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} onDone={onPosted} />
         </div>
-      ) : (
-        <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {preview.comments.map((c) => (
-            <div key={c.id} style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-              <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{c.authorName}</span>{' '}
-              {c.preview}
-            </div>
-          ))}
-          <Link href={href} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}>
-            {preview.total > preview.comments.length ? `Ver los ${preview.total} comentarios` : 'Ver y responder'}
+
+        {!loading && preview?.total > 0 && (
+          <Link href={href} style={{ fontSize: 12, color: 'var(--text-tertiary)', textDecoration: 'none' }}>
+            Ver el hilo completo y responder
           </Link>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
