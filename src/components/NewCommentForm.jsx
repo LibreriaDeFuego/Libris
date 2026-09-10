@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { Chip } from '@/design-system/components/core/Chip.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
@@ -11,10 +11,18 @@ import { CardStylePicker } from '@/components/CardStylePicker';
 import { DEFAULT_CARD_STYLE, DEFAULT_CARD_COLOR_BY_STYLE } from '@/lib/quoteFeedCard';
 
 // onPosted: opcional — se llama después de publicar (texto o cita) y de
-// vaciar el formulario. La usa ChapterPath para refrescar, sin salir de "Tu
-// camino", la vista previa de comentarios del capítulo.
-export function NewCommentForm({ clubBookId, chapterId, book, onPosted }) {
-  const [kind, setKind] = useState('text');
+// vaciar el formulario.
+//
+// `kind`/`hideKindChips`/`autoOpenPicker` son para cuando quien arma el tipo
+// de publicación es alguien de afuera (el panel de "Agregar" de Tu camino,
+// con sus propias pestañas Comentario/Cita/Foto·GIF/Voz) — acá el chip
+// Comentario/Cita se esconde y el tipo queda fijo desde el mount. Sin
+// `kind`, el formulario elige su propio tipo con el chip de siempre (como
+// en la pantalla de Comentarios del club). `autoOpenPicker` abre el
+// selector de archivos apenas se monta — la pestaña "Foto/GIF" del panel de
+// Tu camino lo usa para ir directo a elegir, sin un clic de más.
+export function NewCommentForm({ clubBookId, chapterId, book, onPosted, kind: fixedKind, hideKindChips = false, autoOpenPicker = false }) {
+  const [kind, setKind] = useState(fixedKind ?? 'text');
   const [body, setBody] = useState('');
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [cardStyle, setCardStyle] = useState(DEFAULT_CARD_STYLE);
@@ -33,6 +41,13 @@ export function NewCommentForm({ clubBookId, chapterId, book, onPosted }) {
   const MAX_COMMENT_IMAGES = 6;
   const [images, setImages] = useState([]);
   const imageInputRef = useRef(null);
+
+  // Solo para la pestaña "Foto/GIF" del panel de Tu camino — abre el
+  // selector nativo apenas se monta, un solo clic menos que en "Comentario".
+  useEffect(() => {
+    if (autoOpenPicker) imageInputRef.current?.click();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handlePickImages(e) {
     const files = Array.from(e.target.files ?? []);
@@ -102,10 +117,12 @@ export function NewCommentForm({ clubBookId, chapterId, book, onPosted }) {
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--surface-card)', borderRadius: 'var(--radius-md)', padding: 14, boxShadow: 'var(--shadow-sm)' }}>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Chip selected={kind === 'text'} onClick={() => setKind('text')}>Comentario</Chip>
-        <Chip selected={kind === 'quote'} onClick={() => setKind('quote')}>Cita destacada</Chip>
-      </div>
+      {!hideKindChips && (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Chip selected={kind === 'text'} onClick={() => setKind('text')}>Comentario</Chip>
+          <Chip selected={kind === 'quote'} onClick={() => setKind('quote')}>Cita destacada</Chip>
+        </div>
+      )}
       <Textarea
         name="body"
         value={body}

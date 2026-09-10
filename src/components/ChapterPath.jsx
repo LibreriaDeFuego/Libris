@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
-import { updateProgress, getChapterCommentsPreview, getClubMembersProgress } from '@/app/actions/clubs';
+import { updateProgress, getClubMembersProgress } from '@/app/actions/clubs';
 import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 
@@ -54,11 +54,8 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // "en" un capítulo no significa haberlo terminado, así que sus propios
 // comentarios podrían adelantar algo que todavía no leíste de ese mismo
 // capítulo. Solo en los capítulos ya pasados (marcados como leídos) es
-// un link directo.
-//
-// Además, cada vez que marcás un capítulo como leído, aparece un panel
-// con los últimos comentarios de ESE capítulo (o la invitación a dejar el
-// primero) — sin tener que ir a la pantalla de Comentarios a buscarlos.
+// un link directo. Esa pastilla es la única que MUESTRA lo que ya se
+// dijo — el broche "+" (más abajo) es solo para agregar, nunca para ver.
 //
 // El camino siempre termina en un nodo de "FIN" — un libro cerrado con
 // "FIN" como título abajo, con borde punteado — así se ve desde el
@@ -75,16 +72,15 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 //
 // Agregar algo en un capítulo, sin salir de acá — cada nodo tiene su propio
 // broche "+" (esquina inferior derecha, mismo lugar que ya usa la insignia
-// de racha para la esquina opuesta) que abre el mismo panel que ya aparecía
-// solo al marcar un capítulo como leído: los últimos comentarios, y ahora
-// también el formulario para sumar un comentario, una cita, una foto/GIF o
-// grabar una nota de voz — todo embebido (NewCommentForm + VoiceRecorder,
-// los mismos que usa la pantalla de Comentarios), sin navegar a otra
-// pantalla. Publicar desde acá refresca la vista previa (onPosted/onDone)
-// para verlo al toque. Se probaron antes un botón aparte junto a la
-// pastilla de comentarios y varios gestos (deslizar, tocar la etiqueta,
-// mantener presionado) — se eligió el broche sobre el nodo por quedar
-// siempre a la vista sin sumar un objeto nuevo a la fila.
+// de racha para la esquina opuesta), con un solo trabajo: agregar un
+// comentario, una cita, una foto/GIF o una nota de voz — nunca mostrar lo
+// que ya hay (para eso está la pastilla, a la izquierda). Se probaron antes
+// un botón aparte junto a la pastilla de comentarios y varios gestos
+// (deslizar, tocar la etiqueta, mantener presionado) — se eligió el broche
+// sobre el nodo por quedar siempre a la vista sin sumar un objeto nuevo a
+// la fila. No se abre solo al marcar un capítulo como leído — marcar
+// progreso solo marca progreso; el broche es la única puerta a agregar
+// algo.
 //
 // "Quiénes están leyendo" — se había sacado del todo (ver README), quedaba
 // redundante frente a los integrantes del club en "Mis clubes de lectura".
@@ -99,13 +95,6 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
   const [error, setError] = useState(null);
   const [spoilerWarning, setSpoilerWarning] = useState(null); // { chapterId, label } | null
   const [composerChapterId, setComposerChapterId] = useState(null);
-  // Con qué pestaña arranca el panel (ver ChapterCommentsPanel): "said" al
-  // abrirse solo después de marcar el capítulo como leído (mostrar primero
-  // qué se dijo), "add" al abrirlo a mano con el broche "+" (ahí la
-  // intención ya es agregar algo).
-  const [composerInitialTab, setComposerInitialTab] = useState('said');
-  const [preview, setPreview] = useState(null); // { chapterId, label, comments, total } | null
-  const [loadingPreview, setLoadingPreview] = useState(false);
   const [finishPending, setFinishPending] = useState(false);
   const [showCompanions, setShowCompanions] = useState(false);
   const [companions, setCompanions] = useState(null); // null = todavía no se pidió
@@ -171,32 +160,12 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
     return chapter.title ? `Cap. ${chapter.number}` : (chapter.label ?? `Cap. ${chapter.number}`);
   }
 
-  // Trae (o refresca) la vista previa de comentarios de un capítulo — al
-  // marcarlo como leído, al abrir su "+", o después de publicar algo desde
-  // el propio panel (para verlo reflejado sin salir de Tu camino).
-  function refreshPreview(chapter) {
-    setLoadingPreview(true);
-    startTransition(async () => {
-      const data = await getChapterCommentsPreview(clubBookId, chapter.id);
-      setPreview({ chapterId: chapter.id, label: chapterLabel(chapter), ...data });
-      setLoadingPreview(false);
-    });
-  }
-
-  // El botón "+" de cada capítulo — abre (o cierra, si ya estaba abierto) el
-  // panel de ese capítulo: comentarios existentes + el formulario para sumar
-  // los propios, sin ir a la pantalla de Comentarios.
+  // El broche "+" de cada nodo — abre (o cierra, si ya estaba abierto) el
+  // panel para agregar algo en ese capítulo, sin ir a la pantalla de
+  // Comentarios.
   function openComposerFor(chapter) {
     setSpoilerWarning(null);
-    if (composerChapterId === chapter.id) {
-      setComposerChapterId(null);
-      setPreview(null);
-      return;
-    }
-    setComposerChapterId(chapter.id);
-    setComposerInitialTab('add');
-    setPreview(null);
-    refreshPreview(chapter);
+    setComposerChapterId((current) => (current === chapter.id ? null : chapter.id));
   }
 
   function handleToggleCompanions() {
@@ -220,7 +189,6 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
     setError(null);
     setOptimisticId(chapter.id);
     setToast(`Listo, vas por el ${chapterLabel(chapter)}`);
-    setPreview(null);
     setSpoilerWarning(null);
 
     const formData = new FormData();
@@ -234,16 +202,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
         setError(result.error);
         setOptimisticId(null);
         setToast(null);
-        return;
       }
-      // Después de marcar el capítulo, se abre directo su panel — mismo que
-      // el broche "+" — para ver qué se dijo y poder sumar lo tuyo al toque.
-      setComposerChapterId(chapter.id);
-      setComposerInitialTab('said');
-      setLoadingPreview(true);
-      const data = await getChapterCommentsPreview(clubBookId, chapter.id);
-      setPreview({ chapterId: chapter.id, label: chapterLabel(chapter), ...data });
-      setLoadingPreview(false);
     });
   }
 
@@ -442,16 +401,11 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
 
                 {composerChapterId === chapter.id && (
                   <ChapterCommentsPanel
-                    clubId={clubId}
                     clubBookId={clubBookId}
                     book={book}
                     chapterId={chapter.id}
                     label={chapterLabel(chapter)}
-                    preview={preview?.chapterId === chapter.id ? preview : null}
-                    loading={loadingPreview && (!preview || preview.chapterId !== chapter.id)}
-                    initialTab={composerInitialTab}
-                    onDismiss={() => { setComposerChapterId(null); setPreview(null); }}
-                    onPosted={() => refreshPreview(chapter)}
+                    onDismiss={() => setComposerChapterId(null)}
                   />
                 )}
 
@@ -684,110 +638,85 @@ function SpoilerWarning({ label, href, onDismiss }) {
   );
 }
 
-// El panel de un capítulo puntual — se abre solo al marcar ese capítulo
-// como leído, o al tocar su broche "+" (ver el nodo, más arriba). El
-// formulario para comentar, citar, adjuntar foto/GIF (NewCommentForm) y
-// grabar una nota de voz (VoiceRecorder) viven acá mismo, embebidos — los
-// mismos componentes que usa la pantalla de Comentarios, no una versión
-// aparte — sin navegar a otra pantalla.
+// El panel de "agregar" de un capítulo puntual — se abre solo al tocar su
+// broche "+" (ver el nodo, más arriba). Un solo trabajo: comentar, citar,
+// adjuntar foto/GIF o grabar una nota de voz — nunca mostrar lo que ya hay
+// (para eso está la pastilla de comentarios, a la izquierda de cada nodo).
 //
-// Dos pestañas, no todo apilado en una sola vista: "Lo que dijeron" (lo ya
-// publicado, con link a ver el hilo completo) y "Agregar lo tuyo" (el
-// formulario). Mezclado todo junto, un capítulo con varios comentarios
-// largos obligaba a scrollear bastante antes de llegar a donde se escribe.
-// Con qué pestaña arranca depende de cómo se abrió el panel (`initialTab`,
-// decidido en ChapterPath): recién marcado como leído, "said" — primero se
-// ve qué se dijo; con el broche "+", "add" — ahí la intención ya es sumar
-// algo. Publicar desde la pestaña "Agregar lo tuyo" vuelve sola a "Lo que
-// dijeron" (junto con onPosted, que refresca la vista previa) para ver lo
-// propio reflejado al toque, como confirmación de que se publicó.
-function ChapterCommentsPanel({ clubId, clubBookId, book, chapterId, label, preview, loading, initialTab = 'said', onDismiss, onPosted }) {
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const href = `/club/${clubId}/comentarios?capitulo=${chapterId}`;
-  const total = preview?.total ?? 0;
-
-  function handlePosted() {
-    onPosted?.();
-    setActiveTab('said');
-  }
+// Cuatro pestañas de TIPO, no dos — antes había un chip Comentario/Cita
+// adentro del formulario y la nota de voz colgando aparte, debajo, como
+// otra cosa; ahora las cuatro maneras de participar son cuatro pestañas al
+// mismo nivel (Comentario · Cita · Foto/GIF · Voz), mismo lenguaje visual
+// (rayita coral) que ya usaban las pestañas del panel viejo. `NewCommentForm`
+// resuelve Comentario, Cita y Foto/GIF (las tres son la misma forma por
+// dentro — kind fijo desde afuera, sin su propio chip — con
+// `autoOpenPicker` en Foto/GIF para ir directo al selector nativo, un clic
+// de menos); Voz sigue siendo `VoiceRecorder`, aparte. Publicar en
+// cualquiera cierra el panel solo (`onDismiss`): ya cumplió su único
+// trabajo, y la pastilla de la izquierda se actualiza sola (revalidatePath
+// de siempre en postComment/postVoiceComment).
+function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss }) {
+  const [activeTab, setActiveTab] = useState('comment'); // 'comment' | 'quote' | 'photo' | 'voice'
 
   return (
     <div style={{ margin: '2px 18px 10px', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px 8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px 0' }}>
         <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>
-          Comentarios · {label}
+          Agregar · {label}
         </div>
         <button type="button" onClick={onDismiss} aria-label="Cerrar" style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--text-tertiary)' }}>
           <Icon name="x" size={14} />
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 4, padding: '0 10px' }}>
-        <TabButton active={activeTab === 'said'} onClick={() => setActiveTab('said')}>
-          Lo que dijeron{!loading && total > 0 ? ` (${total})` : ''}
-        </TabButton>
-        <TabButton active={activeTab === 'add'} onClick={() => setActiveTab('add')}>
-          Agregar lo tuyo
-        </TabButton>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', margin: '8px 14px 0' }}>
+        <TypeTabButton active={activeTab === 'comment'} onClick={() => setActiveTab('comment')} icon="message-circle" label="Comentario" />
+        <TypeTabButton active={activeTab === 'quote'} onClick={() => setActiveTab('quote')} icon="quote" label="Cita" />
+        <TypeTabButton active={activeTab === 'photo'} onClick={() => setActiveTab('photo')} icon="image" label="Foto/GIF" />
+        <TypeTabButton active={activeTab === 'voice'} onClick={() => setActiveTab('voice')} icon="mic" label="Voz" />
       </div>
 
       <div style={{ padding: '10px 14px 14px' }}>
-        {activeTab === 'said' ? (
-          loading ? (
-            <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Buscando comentarios…</div>
-          ) : total === 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>Todavía no hay comentarios en este capítulo.</div>
-              <button
-                type="button"
-                onClick={() => setActiveTab('add')}
-                style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--text-link)' }}
-              >
-                Sé el primero
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {preview.comments.map((c) => (
-                <div key={c.id} style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                  <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{c.authorName}</span>{' '}
-                  {c.preview}
-                </div>
-              ))}
-              <Link href={href} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}>
-                {total > preview.comments.length ? `Ver los ${total} comentarios` : 'Ver y responder'}
-              </Link>
-            </div>
-          )
+        {activeTab === 'voice' ? (
+          <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} onDone={onDismiss} />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} onPosted={handlePosted} />
-            <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} onDone={handlePosted} />
-          </div>
+          <NewCommentForm
+            key={activeTab}
+            clubBookId={clubBookId}
+            chapterId={chapterId}
+            book={book}
+            kind={activeTab === 'quote' ? 'quote' : 'text'}
+            hideKindChips
+            autoOpenPicker={activeTab === 'photo'}
+            onPosted={onDismiss}
+          />
         )}
       </div>
     </div>
   );
 }
 
-// Una pestaña del panel de un capítulo — texto centrado, esquinas
-// redondeadas solo arriba (se apoya visualmente sobre el cuerpo de abajo),
-// la activa en el color de fondo de la tarjeta, la inactiva un tono más
-// apagado (surface-card-alt) para que se note cuál está elegida sin
-// necesitar un subrayado aparte.
-function TabButton({ active, onClick, children }) {
+// Una pestaña de TIPO del panel de agregar — ícono + rótulo apilados,
+// centrados, con una rayita coral bajo la activa (mismo lenguaje que ya
+// usaban las pestañas del panel viejo, "Lo que dijeron"/"Agregar lo tuyo",
+// solo que ahora son cuatro en vez de dos).
+function TypeTabButton({ active, onClick, icon, label }) {
   return (
     <button
       type="button"
       onClick={onClick}
       style={{
-        flex: 1, textAlign: 'center', fontSize: 11.5, fontWeight: 700, padding: '7px 4px',
-        borderRadius: '8px 8px 0 0', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)',
-        color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
-        background: active ? 'var(--surface-card)' : 'var(--surface-card-alt)',
+        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+        fontSize: 9.5, fontWeight: 700, padding: '8px 2px 7px', border: 'none', background: 'none',
+        cursor: 'pointer', fontFamily: 'var(--font-body)', position: 'relative',
+        color: active ? 'var(--accent-600)' : 'var(--text-tertiary)',
       }}
     >
-      {children}
+      <Icon name={icon} size={14} color={active ? 'var(--accent-600)' : 'var(--text-tertiary)'} />
+      {label}
+      {active && (
+        <span style={{ position: 'absolute', left: 6, right: 6, bottom: -1, height: 2, background: 'var(--accent-500)', borderRadius: '2px 2px 0 0' }} />
+      )}
     </button>
   );
 }
