@@ -99,6 +99,11 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
   const [error, setError] = useState(null);
   const [spoilerWarning, setSpoilerWarning] = useState(null); // { chapterId, label } | null
   const [composerChapterId, setComposerChapterId] = useState(null);
+  // Con qué pestaña arranca el panel (ver ChapterCommentsPanel): "said" al
+  // abrirse solo después de marcar el capítulo como leído (mostrar primero
+  // qué se dijo), "add" al abrirlo a mano con el broche "+" (ahí la
+  // intención ya es agregar algo).
+  const [composerInitialTab, setComposerInitialTab] = useState('said');
   const [preview, setPreview] = useState(null); // { chapterId, label, comments, total } | null
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [finishPending, setFinishPending] = useState(false);
@@ -189,6 +194,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
       return;
     }
     setComposerChapterId(chapter.id);
+    setComposerInitialTab('add');
     setPreview(null);
     refreshPreview(chapter);
   }
@@ -231,8 +237,9 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
         return;
       }
       // Después de marcar el capítulo, se abre directo su panel — mismo que
-      // el botón "+" — para ver qué se dijo y poder sumar lo tuyo al toque.
+      // el broche "+" — para ver qué se dijo y poder sumar lo tuyo al toque.
       setComposerChapterId(chapter.id);
+      setComposerInitialTab('said');
       setLoadingPreview(true);
       const data = await getChapterCommentsPreview(clubBookId, chapter.id);
       setPreview({ chapterId: chapter.id, label: chapterLabel(chapter), ...data });
@@ -442,6 +449,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                     label={chapterLabel(chapter)}
                     preview={preview?.chapterId === chapter.id ? preview : null}
                     loading={loadingPreview && (!preview || preview.chapterId !== chapter.id)}
+                    initialTab={composerInitialTab}
                     onDismiss={() => { setComposerChapterId(null); setPreview(null); }}
                     onPosted={() => refreshPreview(chapter)}
                   />
@@ -677,15 +685,31 @@ function SpoilerWarning({ label, href, onDismiss }) {
 }
 
 // El panel de un capítulo puntual — se abre solo al marcar ese capítulo
-// como leído, o al tocar su "+" (ver SideExtras). Antes solo mostraba una
-// vista previa de lo ya dicho con un link para ir a comentar a otra
-// pantalla; ahora el formulario para comentar, citar, adjuntar foto/GIF
-// (NewCommentForm) y grabar una nota de voz (VoiceRecorder) viven acá
-// mismo, embebidos — los mismos componentes que usa la pantalla de
-// Comentarios, no una versión aparte. Publicar desde acá llama a onPosted,
-// que refresca la vista previa de este capítulo sin recargar la pantalla.
-function ChapterCommentsPanel({ clubId, clubBookId, book, chapterId, label, preview, loading, onDismiss, onPosted }) {
+// como leído, o al tocar su broche "+" (ver el nodo, más arriba). El
+// formulario para comentar, citar, adjuntar foto/GIF (NewCommentForm) y
+// grabar una nota de voz (VoiceRecorder) viven acá mismo, embebidos — los
+// mismos componentes que usa la pantalla de Comentarios, no una versión
+// aparte — sin navegar a otra pantalla.
+//
+// Dos pestañas, no todo apilado en una sola vista: "Lo que dijeron" (lo ya
+// publicado, con link a ver el hilo completo) y "Agregar lo tuyo" (el
+// formulario). Mezclado todo junto, un capítulo con varios comentarios
+// largos obligaba a scrollear bastante antes de llegar a donde se escribe.
+// Con qué pestaña arranca depende de cómo se abrió el panel (`initialTab`,
+// decidido en ChapterPath): recién marcado como leído, "said" — primero se
+// ve qué se dijo; con el broche "+", "add" — ahí la intención ya es sumar
+// algo. Publicar desde la pestaña "Agregar lo tuyo" vuelve sola a "Lo que
+// dijeron" (junto con onPosted, que refresca la vista previa) para ver lo
+// propio reflejado al toque, como confirmación de que se publicó.
+function ChapterCommentsPanel({ clubId, clubBookId, book, chapterId, label, preview, loading, initialTab = 'said', onDismiss, onPosted }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const href = `/club/${clubId}/comentarios?capitulo=${chapterId}`;
+  const total = preview?.total ?? 0;
+
+  function handlePosted() {
+    onPosted?.();
+    setActiveTab('said');
+  }
 
   return (
     <div style={{ margin: '2px 18px 10px', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
@@ -698,38 +722,72 @@ function ChapterCommentsPanel({ clubId, clubBookId, book, chapterId, label, prev
         </button>
       </div>
 
-      <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {loading ? (
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Buscando comentarios…</div>
-        ) : preview?.total === 0 ? (
-          <div style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>Todavía no hay comentarios en este capítulo. Sé el primero.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {preview?.comments.map((c) => (
-              <div key={c.id} style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{c.authorName}</span>{' '}
-                {c.preview}
-              </div>
-            ))}
-            {preview?.total > preview.comments.length && (
+      <div style={{ display: 'flex', gap: 4, padding: '0 10px' }}>
+        <TabButton active={activeTab === 'said'} onClick={() => setActiveTab('said')}>
+          Lo que dijeron{!loading && total > 0 ? ` (${total})` : ''}
+        </TabButton>
+        <TabButton active={activeTab === 'add'} onClick={() => setActiveTab('add')}>
+          Agregar lo tuyo
+        </TabButton>
+      </div>
+
+      <div style={{ padding: '10px 14px 14px' }}>
+        {activeTab === 'said' ? (
+          loading ? (
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Buscando comentarios…</div>
+          ) : total === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>Todavía no hay comentarios en este capítulo.</div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('add')}
+                style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12.5, fontWeight: 700, color: 'var(--text-link)' }}
+              >
+                Sé el primero
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {preview.comments.map((c) => (
+                <div key={c.id} style={{ fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                  <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{c.authorName}</span>{' '}
+                  {c.preview}
+                </div>
+              ))}
               <Link href={href} style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none' }}>
-                Ver los {preview.total} comentarios
+                {total > preview.comments.length ? `Ver los ${total} comentarios` : 'Ver y responder'}
               </Link>
-            )}
+            </div>
+          )
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} onPosted={handlePosted} />
+            <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} onDone={handlePosted} />
           </div>
-        )}
-
-        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} onPosted={onPosted} />
-          <VoiceRecorder clubBookId={clubBookId} chapterId={chapterId} onDone={onPosted} />
-        </div>
-
-        {!loading && preview?.total > 0 && (
-          <Link href={href} style={{ fontSize: 12, color: 'var(--text-tertiary)', textDecoration: 'none' }}>
-            Ver el hilo completo y responder
-          </Link>
         )}
       </div>
     </div>
+  );
+}
+
+// Una pestaña del panel de un capítulo — texto centrado, esquinas
+// redondeadas solo arriba (se apoya visualmente sobre el cuerpo de abajo),
+// la activa en el color de fondo de la tarjeta, la inactiva un tono más
+// apagado (surface-card-alt) para que se note cuál está elegida sin
+// necesitar un subrayado aparte.
+function TabButton({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        flex: 1, textAlign: 'center', fontSize: 11.5, fontWeight: 700, padding: '7px 4px',
+        borderRadius: '8px 8px 0 0', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)',
+        color: active ? 'var(--text-primary)' : 'var(--text-tertiary)',
+        background: active ? 'var(--surface-card)' : 'var(--surface-card-alt)',
+      }}
+    >
+      {children}
+    </button>
   );
 }
