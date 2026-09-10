@@ -12,6 +12,16 @@ import { PhotoCropModal } from '@/components/PhotoCropModal';
 import { QuoteComposer } from '@/components/QuoteComposer';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 
+// `VoiceRecorder` llama a `postAction(formData)` con un solo argumento;
+// `createPost` es una server action de la forma `(prevState, formData)`,
+// pensada para usarse con un `<form action>`/`useActionState`. Sin este
+// adaptador, `VoiceRecorder` caía en su default (`postVoiceComment`, la
+// nota de voz de CLUB) al no recibir `postAction` — de ahí el error "Falta
+// el libro del club" al publicar una nota de voz desde el perfil.
+function publishVoicePost(formData) {
+  return createPost(null, formData);
+}
+
 // Vista previa local de la foto ya recortada, antes de subirla — libera el
 // object URL anterior cada vez que cambia el blob o al desmontar. La ×
 // suelta la foto sin cerrar el compositor (queda el texto solo).
@@ -233,7 +243,7 @@ export function PostComposer({ profile }) {
             {activeTab === 'comment' && <TextOrPhotoTab key="comment" autoOpenPicker={false} showAddPhotoLink={false} onDone={close} />}
             {activeTab === 'photo' && <TextOrPhotoTab key="photo" autoOpenPicker onDone={close} />}
             {activeTab === 'quote' && <QuoteComposer embedded onClose={close} />}
-            {activeTab === 'voice' && <VoiceRecorder showSpoilerOption={false} onDone={close} />}
+            {activeTab === 'voice' && <VoiceRecorder showSpoilerOption={false} postAction={publishVoicePost} onDone={close} />}
           </div>
         </Modal>
       )}
