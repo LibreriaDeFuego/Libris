@@ -46,14 +46,22 @@ values ('post-voice-notes', 'post-voice-notes', true, 2097152,
         array['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav'])
 on conflict (id) do nothing;
 
+-- drop-if-exists antes de cada create: a diferencia del bucket (on conflict
+-- do nothing) y las columnas (add column if not exists), "create policy" no
+-- tiene una forma idempotente propia — hace falta este paso extra para que
+-- la migración se pueda volver a correr sin romper si esta parte ya se
+-- había aplicado antes.
+drop policy if exists "cualquiera escucha las notas de voz del feed" on storage.objects;
 create policy "cualquiera escucha las notas de voz del feed"
   on storage.objects for select
   using (bucket_id = 'post-voice-notes');
 
+drop policy if exists "cada quien sube sus propias notas de voz" on storage.objects;
 create policy "cada quien sube sus propias notas de voz"
   on storage.objects for insert to authenticated
   with check (bucket_id = 'post-voice-notes' and (storage.foldername(name))[1] = auth.uid()::text);
 
+drop policy if exists "cada quien borra sus propias notas de voz" on storage.objects;
 create policy "cada quien borra sus propias notas de voz"
   on storage.objects for delete to authenticated
   using (bucket_id = 'post-voice-notes' and (storage.foldername(name))[1] = auth.uid()::text);
