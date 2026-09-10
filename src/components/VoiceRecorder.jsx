@@ -179,11 +179,16 @@ export function VoiceRecorder({ postAction = postVoiceComment, extraFields, show
             </IconButton>
           </div>
 
+          {/* No es una transcripción literal de lo que se dijo (eso sugería
+              "ayuda a quien no puede escuchar", como si fuera texto
+              generado del audio) — es un mensaje aparte, opcional, que se
+              escribe a mano. Por dentro sigue siendo el mismo campo
+              (transcript/voice_transcript), sin cambios ahí. */}
           <Textarea
             value={transcript}
             onChange={(event) => setTranscript(event.target.value)}
             rows={2}
-            placeholder="Transcripción o resumen (opcional, ayuda a quien no puede escuchar)"
+            placeholder="Deja un mensaje (opcional)"
           />
 
           {showSpoilerOption && (

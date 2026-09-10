@@ -2,6 +2,9 @@ import React from 'react';
 
 // El botón de play era decorativo en el prototipo; ahora reproduce de verdad
 // cuando recibe `src`. Sin `src` conserva el aspecto original (útil para mocks).
+// `transcript` se sigue llamando así (mismo nombre que la columna
+// voice_transcript) pero ya no se presenta como transcripción en la UI —
+// es un mensaje aparte, escrito a mano, no el contenido literal del audio.
 export function VoiceNotePlayer({duration='0:42', transcript, src}) {
   const [open, setOpen] = React.useState(false);
   const [playing, setPlaying] = React.useState(false);
@@ -34,7 +37,7 @@ export function VoiceNotePlayer({duration='0:42', transcript, src}) {
       ),
       React.createElement('span', {style:{fontSize:'var(--fs-2xs)', color:'var(--text-tertiary)'}}, duration)
     ),
-    transcript && React.createElement('button', {type:'button', onClick:()=>setOpen(!open), style:{background:'none', border:'none', color:'var(--text-link)', fontSize:'var(--fs-2xs)', padding:0, marginTop:8, cursor:'pointer', fontWeight:600}}, open ? 'Ocultar transcripción' : 'Ver transcripción'),
+    transcript && React.createElement('button', {type:'button', onClick:()=>setOpen(!open), style:{background:'none', border:'none', color:'var(--text-link)', fontSize:'var(--fs-2xs)', padding:0, marginTop:8, cursor:'pointer', fontWeight:600}}, open ? 'Ocultar mensaje' : 'Ver mensaje'),
     open && transcript && React.createElement('p', {style:{fontSize:'var(--fs-sm)', color:'var(--text-secondary)', marginTop:6, lineHeight:'var(--lh-normal)'}}, transcript)
   );
 }

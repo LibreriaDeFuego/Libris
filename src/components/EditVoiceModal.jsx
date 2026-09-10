@@ -14,9 +14,10 @@ function formatDuration(seconds) {
 }
 
 // Editar tu propia nota de voz: el audio queda fijo (se puede volver a
-// escuchar arriba) — lo único editable es la transcripción/resumen escrito
-// a mano, y el spoiler. Grabar de nuevo no está acá — para eso conviene
-// borrar y grabar otra.
+// escuchar arriba) — lo único editable es el mensaje escrito a mano (no es
+// una transcripción de lo que se dijo, un texto aparte y opcional), y el
+// spoiler. Grabar de nuevo no está acá — para eso conviene borrar y grabar
+// otra.
 export function EditVoiceModal({ comment, onClose }) {
   const [transcript, setTranscript] = useState(comment.voice_transcript ?? '');
   const [isSpoiler, setIsSpoiler] = useState(comment.is_spoiler ?? false);
@@ -46,7 +47,7 @@ export function EditVoiceModal({ comment, onClose }) {
         <Textarea
           value={transcript}
           onChange={(e) => setTranscript(e.target.value)}
-          placeholder="Transcripción o resumen (opcional, ayuda a quien no puede escuchar)"
+          placeholder="Deja un mensaje (opcional)"
           rows={3}
         />
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>

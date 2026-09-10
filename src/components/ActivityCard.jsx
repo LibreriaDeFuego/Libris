@@ -146,9 +146,10 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
   const hasPhoto = isPhoto && Boolean(activity.photo_url);
   // Una nota de voz de post (migración 052) — a diferencia de una nota de
   // voz de club compartida al feed (kind = 'voice', más abajo, que acá
-  // solo muestra la transcripción como texto porque el audio se reproduce
-  // en la pantalla de Comentarios), un post no tiene ninguna otra pantalla
-  // más que el feed — así que acá SÍ hay un reproductor de verdad.
+  // solo muestra el mensaje escrito como texto porque el audio se
+  // reproduce en la pantalla de Comentarios), un post no tiene ninguna
+  // otra pantalla más que el feed — así que acá SÍ hay un reproductor de
+  // verdad.
   const hasVoice = isPhoto && Boolean(activity.voice_url);
   // Si la cita se publicó con la tarjeta ya armada (migración 021), esa
   // imagen ES el contenido — no hace falta repetir la cita como texto abajo
