@@ -73,14 +73,18 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // camino, pero se sacó: quedaba mejor sin esas líneas.) Con un solo
 // volumen (o ninguno, el caso de siempre) no se muestra nada.
 //
-// Agregar algo en un capítulo, sin salir de acá — cada capítulo tiene su
-// propio botón "+" (junto a la pastilla de comentarios, o solo si todavía
-// no hay ninguno) que abre el mismo panel que ya aparecía solo al marcar un
-// capítulo como leído: los últimos comentarios, y ahora también el
-// formulario para sumar un comentario, una cita, una foto/GIF o grabar una
-// nota de voz — todo embebido (NewCommentForm + VoiceRecorder, los mismos
-// que usa la pantalla de Comentarios), sin navegar a otra pantalla. Publicar
-// desde acá refresca la vista previa (onPosted/onDone) para verlo al toque.
+// Agregar algo en un capítulo, sin salir de acá — cada nodo tiene su propio
+// broche "+" (esquina inferior derecha, mismo lugar que ya usa la insignia
+// de racha para la esquina opuesta) que abre el mismo panel que ya aparecía
+// solo al marcar un capítulo como leído: los últimos comentarios, y ahora
+// también el formulario para sumar un comentario, una cita, una foto/GIF o
+// grabar una nota de voz — todo embebido (NewCommentForm + VoiceRecorder,
+// los mismos que usa la pantalla de Comentarios), sin navegar a otra
+// pantalla. Publicar desde acá refresca la vista previa (onPosted/onDone)
+// para verlo al toque. Se probaron antes un botón aparte junto a la
+// pastilla de comentarios y varios gestos (deslizar, tocar la etiqueta,
+// mantener presionado) — se eligió el broche sobre el nodo por quedar
+// siempre a la vista sin sumar un objeto nuevo a la fila.
 //
 // "Quiénes están leyendo" — se había sacado del todo (ver README), quedaba
 // redundante frente a los integrantes del club en "Mis clubes de lectura".
@@ -338,10 +342,9 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                 isAhead={isAhead}
                 onCommentTap={() => handleSpoilerTap(chapter)}
                 href={!isAhead ? `/club/${clubId}/comentarios?capitulo=${chapter.id}` : null}
-                composerOpen={composerChapterId === chapter.id}
-                onAddTap={() => openComposerFor(chapter)}
               />
             );
+            const composerOpen = composerChapterId === chapter.id;
 
             return (
               <div key={chapter.id}>
@@ -359,25 +362,26 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                   <div style={{ textAlign: 'right' }}>
                     {extras}
                   </div>
-                  <button
-                    type="button"
-                    ref={isCurrent ? currentNodeRef : undefined}
-                    onClick={() => handleTap(chapter)}
-                    disabled={isCurrent || isSaving}
-                    aria-label={`Cap. ${chapter.number}${isCurrent ? ' (tu capítulo actual)' : ''}`}
-                    style={{
-                      position: 'relative', width: isCurrent ? 48 : 40, height: isCurrent ? 48 : 40, borderRadius: '50%',
-                      border: isDone || isCurrent ? 'none' : '2px solid var(--neutral-200)',
-                      background: nodeColor ?? 'var(--surface-card)',
-                      boxShadow: isCurrent ? '0 0 0 5px rgba(255,79,50,.18)' : 'none',
-                      color: isDone || isCurrent ? 'var(--text-on-accent)' : 'var(--text-tertiary)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: isCurrent ? 15 : 13,
-                      cursor: isCurrent || isSaving ? 'default' : 'pointer', opacity: isSaving ? 0.7 : 1,
-                      justifySelf: 'center', margin: '0 auto',
-                    }}
-                  >
-                    {isDone ? <Icon name="check" size={16} color="var(--text-on-accent)" strokeWidth={3} /> : chapter.number}
+                  <div style={{ position: 'relative', width: isCurrent ? 48 : 40, height: isCurrent ? 48 : 40, justifySelf: 'center' }}>
+                    <button
+                      type="button"
+                      ref={isCurrent ? currentNodeRef : undefined}
+                      onClick={() => handleTap(chapter)}
+                      disabled={isCurrent || isSaving}
+                      aria-label={`Cap. ${chapter.number}${isCurrent ? ' (tu capítulo actual)' : ''}`}
+                      style={{
+                        width: '100%', height: '100%', borderRadius: '50%',
+                        border: isDone || isCurrent ? 'none' : '2px solid var(--neutral-200)',
+                        background: nodeColor ?? 'var(--surface-card)',
+                        boxShadow: isCurrent ? '0 0 0 5px rgba(255,79,50,.18)' : 'none',
+                        color: isDone || isCurrent ? 'var(--text-on-accent)' : 'var(--text-tertiary)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: isCurrent ? 15 : 13,
+                        cursor: isCurrent || isSaving ? 'default' : 'pointer', opacity: isSaving ? 0.7 : 1,
+                      }}
+                    >
+                      {isDone ? <Icon name="check" size={16} color="var(--text-on-accent)" strokeWidth={3} /> : chapter.number}
+                    </button>
                     {showFlame && (
                       <span
                         aria-hidden
@@ -390,7 +394,22 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                         <Icon name="flame" size={11} color="#7A3E00" />
                       </span>
                     )}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => openComposerFor(chapter)}
+                      aria-label={composerOpen ? 'Cerrar' : 'Comentar, grabar una nota o adjuntar una foto en este capítulo'}
+                      aria-pressed={composerOpen}
+                      style={{
+                        position: 'absolute', bottom: -6, right: -8, width: 20, height: 20, borderRadius: '50%',
+                        background: composerOpen ? 'var(--accent-500)' : 'var(--surface-card)',
+                        border: '2px solid var(--surface-page)', boxShadow: 'var(--shadow-sm)',
+                        color: composerOpen ? 'var(--text-on-accent)' : 'var(--accent-600)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0,
+                      }}
+                    >
+                      <Icon name={composerOpen ? 'x' : 'plus'} size={11} />
+                    </button>
+                  </div>
                   <div style={{ textAlign: 'left' }}>
                     <NodeLabel chapter={chapter} isCurrent={isCurrent} isDone={isDone} align="left" />
                   </div>
@@ -538,26 +557,25 @@ function NodeLabel({ chapter, isCurrent, isDone, align }) {
 }
 
 // Lo que va del lado libre de cada nodo (opuesto a la etiqueta del
-// capítulo): la pastilla de comentarios (si el capítulo tiene alguno) y,
-// debajo, el botón "+" — siempre presente, con o sin comentarios previos —
-// que abre el panel para agregar los propios sin salir de Tu camino. Una
-// sola pastilla — antes solo con el ícono de "comentario"; ahora, si entre
-// los comentarios de este capítulo hay alguna nota de voz y/o alguna foto
-// o GIF, se les suma su propio ícono antes del total (mismo color que el
-// resto de la pastilla — ni "mic" ni "image" tienen un color propio en
-// ningún otro lugar de la app, así que no se les inventa uno acá). No
-// desglosa cuántos hay de cada tipo, solo cuáles hay.
-function SideExtras({ commentInfo, isAhead, onCommentTap, href, composerOpen, onAddTap }) {
-  const hasComments = Boolean(commentInfo?.total);
-  const { total, hasVoice, hasPhoto } = commentInfo ?? {};
-  const label = hasComments ? `${total} ${total === 1 ? 'comentario' : 'comentarios'}` : null;
+// capítulo): la pastilla de comentarios, si el capítulo tiene alguno — el
+// broche "+" para agregar algo vive sobre el propio nodo (ver más arriba),
+// no acá. Una sola pastilla — antes solo con el ícono de "comentario";
+// ahora, si entre los comentarios de este capítulo hay alguna nota de voz
+// y/o alguna foto o GIF, se les suma su propio ícono antes del total (mismo
+// color que el resto de la pastilla — ni "mic" ni "image" tienen un color
+// propio en ningún otro lugar de la app, así que no se les inventa uno
+// acá). No desglosa cuántos hay de cada tipo, solo cuáles hay.
+function SideExtras({ commentInfo, isAhead, onCommentTap, href }) {
+  if (!commentInfo?.total) return null;
+  const { total, hasVoice, hasPhoto } = commentInfo;
+  const label = `${total} ${total === 1 ? 'comentario' : 'comentarios'}`;
   // Diseño pedido: siempre en dos líneas fijas, no un pill de una sola
   // línea que a veces envuelve — arriba la fila de íconos, abajo el
   // total, las dos alineadas al borde IZQUIERDO entre sí (alignItems
   // 'flex-start'). Con contenido en columna, un radio de pill (999px) ya
   // no tiene sentido — pasa a un radio de tarjeta chica (radius-md), más
   // acorde a esta forma de chip de dos líneas que a una cápsula.
-  const pill = !hasComments ? null : isAhead ? (
+  return isAhead ? (
     <button
       type="button"
       onClick={onCommentTap}
@@ -590,26 +608,6 @@ function SideExtras({ commentInfo, isAhead, onCommentTap, href, composerOpen, on
       </span>
       <span style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{label}</span>
     </Link>
-  );
-
-  return (
-    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-      {pill}
-      <button
-        type="button"
-        onClick={onAddTap}
-        aria-label={composerOpen ? 'Cerrar' : 'Comentar, grabar una nota o adjuntar una foto en este capítulo'}
-        aria-pressed={composerOpen}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%',
-          border: `1px dashed ${composerOpen ? 'var(--accent-500)' : 'var(--border-default)'}`,
-          background: composerOpen ? 'var(--accent-50)' : 'none',
-          color: composerOpen ? 'var(--accent-600)' : 'var(--text-tertiary)', cursor: 'pointer', padding: 0,
-        }}
-      >
-        <Icon name={composerOpen ? 'x' : 'plus'} size={12} />
-      </button>
-    </div>
   );
 }
 
