@@ -13,8 +13,9 @@ const MAX_PHOTO_BYTES = 8 * 1024 * 1024; // 8 MB — de sobra para una foto reco
 const PHOTO_EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
 
 // Nota de voz de un post (migración 052) — mismo tope y formatos que ya usa
-// una nota de voz de club (media.js, MAX_AUDIO_BYTES/AUDIO_EXTENSIONS).
-const MAX_VOICE_BYTES = 10 * 1024 * 1024;
+// una nota de voz de club (media.js, MAX_AUDIO_BYTES/AUDIO_EXTENSIONS): 2 MB
+// de sobra para los 90 segundos a 32 kbps que ya limita VoiceRecorder.
+const MAX_VOICE_BYTES = 2 * 1024 * 1024;
 const VOICE_EXTENSIONS = {
   'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3',
   'audio/ogg': 'ogg', 'audio/wav': 'wav',

@@ -34,9 +34,15 @@ alter table public.posts add constraint posts_content_check
 --    usuario autenticado (policy de select de la migración 016, "using
 --    (true)") — mismo criterio que ya usa "post-photos": se guarda la
 --    URL pública directa (no un path a firmar), igual que image_url.
+--
+--    file_size_limit en 2 MB (no 10): VoiceRecorder graba a 32 kbps
+--    (pensado para voz, no el default del navegador) con tope de 90
+--    segundos — un audio real pesa bastante menos de 1 MB, así que 2 MB
+--    ya es una red de seguridad generosa, no el límite que de verdad
+--    importa.
 -- ============================================================
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('post-voice-notes', 'post-voice-notes', true, 10485760,
+values ('post-voice-notes', 'post-voice-notes', true, 2097152,
         array['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/ogg', 'audio/wav'])
 on conflict (id) do nothing;
 
@@ -51,6 +57,14 @@ create policy "cada quien sube sus propias notas de voz"
 create policy "cada quien borra sus propias notas de voz"
   on storage.objects for delete to authenticated
   using (bucket_id = 'post-voice-notes' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- "voice-notes" (club, migración 005) baja del mismo 10 MB original a 2 MB
+-- — mismo motivo que arriba: con VoiceRecorder grabando a 32 kbps y tope de
+-- 90 segundos (este mismo cambio, aplicado también al club), un audio real
+-- pesa bastante menos de 1 MB. El límite de la app (MAX_AUDIO_BYTES en
+-- media.js) ya bajó a 2 MB; esto alinea el límite de Storage con ese mismo
+-- número, para no dejar el bucket aceptando de más por detrás.
+update storage.buckets set file_size_limit = 2097152 where id = 'voice-notes';
 
 -- ============================================================
 -- 3. profile_activity / recent_activity: ahora también devuelven

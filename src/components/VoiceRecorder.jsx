@@ -7,7 +7,24 @@ import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 
-const MAX_SECONDS = 300;
+// 90 segundos — antes eran 300 (5 minutos). Una nota de voz, en el club o
+// en el feed, es una reacción, no una conversación grabada: 90 segundos
+// alcanza de sobra para eso y sube mucho más rápido en una conexión
+// mediocre. Mismo tope en los dos lugares a propósito (VoiceRecorder es un
+// solo componente para ambos).
+const MAX_SECONDS = 90;
+
+// 32 kbps — el equivalente, para audio, de lo que `compressImage` ya hace
+// con las fotos: bajarle el peso ANTES de subir, no confiar en que el
+// bucket lo rechace después. Sin este número, MediaRecorder graba al
+// bitrate que el navegador elija por default (pensado para audio en
+// general, no para una voz hablando) — bastante más pesado de lo
+// necesario. 32 kbps en opus es un estándar de sobra para que una voz se
+// escuche clara (mismo orden de magnitud que ya usan las notas de voz de
+// WhatsApp) — 90 segundos a este bitrate pesan bastante menos de 1 MB, muy
+// lejos del tope de MAX_AUDIO_BYTES/MAX_VOICE_BYTES (media.js/posts.js),
+// que queda como red de seguridad, no como el límite real.
+const AUDIO_BITS_PER_SECOND = 32000;
 
 function formatSeconds(total) {
   const minutes = Math.floor(total / 60);
@@ -68,7 +85,7 @@ export function VoiceRecorder({ postAction = postVoiceComment, extraFields, show
       return;
     }
 
-    const recorder = new MediaRecorder(stream, { mimeType });
+    const recorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: AUDIO_BITS_PER_SECOND });
     chunksRef.current = [];
     recorder.ondataavailable = (event) => {
       if (event.data.size > 0) chunksRef.current.push(event.data);

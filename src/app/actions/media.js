@@ -5,8 +5,12 @@ import { createClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/requireUser';
 import { friendlyDbError } from '@/lib/friendlyError';
 
-const MAX_COVER_BYTES = 5 * 1024 * 1024;   // 5 MB
-const MAX_AUDIO_BYTES = 10 * 1024 * 1024;  // 10 MB (~10 min de voz comprimida)
+const MAX_COVER_BYTES = 5 * 1024 * 1024;  // 5 MB
+// 2 MB — antes 10 MB. Ahora que VoiceRecorder graba a 32 kbps (pensado para
+// voz, no el default del navegador) y tope 90 segundos, un audio real pesa
+// bastante menos de 1 MB — este número queda como red de seguridad, no
+// como el límite que de verdad importa.
+const MAX_AUDIO_BYTES = 2 * 1024 * 1024;
 
 const COVER_EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const AUDIO_EXTENSIONS = {
