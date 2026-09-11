@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
+import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { updateProgress, getClubMembersProgress } from '@/app/actions/clubs';
 import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
@@ -643,15 +644,19 @@ function SpoilerWarning({ label, href, onDismiss }) {
 // adjuntar foto/GIF o grabar una nota de voz — nunca mostrar lo que ya hay
 // (para eso está la pastilla de comentarios, a la izquierda de cada nodo).
 //
-// Misma dinámica que el panel de "Compartir" del Perfil (PostComposer):
-// "Comentario" no tiene su propio botón de pestaña — la caja de texto ya es
-// la vista por default al abrir el panel, un botón para eso era redundante.
-// Quedan tres pestañas, Cita · Foto/GIF · Voz; tocar la que ya está activa
-// vuelve al texto (`toggleTab`) — es la única forma de salir de esas tres
-// sin cerrar el panel, ya que no hay ningún botón "Comentario" al que
-// volver. `NewCommentForm` resuelve el texto (con o sin foto) y la cita —
-// son la misma forma por dentro, kind fijo desde afuera, sin su propio chip
-// — con `autoOpenPicker` en Foto/GIF para ir directo al selector nativo, y
+// Misma dinámica que el panel de "Compartir" del Perfil (PostComposer), en
+// TODO sentido — antes era un panel inline que empujaba el resto de Tu
+// camino hacia abajo; ahora es el mismo `Modal` compartido (hoja que sube
+// desde abajo), así que el título y el botón de cerrar los pone el propio
+// Modal, ya no hace falta un header a mano acá. "Comentario" no tiene su
+// propio botón de pestaña — la caja de texto ya es la vista por default al
+// abrir el panel, un botón para eso era redundante. Quedan tres pestañas,
+// Cita · Foto/GIF · Voz; tocar la que ya está activa vuelve al texto
+// (`toggleTab`) — es la única forma de salir de esas tres sin cerrar el
+// panel, ya que no hay ningún botón "Comentario" al que volver.
+// `NewCommentForm` resuelve el texto (con o sin foto) y la cita — son la
+// misma forma por dentro, kind fijo desde afuera, sin su propio chip — con
+// `autoOpenPicker` en Foto/GIF para ir directo al selector nativo, y
 // `showAddPhotoLink` en `true` solo ahí (en la vista de texto por default
 // ese botón se esconde, igual que en PostComposer: ya existe la pestaña
 // dedicada). Voz sigue siendo `VoiceRecorder`, aparte. Publicar en
@@ -666,23 +671,14 @@ function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss })
   }
 
   return (
-    <div style={{ margin: '2px 18px 10px', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px 0' }}>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-primary)' }}>
-          Agregar · {label}
+    <Modal title={`Agregar · ${label}`} onClose={onDismiss}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', marginBottom: 10 }}>
+          <TypeTabButton active={activeTab === 'quote'} onClick={() => toggleTab('quote')} icon="quote" label="Cita" />
+          <TypeTabButton active={activeTab === 'photo'} onClick={() => toggleTab('photo')} icon="image" label="Foto/GIF" />
+          <TypeTabButton active={activeTab === 'voice'} onClick={() => toggleTab('voice')} icon="mic" label="Voz" />
         </div>
-        <button type="button" onClick={onDismiss} aria-label="Cerrar" style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--text-tertiary)' }}>
-          <Icon name="x" size={14} />
-        </button>
-      </div>
 
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', margin: '8px 14px 0' }}>
-        <TypeTabButton active={activeTab === 'quote'} onClick={() => toggleTab('quote')} icon="quote" label="Cita" />
-        <TypeTabButton active={activeTab === 'photo'} onClick={() => toggleTab('photo')} icon="image" label="Foto/GIF" />
-        <TypeTabButton active={activeTab === 'voice'} onClick={() => toggleTab('voice')} icon="mic" label="Voz" />
-      </div>
-
-      <div style={{ padding: '10px 14px 14px' }}>
         {activeTab === 'voice' ? (
           <VoiceRecorder extraFields={{ clubBookId, chapterId }} onDone={onDismiss} />
         ) : (
@@ -699,7 +695,7 @@ function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss })
           />
         )}
       </div>
-    </div>
+    </Modal>
   );
 }
 
