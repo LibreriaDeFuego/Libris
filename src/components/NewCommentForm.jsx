@@ -13,15 +13,21 @@ import { DEFAULT_CARD_STYLE, DEFAULT_CARD_COLOR_BY_STYLE } from '@/lib/quoteFeed
 // onPosted: opcional — se llama después de publicar (texto o cita) y de
 // vaciar el formulario.
 //
-// `kind`/`hideKindChips`/`autoOpenPicker` son para cuando quien arma el tipo
-// de publicación es alguien de afuera (el panel de "Agregar" de Tu camino,
-// con sus propias pestañas Comentario/Cita/Foto·GIF/Voz) — acá el chip
-// Comentario/Cita se esconde y el tipo queda fijo desde el mount. Sin
+// `kind`/`hideKindChips`/`autoOpenPicker`/`showAddPhotoLink` son para
+// cuando quien arma el tipo de publicación es alguien de afuera (el panel
+// de "Agregar" de Tu camino, con sus propias pestañas Cita/Foto·GIF/Voz —
+// "Comentario" no tiene pestaña propia, es la vista por default) — acá el
+// chip Comentario/Cita se esconde y el tipo queda fijo desde el mount. Sin
 // `kind`, el formulario elige su propio tipo con el chip de siempre (como
 // en la pantalla de Comentarios del club). `autoOpenPicker` abre el
 // selector de archivos apenas se monta — la pestaña "Foto/GIF" del panel de
 // Tu camino lo usa para ir directo a elegir, sin un clic de más.
-export function NewCommentForm({ clubBookId, chapterId, book, onPosted, kind: fixedKind, hideKindChips = false, autoOpenPicker = false }) {
+// `showAddPhotoLink` (default `true`) esconde el botón "Agregar foto o
+// GIF"/"Agregar más" en la vista de texto por default: ya existe la
+// pestaña "Foto/GIF" dedicada a eso, tenerlo repetido ahí solo confundía
+// (mismo criterio que ya sigue `TextOrPhotoTab` en el compositor del
+// Perfil).
+export function NewCommentForm({ clubBookId, chapterId, book, onPosted, kind: fixedKind, hideKindChips = false, autoOpenPicker = false, showAddPhotoLink = true }) {
   const [kind, setKind] = useState(fixedKind ?? 'text');
   const [body, setBody] = useState('');
   const [isSpoiler, setIsSpoiler] = useState(false);
@@ -164,7 +170,7 @@ export function NewCommentForm({ clubBookId, chapterId, book, onPosted, kind: fi
               </button>
             </div>
           ))}
-          {images.length < MAX_COMMENT_IMAGES && (
+          {images.length < MAX_COMMENT_IMAGES && showAddPhotoLink && (
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}

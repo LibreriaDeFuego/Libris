@@ -643,20 +643,27 @@ function SpoilerWarning({ label, href, onDismiss }) {
 // adjuntar foto/GIF o grabar una nota de voz — nunca mostrar lo que ya hay
 // (para eso está la pastilla de comentarios, a la izquierda de cada nodo).
 //
-// Cuatro pestañas de TIPO, no dos — antes había un chip Comentario/Cita
-// adentro del formulario y la nota de voz colgando aparte, debajo, como
-// otra cosa; ahora las cuatro maneras de participar son cuatro pestañas al
-// mismo nivel (Comentario · Cita · Foto/GIF · Voz), mismo lenguaje visual
-// (rayita coral) que ya usaban las pestañas del panel viejo. `NewCommentForm`
-// resuelve Comentario, Cita y Foto/GIF (las tres son la misma forma por
-// dentro — kind fijo desde afuera, sin su propio chip — con
-// `autoOpenPicker` en Foto/GIF para ir directo al selector nativo, un clic
-// de menos); Voz sigue siendo `VoiceRecorder`, aparte. Publicar en
+// Misma dinámica que el panel de "Compartir" del Perfil (PostComposer):
+// "Comentario" no tiene su propio botón de pestaña — la caja de texto ya es
+// la vista por default al abrir el panel, un botón para eso era redundante.
+// Quedan tres pestañas, Cita · Foto/GIF · Voz; tocar la que ya está activa
+// vuelve al texto (`toggleTab`) — es la única forma de salir de esas tres
+// sin cerrar el panel, ya que no hay ningún botón "Comentario" al que
+// volver. `NewCommentForm` resuelve el texto (con o sin foto) y la cita —
+// son la misma forma por dentro, kind fijo desde afuera, sin su propio chip
+// — con `autoOpenPicker` en Foto/GIF para ir directo al selector nativo, y
+// `showAddPhotoLink` en `true` solo ahí (en la vista de texto por default
+// ese botón se esconde, igual que en PostComposer: ya existe la pestaña
+// dedicada). Voz sigue siendo `VoiceRecorder`, aparte. Publicar en
 // cualquiera cierra el panel solo (`onDismiss`): ya cumplió su único
 // trabajo, y la pastilla de la izquierda se actualiza sola (revalidatePath
 // de siempre en postComment/postVoiceComment).
 function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss }) {
-  const [activeTab, setActiveTab] = useState('comment'); // 'comment' | 'quote' | 'photo' | 'voice'
+  const [activeTab, setActiveTab] = useState('comment'); // 'comment' (default, sin pestaña propia) | 'quote' | 'photo' | 'voice'
+
+  function toggleTab(tab) {
+    setActiveTab((current) => (current === tab ? 'comment' : tab));
+  }
 
   return (
     <div style={{ margin: '2px 18px 10px', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
@@ -670,10 +677,9 @@ function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss })
       </div>
 
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', margin: '8px 14px 0' }}>
-        <TypeTabButton active={activeTab === 'comment'} onClick={() => setActiveTab('comment')} icon="message-circle" label="Comentario" />
-        <TypeTabButton active={activeTab === 'quote'} onClick={() => setActiveTab('quote')} icon="quote" label="Cita" />
-        <TypeTabButton active={activeTab === 'photo'} onClick={() => setActiveTab('photo')} icon="image" label="Foto/GIF" />
-        <TypeTabButton active={activeTab === 'voice'} onClick={() => setActiveTab('voice')} icon="mic" label="Voz" />
+        <TypeTabButton active={activeTab === 'quote'} onClick={() => toggleTab('quote')} icon="quote" label="Cita" />
+        <TypeTabButton active={activeTab === 'photo'} onClick={() => toggleTab('photo')} icon="image" label="Foto/GIF" />
+        <TypeTabButton active={activeTab === 'voice'} onClick={() => toggleTab('voice')} icon="mic" label="Voz" />
       </div>
 
       <div style={{ padding: '10px 14px 14px' }}>
@@ -688,6 +694,7 @@ function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss })
             kind={activeTab === 'quote' ? 'quote' : 'text'}
             hideKindChips
             autoOpenPicker={activeTab === 'photo'}
+            showAddPhotoLink={activeTab === 'photo'}
             onPosted={onDismiss}
           />
         )}
@@ -697,9 +704,9 @@ function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss })
 }
 
 // Una pestaña de TIPO del panel de agregar — ícono + rótulo apilados,
-// centrados, con una rayita coral bajo la activa (mismo lenguaje que ya
-// usaban las pestañas del panel viejo, "Lo que dijeron"/"Agregar lo tuyo",
-// solo que ahora son cuatro en vez de dos).
+// centrados, con una rayita coral bajo la activa. Solo Cita/Foto·GIF/Voz
+// tienen botón acá — "Comentario" no, ver el comentario sobre
+// ChapterCommentsPanel más arriba.
 function TypeTabButton({ active, onClick, icon, label }) {
   return (
     <button
