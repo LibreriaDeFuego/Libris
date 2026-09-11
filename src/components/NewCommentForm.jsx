@@ -26,8 +26,11 @@ import { DEFAULT_CARD_STYLE, DEFAULT_CARD_COLOR_BY_STYLE } from '@/lib/quoteFeed
 // GIF"/"Agregar más" en la vista de texto por default: ya existe la
 // pestaña "Foto/GIF" dedicada a eso, tenerlo repetido ahí solo confundía
 // (mismo criterio que ya sigue `TextOrPhotoTab` en el compositor del
-// Perfil).
-export function NewCommentForm({ clubBookId, chapterId, book, onPosted, kind: fixedKind, hideKindChips = false, autoOpenPicker = false, showAddPhotoLink = true }) {
+// Perfil). `hideSpoilerOption` (default `false`) esconde el checkbox
+// "Contiene spoilers" — el panel de "Agregar" de Tu camino lo esconde, ya
+// que ahí se agrega algo puntual y rápido; la pantalla de Comentarios del
+// club lo sigue mostrando igual que siempre.
+export function NewCommentForm({ clubBookId, chapterId, book, onPosted, kind: fixedKind, hideKindChips = false, autoOpenPicker = false, showAddPhotoLink = true, hideSpoilerOption = false }) {
   const [kind, setKind] = useState(fixedKind ?? 'text');
   const [body, setBody] = useState('');
   const [isSpoiler, setIsSpoiler] = useState(false);
@@ -195,10 +198,12 @@ export function NewCommentForm({ clubBookId, chapterId, book, onPosted, kind: fi
           />
         </div>
       )}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
-        <input type="checkbox" checked={isSpoiler} onChange={(e) => setIsSpoiler(e.target.checked)} />
-        Contiene spoilers
-      </label>
+      {!hideSpoilerOption && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>
+          <input type="checkbox" checked={isSpoiler} onChange={(e) => setIsSpoiler(e.target.checked)} />
+          Contiene spoilers
+        </label>
+      )}
       {error && (
         <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 10 }}>
           {error}

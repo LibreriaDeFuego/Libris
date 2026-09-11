@@ -659,7 +659,11 @@ function SpoilerWarning({ label, href, onDismiss }) {
 // `autoOpenPicker` en Foto/GIF para ir directo al selector nativo, y
 // `showAddPhotoLink` en `true` solo ahí (en la vista de texto por default
 // ese botón se esconde, igual que en PostComposer: ya existe la pestaña
-// dedicada). Voz sigue siendo `VoiceRecorder`, aparte. Publicar en
+// dedicada). El checkbox "Contiene spoilers" se esconde en las cuatro
+// pestañas (`hideSpoilerOption` en `NewCommentForm`, `showSpoilerOption`
+// en `false` en `VoiceRecorder`) — acá se agrega algo puntual y rápido, sin
+// esa marca; la pantalla de Comentarios del club la sigue mostrando igual
+// que siempre. Voz sigue siendo `VoiceRecorder`, aparte. Publicar en
 // cualquiera cierra el panel solo (`onDismiss`): ya cumplió su único
 // trabajo, y la pastilla de la izquierda se actualiza sola (revalidatePath
 // de siempre en postComment/postVoiceComment).
@@ -680,7 +684,7 @@ function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss })
         </div>
 
         {activeTab === 'voice' ? (
-          <VoiceRecorder extraFields={{ clubBookId, chapterId }} onDone={onDismiss} />
+          <VoiceRecorder extraFields={{ clubBookId, chapterId }} showSpoilerOption={false} onDone={onDismiss} />
         ) : (
           <NewCommentForm
             key={activeTab}
@@ -691,6 +695,7 @@ function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss })
             hideKindChips
             autoOpenPicker={activeTab === 'photo'}
             showAddPhotoLink={activeTab === 'photo'}
+            hideSpoilerOption
             onPosted={onDismiss}
           />
         )}
