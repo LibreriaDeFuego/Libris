@@ -96,42 +96,17 @@ function QuestionSummaryCard({ question, onEdit, onDelete, pending }) {
   );
 }
 
-// La pregunta de un capítulo puntual (migración 053) — encuesta, pregunta
-// abierta o trivia, atada a UN capítulo (chapter_id es unique en
-// chapter_questions: como mucho una por capítulo, editar reemplaza la que
-// había). Salta sola en ChapterPath cuando alguien marca este capítulo
-// como el que está leyendo. Vive acá dentro de la edición de ChapterRow
-// (número/título/volumen), y se exporta porque ChapterPath también la usa
-// — un administrador puede armar la pregunta directo desde el broche "+"
-// de Tu camino, sin venir hasta esta pantalla (ver AdminQuestionTab).
-//
-// Dos vistas, no una: si ya hay una pregunta guardada (`savedQuestion`),
-// arranca mostrando `QuestionSummaryCard` — el formulario recién aparece
-// al tocar "Editar" ahí, o directo si todavía no hay ninguna que resumir.
-export function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
-  const [savedQuestion, setSavedQuestion] = useState(question); // null = nada guardado todavía
-  const [editing, setEditing] = useState(!question);
-
-  const [kind, setKind] = useState(question?.kind ?? 'poll');
-  const [prompt, setPrompt] = useState(question?.prompt ?? '');
-  const [options, setOptions] = useState(question?.options?.length ? question.options : ['', '']);
-  const [correctIndex, setCorrectIndex] = useState(question?.correct_option_index ?? 0);
+// El formulario en sí — crea una pregunta nueva (`questionId` null) o
+// edita una existente (`questionId` puesto, la reemplaza entera).
+// Aparte de `ChapterQuestionsManager`, para poder reusarlo tanto para
+// "Agregar otra pregunta" como para editar una fila puntual de la lista.
+function QuestionForm({ chapterId, clubBookId, questionId, initial, onSaved, onCancel }) {
+  const [kind, setKind] = useState(initial?.kind ?? 'poll');
+  const [prompt, setPrompt] = useState(initial?.prompt ?? '');
+  const [options, setOptions] = useState(initial?.options?.length ? initial.options : ['', '']);
+  const [correctIndex, setCorrectIndex] = useState(initial?.correct_option_index ?? 0);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState(null);
-
-  // Vuelve a cargar el formulario con lo último guardado — descarta
-  // cualquier cambio a medio hacer que hubiera quedado de una edición
-  // anterior sin guardar.
-  function startEditing() {
-    if (savedQuestion) {
-      setKind(savedQuestion.kind);
-      setPrompt(savedQuestion.prompt);
-      setOptions(savedQuestion.options?.length ? savedQuestion.options : ['', '']);
-      setCorrectIndex(savedQuestion.correct_option_index ?? 0);
-    }
-    setError(null);
-    setEditing(true);
-  }
 
   function updateOption(i, value) {
     setOptions((prev) => prev.map((opt, idx) => (idx === i ? value : opt)));
@@ -148,6 +123,7 @@ export function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
 
   function save() {
     const formData = new FormData();
+    if (questionId) formData.set('questionId', questionId);
     formData.set('chapterId', chapterId);
     formData.set('clubBookId', clubBookId);
     formData.set('kind', kind);
@@ -163,53 +139,16 @@ export function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
         setError(result.error);
         return;
       }
-      setSavedQuestion({
+      onSaved({
         id: result.id, kind, prompt,
         options: kind === 'open' ? null : options,
         correct_option_index: kind === 'trivia' ? correctIndex : null,
       });
-      setEditing(false);
     });
-  }
-
-  function remove() {
-    if (!savedQuestion) return;
-    setError(null);
-    startTransition(async () => {
-      const result = await deleteChapterQuestion(savedQuestion.id);
-      if (result?.error) {
-        setError(result.error);
-        return;
-      }
-      setSavedQuestion(null);
-      setKind('poll');
-      setPrompt('');
-      setOptions(['', '']);
-      setCorrectIndex(0);
-      setEditing(true);
-    });
-  }
-
-  if (!editing && savedQuestion) {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <QuestionSummaryCard question={savedQuestion} onEdit={startEditing} onDelete={remove} pending={pending} />
-        <ErrorBox error={error} />
-      </div>
-    );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
-          Pregunta del capítulo
-        </div>
-        <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-snug)', marginTop: 2 }}>
-          Opcional. Aparece cuando alguien marca este capítulo como el que está leyendo.
-        </div>
-      </div>
-
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--surface-card)', border: '1px solid var(--accent-500)', borderRadius: 'var(--radius-md)', padding: 12 }}>
       <div style={{ display: 'flex', gap: 6 }}>
         {Object.entries(QUESTION_KIND_META).map(([value, meta]) => (
           <button
@@ -282,9 +221,7 @@ export function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
       <ErrorBox error={error} />
 
       <div style={{ display: 'flex', gap: 8 }}>
-        {savedQuestion && (
-          <Button variant="secondary" size="sm" type="button" onClick={() => setEditing(false)} disabled={pending}>Cancelar</Button>
-        )}
+        <Button variant="secondary" size="sm" type="button" onClick={onCancel} disabled={pending}>Cancelar</Button>
         <Button variant="primary" size="sm" type="button" onClick={save} disabled={pending}>
           {pending ? 'Guardando...' : 'Guardar pregunta'}
         </Button>
@@ -293,11 +230,111 @@ export function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
   );
 }
 
+// Todas las preguntas de un capítulo puntual (migración 053; varias por
+// capítulo desde la 054 — antes como mucho una, ahora se puede combinar
+// una encuesta con una trivia, o lo que haga falta). Salta cada una,
+// una por una, en ChapterPath cuando alguien marca este capítulo como el
+// que está leyendo. Vive acá dentro de la edición de ChapterRow
+// (número/título/volumen), y se exporta porque ChapterPath también la usa
+// — un administrador puede armar preguntas directo desde el broche "+"
+// de Tu camino, sin venir hasta esta pantalla (ver AdminQuestionTab).
+//
+// Cada pregunta ya guardada se ve como `QuestionSummaryCard` — sin
+// ninguna duda de que hay algo persistido de verdad — y "Editar" recién
+// ahí abre su formulario, en el lugar de esa tarjeta. Al final, un botón
+// para agregar una más (o el formulario en blanco, si se tocó ese botón).
+export function ChapterQuestionsManager({ chapterId, clubBookId, questions }) {
+  const [items, setItems] = useState(questions);
+  const [editingId, setEditingId] = useState(null); // null | 'new' | el id de una existente
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [, startDelete] = useTransition();
+
+  function handleSaved(item, previousId) {
+    setItems((prev) => (previousId ? prev.map((q) => (q.id === previousId ? item : q)) : [...prev, item]));
+    setEditingId(null);
+  }
+
+  function remove(id) {
+    setDeleteError(null);
+    setDeletingId(id);
+    startDelete(async () => {
+      const result = await deleteChapterQuestion(id);
+      setDeletingId(null);
+      if (result?.error) {
+        setDeleteError(result.error);
+        return;
+      }
+      setItems((prev) => prev.filter((q) => q.id !== id));
+    });
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+          Preguntas del capítulo
+        </div>
+        <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-snug)', marginTop: 2 }}>
+          Opcionales. Aparecen cuando alguien marca este capítulo como el que está leyendo — se puede agregar más de una.
+        </div>
+      </div>
+
+      {items.map((q) =>
+        editingId === q.id ? (
+          <QuestionForm
+            key={q.id}
+            chapterId={chapterId}
+            clubBookId={clubBookId}
+            questionId={q.id}
+            initial={q}
+            onSaved={(item) => handleSaved(item, q.id)}
+            onCancel={() => setEditingId(null)}
+          />
+        ) : (
+          <QuestionSummaryCard
+            key={q.id}
+            question={q}
+            onEdit={() => setEditingId(q.id)}
+            onDelete={() => remove(q.id)}
+            pending={deletingId === q.id}
+          />
+        )
+      )}
+
+      {editingId === 'new' ? (
+        <QuestionForm
+          chapterId={chapterId}
+          clubBookId={clubBookId}
+          questionId={null}
+          initial={null}
+          onSaved={(item) => handleSaved(item, null)}
+          onCancel={() => setEditingId(null)}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setEditingId('new')}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 12px',
+            borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-default)', background: 'none',
+            color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-body)',
+          }}
+        >
+          <Icon name="plus" size={14} /> {items.length > 0 ? 'Agregar otra pregunta' : 'Agregar pregunta'}
+        </button>
+      )}
+
+      <ErrorBox error={deleteError} />
+    </div>
+  );
+}
+
 // Fila de un capítulo. Tocarla abre la edición: nombre, número (el capítulo
 // mantiene su lugar en el orden gracias a este número, aunque tenga nombre
-// propio), a qué volumen pertenece, y su pregunta opcional (encuesta,
-// pregunta abierta o trivia — ver ChapterQuestionEditor).
-function ChapterRow({ chapter, volumes, clubBookId, question }) {
+// propio), a qué volumen pertenece, y sus preguntas opcionales (encuesta,
+// pregunta abierta o trivia, una o varias — ver ChapterQuestionsManager).
+function ChapterRow({ chapter, volumes, clubBookId, questions = [] }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(chapter.title ?? '');
   const [number, setNumber] = useState(String(chapter.number));
@@ -332,8 +369,11 @@ function ChapterRow({ chapter, volumes, clubBookId, question }) {
       >
         <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-primary)' }}>{chapterDisplayLabel(chapter)}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {question && (
-            <Icon name={QUESTION_KIND_META[question.kind].icon} size={14} color="var(--accent-500)" />
+          {questions.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <Icon name="clipboard-list" size={13} color="var(--accent-500)" />
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-500)' }}>{questions.length}</span>
+            </div>
           )}
           <Icon name="pencil" size={14} color="var(--text-tertiary)" />
         </div>
@@ -361,7 +401,7 @@ function ChapterRow({ chapter, volumes, clubBookId, question }) {
       </div>
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '2px 0' }} />
-      <ChapterQuestionEditor chapterId={chapter.id} clubBookId={clubBookId} question={question} />
+      <ChapterQuestionsManager chapterId={chapter.id} clubBookId={clubBookId} questions={questions} />
     </div>
   );
 }
@@ -517,7 +557,12 @@ export function GestionCapitulosScreen({ club, book, clubBookId, chapters, volum
   const router = useRouter();
   const groups = groupChaptersByVolume(chapters, volumes);
   const nextNumber = chapters.length > 0 ? Math.max(...chapters.map((c) => c.number)) + 1 : 1;
-  const questionByChapterId = new Map(questions.map((q) => [q.chapter_id, q]));
+  const questionsByChapterId = new Map();
+  for (const q of questions) {
+    const list = questionsByChapterId.get(q.chapter_id) ?? [];
+    list.push(q);
+    questionsByChapterId.set(q.chapter_id, list);
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '20px 18px 24px' }}>
@@ -555,7 +600,7 @@ export function GestionCapitulosScreen({ club, book, clubBookId, chapters, volum
                 chapter={chapter}
                 volumes={volumes}
                 clubBookId={clubBookId}
-                question={questionByChapterId.get(chapter.id) ?? null}
+                questions={questionsByChapterId.get(chapter.id) ?? []}
               />
             ))}
           </div>

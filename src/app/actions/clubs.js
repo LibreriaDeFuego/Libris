@@ -982,22 +982,25 @@ export async function postReply(formData) {
   return { error: null };
 }
 
-// Preguntas de capítulo (migración 053) — encuesta, pregunta abierta o
-// trivia que arma un administrador, atada a UN capítulo puntual (como
-// mucho una por capítulo: chapter_id es unique en chapter_questions).
-// Salta sola en ChapterPath cuando alguien marca ese capítulo como el
-// que está leyendo.
+// Preguntas de capítulo (migración 053; varias por capítulo desde la
+// 054) — encuesta, pregunta abierta o trivia que arma un administrador,
+// atada a un capítulo puntual. Un mismo capítulo puede tener más de una
+// (una encuesta Y una trivia, por ejemplo) — cada una es su propia fila,
+// sin ningún límite salvo el de la UI (ver ChapterQuestionsManager).
+// Saltan solas en ChapterPath cuando alguien marca ese capítulo como el
+// que está leyendo (una por una, en cola).
 const QUESTION_KINDS = ['poll', 'open', 'trivia'];
 const MAX_QUESTION_OPTIONS = 6;
 
-// Arma o edita la pregunta de un capítulo — como es upsert (onConflict
-// sobre chapter_id), volver a guardar reemplaza la que ya había. Solo
-// administradores: lo impone la policy de insert/update de la tabla, acá
-// no hace falta chequearlo aparte.
+// Arma una pregunta nueva (sin questionId) o edita una existente (con
+// questionId, la reemplaza entera) — nunca "la" pregunta del capítulo,
+// puede haber varias. Solo administradores: lo impone la policy de
+// insert/update de la tabla, acá no hace falta chequearlo aparte.
 export async function saveChapterQuestion(formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
+  const questionId = formData.get('questionId')?.toString() || null;
   const chapterId = formData.get('chapterId')?.toString();
   const clubBookId = formData.get('clubBookId')?.toString();
   const kind = formData.get('kind')?.toString();
@@ -1026,25 +1029,23 @@ export async function saveChapterQuestion(formData) {
     }
   }
 
-  // Devuelve el id: quien llama (ChapterQuestionEditor) lo necesita para
-  // poder borrar la pregunta más adelante sin haber recargado la
+  const payload = { chapter_id: chapterId, club_book_id: clubBookId, created_by: user.id, kind, prompt, options, correct_option_index: correctOptionIndex };
+
+  // Devuelve el id: quien llama (ChapterQuestionsManager) lo necesita
+  // para poder editarla/borrarla más adelante sin haber recargado la
   // pantalla — recién creada, todavía no le llegó ningún id por props.
-  const { data, error } = await supabase
-    .from('chapter_questions')
-    .upsert(
-      { chapter_id: chapterId, club_book_id: clubBookId, created_by: user.id, kind, prompt, options, correct_option_index: correctOptionIndex },
-      { onConflict: 'chapter_id' }
-    )
-    .select('id')
-    .single();
+  const query = questionId
+    ? supabase.from('chapter_questions').update(payload).eq('id', questionId)
+    : supabase.from('chapter_questions').insert(payload);
+  const { data, error } = await query.select('id').single();
   if (error) return { error: friendlyDbError(error) };
 
   revalidatePath('/', 'layout');
   return { error: null, id: data.id };
 }
 
-// Borra la pregunta de un capítulo — de paso borra todas sus respuestas
-// (on delete cascade). Solo administradores, lo impone la policy de delete.
+// Borra una pregunta puntual — de paso borra todas sus respuestas (on
+// delete cascade). Solo administradores, lo impone la policy de delete.
 export async function deleteChapterQuestion(questionId) {
   const supabase = await createClient();
   await requireUser(supabase);
@@ -1057,30 +1058,32 @@ export async function deleteChapterQuestion(questionId) {
   return { error: null };
 }
 
-// Trae la pregunta de un capítulo (si hay) y si quien pregunta ya la
-// respondió — se llama justo después de marcar ese capítulo como el
-// actual (ChapterPath, handleTap), para decidir si hace falta abrir el
-// panel. En un capítulo sin pregunta armada, question queda en null.
-export async function getChapterQuestion(chapterId) {
+// Trae TODAS las preguntas de un capítulo (puede haber varias desde la
+// migración 054) y, para cada una, si quien pregunta ya la respondió —
+// se llama justo después de marcar ese capítulo como el actual
+// (ChapterPath, handleTap), para armar la cola de las que todavía faltan
+// responder. En un capítulo sin ninguna pregunta armada, questions queda
+// en un array vacío.
+export async function getChapterQuestions(chapterId) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
-  if (!chapterId) return { question: null, answered: false };
+  if (!chapterId) return { questions: [] };
 
-  const { data: question } = await supabase
+  const { data: questions } = await supabase
     .from('chapter_questions')
     .select('id, kind, prompt, options, correct_option_index')
     .eq('chapter_id', chapterId)
-    .maybeSingle();
-  if (!question) return { question: null, answered: false };
+    .order('created_at', { ascending: true });
+  if (!questions || questions.length === 0) return { questions: [] };
 
-  const { data: myAnswer } = await supabase
+  const { data: myAnswers } = await supabase
     .from('chapter_question_answers')
-    .select('id')
-    .eq('question_id', question.id)
+    .select('question_id')
     .eq('profile_id', user.id)
-    .maybeSingle();
+    .in('question_id', questions.map((q) => q.id));
+  const answeredIds = new Set((myAnswers ?? []).map((a) => a.question_id));
 
-  return { question, answered: Boolean(myAnswer) };
+  return { questions: questions.map((q) => ({ ...q, answered: answeredIds.has(q.id) })) };
 }
 
 // Responde una pregunta de capítulo (optionIndex para encuesta/trivia,

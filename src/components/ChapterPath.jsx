@@ -7,10 +7,10 @@ import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
-import { updateProgress, getClubMembersProgress, getChapterQuestion, answerChapterQuestion } from '@/app/actions/clubs';
+import { updateProgress, getClubMembersProgress, getChapterQuestions, answerChapterQuestion } from '@/app/actions/clubs';
 import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
-import { ChapterQuestionEditor } from '@/screens/GestionCapitulosScreen.jsx';
+import { ChapterQuestionsManager } from '@/screens/GestionCapitulosScreen.jsx';
 
 // Lo leído ya no es un color plano: el camino recorrido va de un gris
 // azulado frío (el capítulo más viejo) al coral de siempre — justo en
@@ -103,7 +103,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
   const [showCompanions, setShowCompanions] = useState(false);
   const [companions, setCompanions] = useState(null); // null = todavía no se pidió
   const [loadingCompanions, setLoadingCompanions] = useState(false);
-  const [activeQuestion, setActiveQuestion] = useState(null); // { chapterLabel, question } | null — migración 053
+  const [questionQueue, setQuestionQueue] = useState(null); // { chapterLabel, total, items } | null — migración 053/054; "items" se va achicando a medida que se responde/salta cada una
   const currentNodeRef = useRef(null);
 
   useEffect(() => {
@@ -209,12 +209,14 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
         setToast(null);
         return;
       }
-      // Si el admin armó una pregunta para este capítulo (migración 053) y
-      // todavía no la respondiste, salta acá mismo — nunca vuelve a
-      // aparecer sola si ya la respondiste antes.
-      const questionResult = await getChapterQuestion(chapter.id);
-      if (questionResult?.question && !questionResult.answered) {
-        setActiveQuestion({ chapterLabel: chapterLabel(chapter), question: questionResult.question });
+      // Si el admin armó preguntas para este capítulo (migración 053; más
+      // de una desde la 054) y todavía faltan por responder, saltan acá
+      // mismo, una por una — nunca vuelven a aparecer solas las que ya
+      // respondiste antes.
+      const { questions } = await getChapterQuestions(chapter.id);
+      const pendingQuestions = questions.filter((q) => !q.answered);
+      if (pendingQuestions.length > 0) {
+        setQuestionQueue({ chapterLabel: chapterLabel(chapter), total: pendingQuestions.length, items: pendingQuestions });
       }
     });
   }
@@ -508,11 +510,19 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
         <div style={{ margin: '2px 18px 0', color: 'var(--danger)', fontSize: 'var(--fs-xs)' }}>{error}</div>
       )}
 
-      {activeQuestion && (
+      {questionQueue && (
         <ChapterQuestionModal
-          chapterLabel={activeQuestion.chapterLabel}
-          question={activeQuestion.question}
-          onDismiss={() => setActiveQuestion(null)}
+          key={questionQueue.items[0].id}
+          chapterLabel={questionQueue.chapterLabel}
+          question={questionQueue.items[0]}
+          position={questionQueue.total > 1 ? { index: questionQueue.total - questionQueue.items.length + 1, total: questionQueue.total } : null}
+          onNext={() => {
+            setQuestionQueue((prev) => {
+              if (!prev) return null;
+              const rest = prev.items.slice(1);
+              return rest.length > 0 ? { ...prev, items: rest } : null;
+            });
+          }}
         />
       )}
     </div>
@@ -737,29 +747,29 @@ function ChapterCommentsPanel({ clubBookId, book, chapterId, label, isAdmin, onD
   );
 }
 
-// Trae la pregunta que ya tenga este capítulo (si hay) antes de mostrar
-// el editor — así ChapterQuestionEditor arranca sabiendo si es "crear" o
-// "editar", igual que ya sabe cuando se abre desde Gestión de capítulos.
-// Se pide de nuevo cada vez que se abre esta pestaña (sin cachear entre
-// capítulos): es información que solo importa mientras el admin está
-// mirando esto, no vale la pena guardarla en ningún estado más arriba.
+// Trae las preguntas que ya tenga este capítulo (puede haber varias
+// desde la migración 054) antes de mostrar el administrador de la lista
+// — igual que ya hace Gestión de capítulos. Se pide de nuevo cada vez
+// que se abre esta pestaña (sin cachear entre capítulos): es información
+// que solo importa mientras el admin está mirando esto, no vale la pena
+// guardarla en ningún estado más arriba.
 function AdminQuestionTab({ chapterId, clubBookId }) {
-  const [question, setQuestion] = useState(undefined); // undefined = cargando; null | {...} después
+  const [questions, setQuestions] = useState(undefined); // undefined = cargando; array después
 
   useEffect(() => {
     let cancelled = false;
-    getChapterQuestion(chapterId).then((result) => {
-      if (!cancelled) setQuestion(result?.question ?? null);
+    getChapterQuestions(chapterId).then((result) => {
+      if (!cancelled) setQuestions(result?.questions ?? []);
     });
     return () => {
       cancelled = true;
     };
   }, [chapterId]);
 
-  if (question === undefined) {
+  if (questions === undefined) {
     return <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', padding: '8px 0' }}>Cargando…</div>;
   }
-  return <ChapterQuestionEditor chapterId={chapterId} clubBookId={clubBookId} question={question} />;
+  return <ChapterQuestionsManager chapterId={chapterId} clubBookId={clubBookId} questions={questions} />;
 }
 
 // Una pestaña de TIPO del panel de agregar — ícono + rótulo apilados,
@@ -793,14 +803,22 @@ const QUESTION_KIND_META = {
   open: { icon: 'message-square', label: 'Pregunta del club' },
 };
 
-// La pregunta de un capítulo (migración 053) — salta sola, como hoja
-// desde abajo, apenas `handleTap` marca ese capítulo como el actual y
-// `getChapterQuestion` dice que todavía no la respondiste. Antes de
-// responder muestra el enunciado con sus opciones (poll/trivia) o una
-// caja de texto (open); `answerChapterQuestion` ya devuelve el
-// resultado agregado en la misma llamada, así que responder cambia
-// directo a la vista de resultados, sin un segundo viaje al servidor.
-function ChapterQuestionModal({ chapterLabel, question, onDismiss }) {
+// Una pregunta de un capítulo (migración 053; puede haber varias desde
+// la 054) — salta sola, como hoja desde abajo, apenas `handleTap` marca
+// ese capítulo como el actual y `getChapterQuestions` dice que todavía
+// quedan sin responder. Antes de responder muestra el enunciado con sus
+// opciones (poll/trivia) o una caja de texto (open); `answerChapterQuestion`
+// ya devuelve el resultado agregado en la misma llamada, así que
+// responder cambia directo a la vista de resultados, sin un segundo
+// viaje al servidor.
+//
+// `onNext` es tanto "cerrar" como "pasar a la siguiente" — es lo que
+// `handleTap` le pasa como `onClose` del propio `Modal`: si en la cola
+// queda otra pregunta sin responder, la × avanza a esa (remontando este
+// componente entero vía `key`, en ChapterPath); si no queda ninguna,
+// cierra del todo. `position` (`{ index, total }`) solo se muestra
+// cuando hay más de una en la cola — para una sola no hace falta.
+function ChapterQuestionModal({ chapterLabel, question, position, onNext }) {
   const [results, setResults] = useState(null); // null = todavía no respondiste
   const [myPick, setMyPick] = useState(null); // optionIndex elegido, poll/trivia
   const [openBody, setOpenBody] = useState('');
@@ -846,11 +864,18 @@ function ChapterQuestionModal({ chapterLabel, question, onDismiss }) {
   const gotItRight = isTrivia && myPick === question.correct_option_index;
 
   return (
-    <Modal title={chapterLabel} onClose={onDismiss}>
+    <Modal title={chapterLabel} onClose={onNext}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--accent-600)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
-          <Icon name={kindMeta.icon} size={13} />
-          {kindMeta.label}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--accent-600)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+            <Icon name={kindMeta.icon} size={13} />
+            {kindMeta.label}
+          </div>
+          {position && (
+            <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)' }}>
+              {position.index} de {position.total}
+            </div>
+          )}
         </div>
 
         {results && isTrivia && (
