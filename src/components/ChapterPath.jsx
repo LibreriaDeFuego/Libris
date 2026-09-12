@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
+import { Button } from '@/design-system/components/core/Button.jsx';
+import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
-import { updateProgress, getClubMembersProgress } from '@/app/actions/clubs';
+import { updateProgress, getClubMembersProgress, getChapterQuestion, answerChapterQuestion } from '@/app/actions/clubs';
 import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 
@@ -100,6 +102,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
   const [showCompanions, setShowCompanions] = useState(false);
   const [companions, setCompanions] = useState(null); // null = todavía no se pidió
   const [loadingCompanions, setLoadingCompanions] = useState(false);
+  const [activeQuestion, setActiveQuestion] = useState(null); // { chapterLabel, question } | null — migración 053
   const currentNodeRef = useRef(null);
 
   useEffect(() => {
@@ -203,6 +206,14 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
         setError(result.error);
         setOptimisticId(null);
         setToast(null);
+        return;
+      }
+      // Si el admin armó una pregunta para este capítulo (migración 053) y
+      // todavía no la respondiste, salta acá mismo — nunca vuelve a
+      // aparecer sola si ya la respondiste antes.
+      const questionResult = await getChapterQuestion(chapter.id);
+      if (questionResult?.question && !questionResult.answered) {
+        setActiveQuestion({ chapterLabel: chapterLabel(chapter), question: questionResult.question });
       }
     });
   }
@@ -494,6 +505,14 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
       {error && (
         <div style={{ margin: '2px 18px 0', color: 'var(--danger)', fontSize: 'var(--fs-xs)' }}>{error}</div>
       )}
+
+      {activeQuestion && (
+        <ChapterQuestionModal
+          chapterLabel={activeQuestion.chapterLabel}
+          question={activeQuestion.question}
+          onDismiss={() => setActiveQuestion(null)}
+        />
+      )}
     </div>
   );
 }
@@ -726,5 +745,197 @@ function TypeTabButton({ active, onClick, icon, label }) {
         <span style={{ position: 'absolute', left: 6, right: 6, bottom: -1, height: 2, background: 'var(--accent-500)', borderRadius: '2px 2px 0 0' }} />
       )}
     </button>
+  );
+}
+
+const QUESTION_KIND_META = {
+  poll: { icon: 'bar-chart-2', label: 'Encuesta del club' },
+  trivia: { icon: 'help-circle', label: 'Trivia del club' },
+  open: { icon: 'message-square', label: 'Pregunta del club' },
+};
+
+// La pregunta de un capítulo (migración 053) — salta sola, como hoja
+// desde abajo, apenas `handleTap` marca ese capítulo como el actual y
+// `getChapterQuestion` dice que todavía no la respondiste. Antes de
+// responder muestra el enunciado con sus opciones (poll/trivia) o una
+// caja de texto (open); `answerChapterQuestion` ya devuelve el
+// resultado agregado en la misma llamada, así que responder cambia
+// directo a la vista de resultados, sin un segundo viaje al servidor.
+function ChapterQuestionModal({ chapterLabel, question, onDismiss }) {
+  const [results, setResults] = useState(null); // null = todavía no respondiste
+  const [myPick, setMyPick] = useState(null); // optionIndex elegido, poll/trivia
+  const [openBody, setOpenBody] = useState('');
+  const [error, setError] = useState(null);
+  const [pending, startTransition] = useTransition();
+
+  function submitOption(index) {
+    if (pending) return;
+    setError(null);
+    setMyPick(index);
+    const formData = new FormData();
+    formData.set('questionId', question.id);
+    formData.set('optionIndex', String(index));
+    startTransition(async () => {
+      const result = await answerChapterQuestion(formData);
+      if (result?.error) {
+        setError(result.error);
+        setMyPick(null);
+        return;
+      }
+      setResults(result.results);
+    });
+  }
+
+  function submitOpen() {
+    if (pending || !openBody.trim()) return;
+    setError(null);
+    const formData = new FormData();
+    formData.set('questionId', question.id);
+    formData.set('body', openBody.trim());
+    startTransition(async () => {
+      const result = await answerChapterQuestion(formData);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setResults(result.results);
+    });
+  }
+
+  const kindMeta = QUESTION_KIND_META[question.kind];
+  const isTrivia = question.kind === 'trivia';
+  const gotItRight = isTrivia && myPick === question.correct_option_index;
+
+  return (
+    <Modal title={chapterLabel} onClose={onDismiss}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--accent-600)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+          <Icon name={kindMeta.icon} size={13} />
+          {kindMeta.label}
+        </div>
+
+        {results && isTrivia && (
+          <div
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 'var(--radius-md)',
+              fontSize: 'var(--fs-sm)', fontWeight: 700,
+              background: gotItRight ? 'var(--success-bg)' : 'var(--surface-sunken)',
+              color: gotItRight ? 'var(--success-700)' : 'var(--text-secondary)',
+            }}
+          >
+            <Icon name={gotItRight ? 'check-circle' : 'x-circle'} size={17} />
+            {gotItRight ? '¡Acertaste!' : 'Esta vez no — mira cuál era'}
+          </div>
+        )}
+
+        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 'var(--lh-snug)' }}>
+          {question.prompt}
+        </div>
+
+        {!results && question.kind !== 'open' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {question.options.map((opt, i) => (
+              <button
+                key={i}
+                type="button"
+                disabled={pending}
+                onClick={() => submitOption(i)}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '13px 14px', borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-default)', background: 'var(--surface-card)', color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-body)', fontSize: 'var(--fs-sm)', fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!results && question.kind === 'open' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Textarea value={openBody} onChange={(e) => setOpenBody(e.target.value)} rows={3} placeholder="Escribe tu respuesta..." />
+            <Button variant="primary" size="md" type="button" onClick={submitOpen} disabled={pending || !openBody.trim()}>
+              {pending ? 'Enviando…' : 'Responder'}
+            </Button>
+          </div>
+        )}
+
+        {results && question.kind !== 'open' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {question.options.map((opt, i) => {
+              const count = results.counts[i] ?? 0;
+              const pct = results.total > 0 ? Math.round((count / results.total) * 100) : 0;
+              const isCorrect = isTrivia && i === question.correct_option_index;
+              const isMine = i === myPick;
+              return (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <span>
+                      {opt}
+                      {isCorrect && (
+                        <span style={{ marginLeft: 6, color: 'var(--success-700)', fontWeight: 700 }}>
+                          ✓ correcta{isMine ? ' · tu voto' : ''}
+                        </span>
+                      )}
+                      {isMine && !isCorrect && (
+                        <span style={{ marginLeft: 6, color: 'var(--accent-600)', fontWeight: 700 }}>· tu voto</span>
+                      )}
+                    </span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-secondary)', fontWeight: 700 }}>{pct}%</span>
+                  </div>
+                  <div style={{ height: 10, borderRadius: 'var(--radius-pill)', background: 'var(--surface-sunken)', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        height: '100%', borderRadius: 'var(--radius-pill)', width: `${pct}%`,
+                        background: isCorrect ? 'var(--success)' : isMine ? 'var(--accent-500)' : 'var(--accent-300)',
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>
+              {results.total} {results.total === 1 ? 'voto' : 'votos'} del club
+            </div>
+          </div>
+        )}
+
+        {results && question.kind === 'open' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ background: 'var(--surface-card-alt)', borderRadius: 'var(--radius-md)', padding: 12 }}>
+              <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
+                Tu respuesta
+              </div>
+              <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-primary)', marginTop: 4 }}>{openBody}</div>
+            </div>
+            {results.answers.length > 0 && (
+              <>
+                <div style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
+                  Respuestas del club ({results.answers.length})
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 220, overflowY: 'auto' }}>
+                  {results.answers.map((a) => (
+                    <div key={a.profileId} style={{ display: 'flex', gap: 10 }}>
+                      <Avatar name={a.displayName} src={a.avatarUrl} size={30} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-primary)' }}>{a.displayName}</div>
+                        <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-snug)' }}>{a.body}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {error && (
+          <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 10 }}>
+            {error}
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }

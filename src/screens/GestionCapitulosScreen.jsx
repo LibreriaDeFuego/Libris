@@ -6,8 +6,16 @@ import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Input } from '@/design-system/components/forms/Input.jsx';
-import { addChapter, renameChapter, createVolume, renameVolume } from '@/app/actions/clubs';
+import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
+import { addChapter, renameChapter, createVolume, renameVolume, saveChapterQuestion, deleteChapterQuestion } from '@/app/actions/clubs';
 import { groupChaptersByVolume, chapterDisplayLabel } from '@/lib/orderChapters';
+
+const QUESTION_KIND_META = {
+  poll: { icon: 'bar-chart-2', label: 'Encuesta' },
+  open: { icon: 'message-square', label: 'Pregunta' },
+  trivia: { icon: 'help-circle', label: 'Trivia' },
+};
+const MAX_QUESTION_OPTIONS = 6;
 
 const selectStyle = {
   width: '100%', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)',
@@ -32,10 +40,168 @@ function VolumeSelect({ volumes, value, onChange }) {
   );
 }
 
+// La pregunta de un capítulo puntual (migración 053) — encuesta, pregunta
+// abierta o trivia, atada a UN capítulo (chapter_id es unique en
+// chapter_questions: como mucho una por capítulo, editar reemplaza la que
+// había). Salta sola en ChapterPath cuando alguien marca este capítulo
+// como el que está leyendo. Vive dentro de la edición de ChapterRow, ya
+// abierta para número/título/volumen — es la misma superficie de "editar
+// este capítulo", una sección más.
+function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
+  const [kind, setKind] = useState(question?.kind ?? 'poll');
+  const [prompt, setPrompt] = useState(question?.prompt ?? '');
+  const [options, setOptions] = useState(question?.options?.length ? question.options : ['', '']);
+  const [correctIndex, setCorrectIndex] = useState(question?.correct_option_index ?? 0);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState(null);
+  const [saved, setSaved] = useState(false);
+
+  function updateOption(i, value) {
+    setSaved(false);
+    setOptions((prev) => prev.map((opt, idx) => (idx === i ? value : opt)));
+  }
+  function addOption() {
+    if (options.length >= MAX_QUESTION_OPTIONS) return;
+    setSaved(false);
+    setOptions((prev) => [...prev, '']);
+  }
+  function removeOption(i) {
+    if (options.length <= 2) return;
+    setSaved(false);
+    setOptions((prev) => prev.filter((_, idx) => idx !== i));
+    setCorrectIndex((prev) => (prev === i ? 0 : prev > i ? prev - 1 : prev));
+  }
+
+  function save() {
+    const formData = new FormData();
+    formData.set('chapterId', chapterId);
+    formData.set('clubBookId', clubBookId);
+    formData.set('kind', kind);
+    formData.set('prompt', prompt);
+    if (kind !== 'open') {
+      options.forEach((opt) => formData.append('options', opt));
+      if (kind === 'trivia') formData.set('correctOptionIndex', String(correctIndex));
+    }
+    setError(null);
+    setSaved(false);
+    startTransition(async () => {
+      const result = await saveChapterQuestion(formData);
+      if (result?.error) setError(result.error);
+      else setSaved(true);
+    });
+  }
+
+  function remove() {
+    if (!question) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await deleteChapterQuestion(question.id);
+      if (result?.error) setError(result.error);
+    });
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+          Pregunta del capítulo
+        </div>
+        <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-snug)', marginTop: 2 }}>
+          Opcional. Aparece cuando alguien marca este capítulo como el que está leyendo.
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6 }}>
+        {Object.entries(QUESTION_KIND_META).map(([value, meta]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => { setKind(value); setSaved(false); }}
+            style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+              padding: '9px 4px', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-2xs)', fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'var(--font-body)',
+              border: `1px solid ${kind === value ? 'var(--accent-500)' : 'var(--border-default)'}`,
+              background: kind === value ? 'var(--accent-50)' : 'var(--surface-card)',
+              color: kind === value ? 'var(--accent-600)' : 'var(--text-secondary)',
+            }}
+          >
+            <Icon name={meta.icon} size={15} color={kind === value ? 'var(--accent-600)' : 'var(--text-secondary)'} />
+            {meta.label}
+          </button>
+        ))}
+      </div>
+
+      <Textarea value={prompt} onChange={(e) => { setPrompt(e.target.value); setSaved(false); }} rows={2} placeholder="¿Qué le pasa a...?" />
+
+      {kind !== 'open' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {options.map((opt, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {kind === 'trivia' && (
+                <button
+                  type="button"
+                  aria-label="Marcar como correcta"
+                  onClick={() => { setCorrectIndex(i); setSaved(false); }}
+                  style={{
+                    width: 20, height: 20, borderRadius: 'var(--radius-round)', flexShrink: 0, cursor: 'pointer', padding: 0,
+                    border: `2px solid ${correctIndex === i ? 'var(--success)' : 'var(--border-default)'}`,
+                    background: correctIndex === i ? 'var(--success)' : 'none',
+                  }}
+                />
+              )}
+              <div style={{ flex: 1 }}>
+                <Input value={opt} onChange={(e) => updateOption(i, e.target.value)} placeholder={`Opción ${i + 1}`} />
+              </div>
+              {options.length > 2 && (
+                <IconButton size={28} aria-label="Quitar opción" onClick={() => removeOption(i)} type="button">
+                  <Icon name="x" size={13} />
+                </IconButton>
+              )}
+            </div>
+          ))}
+          {options.length < MAX_QUESTION_OPTIONS && (
+            <button
+              type="button"
+              onClick={addOption}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', border: 'none', background: 'none',
+                color: 'var(--accent-600)', fontWeight: 700, fontSize: 'var(--fs-2xs)', fontFamily: 'var(--font-body)', cursor: 'pointer', padding: 0,
+              }}
+            >
+              <Icon name="plus" size={13} /> Agregar opción
+            </button>
+          )}
+          {kind === 'trivia' && (
+            <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>
+              Toca el círculo de la opción correcta.
+            </div>
+          )}
+        </div>
+      )}
+
+      <ErrorBox error={error} />
+      {saved && !error && (
+        <div style={{ color: 'var(--success)', fontSize: 'var(--fs-2xs)' }}>Pregunta guardada.</div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        {question && (
+          <Button variant="secondary" size="sm" type="button" onClick={remove} disabled={pending}>Borrar pregunta</Button>
+        )}
+        <Button variant="primary" size="sm" type="button" onClick={save} disabled={pending}>
+          {pending ? 'Guardando...' : 'Guardar pregunta'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // Fila de un capítulo. Tocarla abre la edición: nombre, número (el capítulo
 // mantiene su lugar en el orden gracias a este número, aunque tenga nombre
-// propio) y a qué volumen pertenece.
-function ChapterRow({ chapter, volumes }) {
+// propio), a qué volumen pertenece, y su pregunta opcional (encuesta,
+// pregunta abierta o trivia — ver ChapterQuestionEditor).
+function ChapterRow({ chapter, volumes, clubBookId, question }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(chapter.title ?? '');
   const [number, setNumber] = useState(String(chapter.number));
@@ -69,7 +235,12 @@ function ChapterRow({ chapter, volumes }) {
         }}
       >
         <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-primary)' }}>{chapterDisplayLabel(chapter)}</span>
-        <Icon name="pencil" size={14} color="var(--text-tertiary)" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {question && (
+            <Icon name={QUESTION_KIND_META[question.kind].icon} size={14} color="var(--accent-500)" />
+          )}
+          <Icon name="pencil" size={14} color="var(--text-tertiary)" />
+        </div>
       </button>
     );
   }
@@ -92,6 +263,9 @@ function ChapterRow({ chapter, volumes }) {
           {pending ? 'Guardando...' : 'Guardar'}
         </Button>
       </div>
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '2px 0' }} />
+      <ChapterQuestionEditor chapterId={chapter.id} clubBookId={clubBookId} question={question} />
     </div>
   );
 }
@@ -243,10 +417,11 @@ function NewChapterForm({ clubBookId, volumes, nextNumber }) {
   );
 }
 
-export function GestionCapitulosScreen({ club, book, clubBookId, chapters, volumes }) {
+export function GestionCapitulosScreen({ club, book, clubBookId, chapters, volumes, questions = [] }) {
   const router = useRouter();
   const groups = groupChaptersByVolume(chapters, volumes);
   const nextNumber = chapters.length > 0 ? Math.max(...chapters.map((c) => c.number)) + 1 : 1;
+  const questionByChapterId = new Map(questions.map((q) => [q.chapter_id, q]));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '20px 18px 24px' }}>
@@ -279,7 +454,13 @@ export function GestionCapitulosScreen({ club, book, clubBookId, chapters, volum
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {group.chapters.map((chapter) => (
-              <ChapterRow key={chapter.id} chapter={chapter} volumes={volumes} />
+              <ChapterRow
+                key={chapter.id}
+                chapter={chapter}
+                volumes={volumes}
+                clubBookId={clubBookId}
+                question={questionByChapterId.get(chapter.id) ?? null}
+              />
             ))}
           </div>
         </div>

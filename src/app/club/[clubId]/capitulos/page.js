@@ -19,9 +19,10 @@ export default async function Page({ params }) {
   const clubBook = await getActiveClubBook(supabase, clubId);
   if (!clubBook) redirect(`/club/${clubId}`);
 
-  const [{ data: chapters }, { data: volumes }] = await Promise.all([
+  const [{ data: chapters }, { data: volumes }, { data: questions }] = await Promise.all([
     supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
     supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
+    supabase.from('chapter_questions').select('id, chapter_id, kind, prompt, options, correct_option_index').eq('club_book_id', clubBook.id),
   ]);
 
   return (
@@ -31,6 +32,7 @@ export default async function Page({ params }) {
       clubBookId={clubBook.id}
       chapters={chapters ?? []}
       volumes={volumes ?? []}
+      questions={questions ?? []}
     />
   );
 }

@@ -982,6 +982,174 @@ export async function postReply(formData) {
   return { error: null };
 }
 
+// Preguntas de capítulo (migración 053) — encuesta, pregunta abierta o
+// trivia que arma un administrador, atada a UN capítulo puntual (como
+// mucho una por capítulo: chapter_id es unique en chapter_questions).
+// Salta sola en ChapterPath cuando alguien marca ese capítulo como el
+// que está leyendo.
+const QUESTION_KINDS = ['poll', 'open', 'trivia'];
+const MAX_QUESTION_OPTIONS = 6;
+
+// Arma o edita la pregunta de un capítulo — como es upsert (onConflict
+// sobre chapter_id), volver a guardar reemplaza la que ya había. Solo
+// administradores: lo impone la policy de insert/update de la tabla, acá
+// no hace falta chequearlo aparte.
+export async function saveChapterQuestion(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const chapterId = formData.get('chapterId')?.toString();
+  const clubBookId = formData.get('clubBookId')?.toString();
+  const kind = formData.get('kind')?.toString();
+  const prompt = formData.get('prompt')?.toString().trim();
+  if (!chapterId || !clubBookId) return { error: 'Falta el capítulo.' };
+  if (!QUESTION_KINDS.includes(kind)) return { error: 'Tipo de pregunta inválido.' };
+  if (!prompt) return { error: 'Escribe la pregunta.' };
+
+  let options = null;
+  let correctOptionIndex = null;
+  if (kind !== 'open') {
+    // Sin filtrar vacías acá: si el admin dejó una opción a medio llenar
+    // en el medio de la lista, filtrarla desalinearía el índice de la
+    // opción correcta (correctOptionIndex) con la lista real que ve el
+    // formulario — mejor pedir que las complete o las saque con la ×.
+    options = formData.getAll('options').map((o) => o.toString().trim());
+    if (options.some((o) => !o)) return { error: 'Completa todas las opciones (o quítalas con la ×).' };
+    if (options.length < 2) return { error: 'Agrega al menos 2 opciones.' };
+    if (options.length > MAX_QUESTION_OPTIONS) return { error: `El máximo es ${MAX_QUESTION_OPTIONS} opciones.` };
+
+    if (kind === 'trivia') {
+      correctOptionIndex = parseInt(formData.get('correctOptionIndex')?.toString() ?? '', 10);
+      if (!Number.isFinite(correctOptionIndex) || correctOptionIndex < 0 || correctOptionIndex >= options.length) {
+        return { error: 'Marca cuál opción es la correcta.' };
+      }
+    }
+  }
+
+  const { error } = await supabase
+    .from('chapter_questions')
+    .upsert(
+      { chapter_id: chapterId, club_book_id: clubBookId, created_by: user.id, kind, prompt, options, correct_option_index: correctOptionIndex },
+      { onConflict: 'chapter_id' }
+    );
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
+// Borra la pregunta de un capítulo — de paso borra todas sus respuestas
+// (on delete cascade). Solo administradores, lo impone la policy de delete.
+export async function deleteChapterQuestion(questionId) {
+  const supabase = await createClient();
+  await requireUser(supabase);
+  if (!questionId) return { error: 'Falta la pregunta.' };
+
+  const { error } = await supabase.from('chapter_questions').delete().eq('id', questionId);
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
+// Trae la pregunta de un capítulo (si hay) y si quien pregunta ya la
+// respondió — se llama justo después de marcar ese capítulo como el
+// actual (ChapterPath, handleTap), para decidir si hace falta abrir el
+// panel. En un capítulo sin pregunta armada, question queda en null.
+export async function getChapterQuestion(chapterId) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+  if (!chapterId) return { question: null, answered: false };
+
+  const { data: question } = await supabase
+    .from('chapter_questions')
+    .select('id, kind, prompt, options, correct_option_index')
+    .eq('chapter_id', chapterId)
+    .maybeSingle();
+  if (!question) return { question: null, answered: false };
+
+  const { data: myAnswer } = await supabase
+    .from('chapter_question_answers')
+    .select('id')
+    .eq('question_id', question.id)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+
+  return { question, answered: Boolean(myAnswer) };
+}
+
+// Responde una pregunta de capítulo (optionIndex para encuesta/trivia,
+// body para pregunta abierta) y devuelve el resultado agregado recién
+// actualizado — así el panel pasa directo a mostrarlo, sin un segundo
+// viaje al servidor. En una pregunta abierta, "results.answers" no
+// incluye la propia (el panel ya la tiene, recién escrita).
+export async function answerChapterQuestion(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const questionId = formData.get('questionId')?.toString();
+  if (!questionId) return { error: 'Falta la pregunta.' };
+
+  const { data: question } = await supabase
+    .from('chapter_questions')
+    .select('kind, options')
+    .eq('id', questionId)
+    .maybeSingle();
+  if (!question) return { error: 'Esta pregunta ya no existe.' };
+
+  const payload = { question_id: questionId, profile_id: user.id, option_index: null, body: null };
+  if (question.kind === 'open') {
+    const body = formData.get('body')?.toString().trim();
+    if (!body) return { error: 'Escribe una respuesta.' };
+    payload.body = body;
+  } else {
+    const optionIndex = parseInt(formData.get('optionIndex')?.toString() ?? '', 10);
+    if (!Number.isFinite(optionIndex) || optionIndex < 0 || optionIndex >= (question.options?.length ?? 0)) {
+      return { error: 'Elige una opción.' };
+    }
+    payload.option_index = optionIndex;
+  }
+
+  const { error } = await supabase.from('chapter_question_answers').insert(payload);
+  if (error) {
+    if (error.code === '23505') return { error: 'Ya habías respondido esta pregunta.' };
+    return { error: friendlyDbError(error) };
+  }
+
+  if (question.kind === 'open') {
+    const { data: answers } = await supabase
+      .from('chapter_question_answers')
+      .select('profile_id, body, created_at, profiles(display_name, avatar_url)')
+      .eq('question_id', questionId)
+      .neq('profile_id', user.id)
+      .order('created_at', { ascending: true });
+
+    return {
+      error: null,
+      results: {
+        answers: (answers ?? []).map((a) => ({
+          profileId: a.profile_id,
+          displayName: a.profiles?.display_name ?? 'Alguien',
+          avatarUrl: a.profiles?.avatar_url ?? null,
+          body: a.body,
+        })),
+      },
+    };
+  }
+
+  const { data: allAnswers } = await supabase
+    .from('chapter_question_answers')
+    .select('option_index')
+    .eq('question_id', questionId);
+
+  const counts = (question.options ?? []).map(() => 0);
+  for (const a of allAnswers ?? []) {
+    if (a.option_index != null && counts[a.option_index] != null) counts[a.option_index] += 1;
+  }
+
+  return { error: null, results: { counts, total: (allAnswers ?? []).length } };
+}
+
 // Comparte (o deja de compartir) tu propio comentario de capítulo o nota
 // de voz en Inicio — migración 031. Reseñas, citas y fotos no necesitan
 // esto: ya aparecen siempre ahí, no cambia nada para ellas.
