@@ -107,6 +107,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
                     currentChapterId={myProgress?.chapter_id ?? null}
                     streakCount={myProgress?.streak_count ?? 0}
                     commentCounts={commentCounts ?? {}}
+                    isAdmin={isAdmin}
                     onOpenFull={() => setShowModal(true)}
                     onFinishBook={() => setShowReviewModal(true)}
                   />

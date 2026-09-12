@@ -10,6 +10,7 @@ import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { updateProgress, getClubMembersProgress, getChapterQuestion, answerChapterQuestion } from '@/app/actions/clubs';
 import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
+import { ChapterQuestionEditor } from '@/screens/GestionCapitulosScreen.jsx';
 
 // Lo leído ya no es un color plano: el camino recorrido va de un gris
 // azulado frío (el capítulo más viejo) al coral de siempre — justo en
@@ -91,7 +92,7 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // ("Ver compañeros" / "Ocultar compañeros") que, recién al tocarlo, trae el
 // capítulo actual de cada compañero (getClubMembersProgress) y los muestra
 // como un stack de avatares chicos debajo del nodo donde va cada uno.
-export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, streakCount = 0, commentCounts = {}, onOpenFull, onFinishBook }) {
+export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, streakCount = 0, commentCounts = {}, isAdmin = false, onOpenFull, onFinishBook }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -417,6 +418,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                     book={book}
                     chapterId={chapter.id}
                     label={chapterLabel(chapter)}
+                    isAdmin={isAdmin}
                     onDismiss={() => setComposerChapterId(null)}
                   />
                 )}
@@ -686,8 +688,15 @@ function SpoilerWarning({ label, href, onDismiss }) {
 // cualquiera cierra el panel solo (`onDismiss`): ya cumplió su único
 // trabajo, y la pastilla de la izquierda se actualiza sola (revalidatePath
 // de siempre en postComment/postVoiceComment).
-function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss }) {
-  const [activeTab, setActiveTab] = useState('comment'); // 'comment' (default, sin pestaña propia) | 'quote' | 'photo' | 'voice'
+//
+// "Pregunta" (migración 053) es una quinta pestaña, solo para
+// administradores — arma o edita la encuesta/pregunta/trivia de ESTE
+// capítulo sin ir hasta "Gestión de capítulos". Publicarla no cierra el
+// panel sola (a diferencia de las otras pestañas): se queda en la misma
+// pantalla de edición, con su propio aviso de "guardada", por si el
+// admin quiere seguir ajustándola.
+function ChapterCommentsPanel({ clubBookId, book, chapterId, label, isAdmin, onDismiss }) {
+  const [activeTab, setActiveTab] = useState('comment'); // 'comment' (default, sin pestaña propia) | 'quote' | 'photo' | 'voice' | 'question'
 
   function toggleTab(tab) {
     setActiveTab((current) => (current === tab ? 'comment' : tab));
@@ -700,10 +709,15 @@ function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss })
           <TypeTabButton active={activeTab === 'quote'} onClick={() => toggleTab('quote')} icon="quote" label="Cita" />
           <TypeTabButton active={activeTab === 'photo'} onClick={() => toggleTab('photo')} icon="image" label="Foto/GIF" />
           <TypeTabButton active={activeTab === 'voice'} onClick={() => toggleTab('voice')} icon="mic" label="Voz" />
+          {isAdmin && (
+            <TypeTabButton active={activeTab === 'question'} onClick={() => toggleTab('question')} icon="clipboard-list" label="Pregunta" />
+          )}
         </div>
 
         {activeTab === 'voice' ? (
           <VoiceRecorder extraFields={{ clubBookId, chapterId }} showSpoilerOption={false} onDone={onDismiss} />
+        ) : activeTab === 'question' ? (
+          <AdminQuestionTab chapterId={chapterId} clubBookId={clubBookId} />
         ) : (
           <NewCommentForm
             key={activeTab}
@@ -721,6 +735,31 @@ function ChapterCommentsPanel({ clubBookId, book, chapterId, label, onDismiss })
       </div>
     </Modal>
   );
+}
+
+// Trae la pregunta que ya tenga este capítulo (si hay) antes de mostrar
+// el editor — así ChapterQuestionEditor arranca sabiendo si es "crear" o
+// "editar", igual que ya sabe cuando se abre desde Gestión de capítulos.
+// Se pide de nuevo cada vez que se abre esta pestaña (sin cachear entre
+// capítulos): es información que solo importa mientras el admin está
+// mirando esto, no vale la pena guardarla en ningún estado más arriba.
+function AdminQuestionTab({ chapterId, clubBookId }) {
+  const [question, setQuestion] = useState(undefined); // undefined = cargando; null | {...} después
+
+  useEffect(() => {
+    let cancelled = false;
+    getChapterQuestion(chapterId).then((result) => {
+      if (!cancelled) setQuestion(result?.question ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [chapterId]);
+
+  if (question === undefined) {
+    return <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', padding: '8px 0' }}>Cargando…</div>;
+  }
+  return <ChapterQuestionEditor chapterId={chapterId} clubBookId={clubBookId} question={question} />;
 }
 
 // Una pestaña de TIPO del panel de agregar — ícono + rótulo apilados,

@@ -44,10 +44,11 @@ function VolumeSelect({ volumes, value, onChange }) {
 // abierta o trivia, atada a UN capítulo (chapter_id es unique en
 // chapter_questions: como mucho una por capítulo, editar reemplaza la que
 // había). Salta sola en ChapterPath cuando alguien marca este capítulo
-// como el que está leyendo. Vive dentro de la edición de ChapterRow, ya
-// abierta para número/título/volumen — es la misma superficie de "editar
-// este capítulo", una sección más.
-function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
+// como el que está leyendo. Vive acá dentro de la edición de ChapterRow
+// (número/título/volumen), y se exporta porque ChapterPath también la usa
+// — un administrador puede armar la pregunta directo desde el broche "+"
+// de Tu camino, sin venir hasta esta pantalla (ver AdminQuestionTab).
+export function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
   const [kind, setKind] = useState(question?.kind ?? 'poll');
   const [prompt, setPrompt] = useState(question?.prompt ?? '');
   const [options, setOptions] = useState(question?.options?.length ? question.options : ['', '']);
