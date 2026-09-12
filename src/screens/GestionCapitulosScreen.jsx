@@ -40,6 +40,62 @@ function VolumeSelect({ volumes, value, onChange }) {
   );
 }
 
+// Tarjeta de resumen — se muestra en vez del formulario cuando el
+// capítulo YA tiene una pregunta guardada, para que quede sin ninguna
+// duda que ahí hay algo persistido de verdad (a diferencia de antes,
+// donde "ver que ya está guardada" y "editarla" eran la misma pantalla
+// — el formulario precargado — y no había forma de distinguir a simple
+// vista si lo que se veía era lo guardado o algo a medio escribir).
+// "Editar" recién ahí abre el formulario.
+function QuestionSummaryCard({ question, onEdit, onDelete, pending }) {
+  const meta = QUESTION_KIND_META[question.kind];
+  return (
+    <div style={{ background: 'var(--surface-card-alt)', borderRadius: 'var(--radius-md)', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'var(--accent-50)', color: 'var(--accent-600)', fontSize: 'var(--fs-2xs)', fontWeight: 700, padding: '4px 9px', borderRadius: 'var(--radius-pill)' }}>
+          <Icon name={meta.icon} size={12} />
+          {meta.label}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--success)', marginLeft: 'auto' }}>
+          <Icon name="check-circle" size={13} />
+          Guardada
+        </div>
+      </div>
+
+      <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 'var(--lh-snug)' }}>
+        {question.prompt}
+      </div>
+
+      {question.kind !== 'open' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {question.options.map((opt, i) => {
+            const isCorrect = question.kind === 'trivia' && i === question.correct_option_index;
+            return (
+              <div
+                key={i}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--fs-xs)',
+                  color: isCorrect ? 'var(--success)' : 'var(--text-secondary)', fontWeight: isCorrect ? 700 : 400,
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: isCorrect ? 'var(--success)' : 'var(--border-default)', flexShrink: 0 }} />
+                {opt}{isCorrect ? ' · correcta' : ''}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button variant="secondary" size="sm" type="button" onClick={onDelete} disabled={pending}>
+          {pending ? '...' : 'Borrar'}
+        </Button>
+        <Button variant="primary" size="sm" type="button" onClick={onEdit} disabled={pending}>Editar</Button>
+      </div>
+    </div>
+  );
+}
+
 // La pregunta de un capítulo puntual (migración 053) — encuesta, pregunta
 // abierta o trivia, atada a UN capítulo (chapter_id es unique en
 // chapter_questions: como mucho una por capítulo, editar reemplaza la que
@@ -48,27 +104,44 @@ function VolumeSelect({ volumes, value, onChange }) {
 // (número/título/volumen), y se exporta porque ChapterPath también la usa
 // — un administrador puede armar la pregunta directo desde el broche "+"
 // de Tu camino, sin venir hasta esta pantalla (ver AdminQuestionTab).
+//
+// Dos vistas, no una: si ya hay una pregunta guardada (`savedQuestion`),
+// arranca mostrando `QuestionSummaryCard` — el formulario recién aparece
+// al tocar "Editar" ahí, o directo si todavía no hay ninguna que resumir.
 export function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
+  const [savedQuestion, setSavedQuestion] = useState(question); // null = nada guardado todavía
+  const [editing, setEditing] = useState(!question);
+
   const [kind, setKind] = useState(question?.kind ?? 'poll');
   const [prompt, setPrompt] = useState(question?.prompt ?? '');
   const [options, setOptions] = useState(question?.options?.length ? question.options : ['', '']);
   const [correctIndex, setCorrectIndex] = useState(question?.correct_option_index ?? 0);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState(null);
-  const [saved, setSaved] = useState(false);
+
+  // Vuelve a cargar el formulario con lo último guardado — descarta
+  // cualquier cambio a medio hacer que hubiera quedado de una edición
+  // anterior sin guardar.
+  function startEditing() {
+    if (savedQuestion) {
+      setKind(savedQuestion.kind);
+      setPrompt(savedQuestion.prompt);
+      setOptions(savedQuestion.options?.length ? savedQuestion.options : ['', '']);
+      setCorrectIndex(savedQuestion.correct_option_index ?? 0);
+    }
+    setError(null);
+    setEditing(true);
+  }
 
   function updateOption(i, value) {
-    setSaved(false);
     setOptions((prev) => prev.map((opt, idx) => (idx === i ? value : opt)));
   }
   function addOption() {
     if (options.length >= MAX_QUESTION_OPTIONS) return;
-    setSaved(false);
     setOptions((prev) => [...prev, '']);
   }
   function removeOption(i) {
     if (options.length <= 2) return;
-    setSaved(false);
     setOptions((prev) => prev.filter((_, idx) => idx !== i));
     setCorrectIndex((prev) => (prev === i ? 0 : prev > i ? prev - 1 : prev));
   }
@@ -84,21 +157,46 @@ export function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
       if (kind === 'trivia') formData.set('correctOptionIndex', String(correctIndex));
     }
     setError(null);
-    setSaved(false);
     startTransition(async () => {
       const result = await saveChapterQuestion(formData);
-      if (result?.error) setError(result.error);
-      else setSaved(true);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setSavedQuestion({
+        id: result.id, kind, prompt,
+        options: kind === 'open' ? null : options,
+        correct_option_index: kind === 'trivia' ? correctIndex : null,
+      });
+      setEditing(false);
     });
   }
 
   function remove() {
-    if (!question) return;
+    if (!savedQuestion) return;
     setError(null);
     startTransition(async () => {
-      const result = await deleteChapterQuestion(question.id);
-      if (result?.error) setError(result.error);
+      const result = await deleteChapterQuestion(savedQuestion.id);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setSavedQuestion(null);
+      setKind('poll');
+      setPrompt('');
+      setOptions(['', '']);
+      setCorrectIndex(0);
+      setEditing(true);
     });
+  }
+
+  if (!editing && savedQuestion) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <QuestionSummaryCard question={savedQuestion} onEdit={startEditing} onDelete={remove} pending={pending} />
+        <ErrorBox error={error} />
+      </div>
+    );
   }
 
   return (
@@ -117,7 +215,7 @@ export function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
           <button
             key={value}
             type="button"
-            onClick={() => { setKind(value); setSaved(false); }}
+            onClick={() => setKind(value)}
             style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
               padding: '9px 4px', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-2xs)', fontWeight: 700,
@@ -133,7 +231,7 @@ export function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
         ))}
       </div>
 
-      <Textarea value={prompt} onChange={(e) => { setPrompt(e.target.value); setSaved(false); }} rows={2} placeholder="¿Qué le pasa a...?" />
+      <Textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={2} placeholder="¿Qué le pasa a...?" />
 
       {kind !== 'open' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -143,7 +241,7 @@ export function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
                 <button
                   type="button"
                   aria-label="Marcar como correcta"
-                  onClick={() => { setCorrectIndex(i); setSaved(false); }}
+                  onClick={() => setCorrectIndex(i)}
                   style={{
                     width: 20, height: 20, borderRadius: 'var(--radius-round)', flexShrink: 0, cursor: 'pointer', padding: 0,
                     border: `2px solid ${correctIndex === i ? 'var(--success)' : 'var(--border-default)'}`,
@@ -182,13 +280,10 @@ export function ChapterQuestionEditor({ chapterId, clubBookId, question }) {
       )}
 
       <ErrorBox error={error} />
-      {saved && !error && (
-        <div style={{ color: 'var(--success)', fontSize: 'var(--fs-2xs)' }}>Pregunta guardada.</div>
-      )}
 
       <div style={{ display: 'flex', gap: 8 }}>
-        {question && (
-          <Button variant="secondary" size="sm" type="button" onClick={remove} disabled={pending}>Borrar pregunta</Button>
+        {savedQuestion && (
+          <Button variant="secondary" size="sm" type="button" onClick={() => setEditing(false)} disabled={pending}>Cancelar</Button>
         )}
         <Button variant="primary" size="sm" type="button" onClick={save} disabled={pending}>
           {pending ? 'Guardando...' : 'Guardar pregunta'}

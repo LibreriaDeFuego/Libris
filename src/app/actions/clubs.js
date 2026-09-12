@@ -1026,16 +1026,21 @@ export async function saveChapterQuestion(formData) {
     }
   }
 
-  const { error } = await supabase
+  // Devuelve el id: quien llama (ChapterQuestionEditor) lo necesita para
+  // poder borrar la pregunta más adelante sin haber recargado la
+  // pantalla — recién creada, todavía no le llegó ningún id por props.
+  const { data, error } = await supabase
     .from('chapter_questions')
     .upsert(
       { chapter_id: chapterId, club_book_id: clubBookId, created_by: user.id, kind, prompt, options, correct_option_index: correctOptionIndex },
       { onConflict: 'chapter_id' }
-    );
+    )
+    .select('id')
+    .single();
   if (error) return { error: friendlyDbError(error) };
 
   revalidatePath('/', 'layout');
-  return { error: null };
+  return { error: null, id: data.id };
 }
 
 // Borra la pregunta de un capítulo — de paso borra todas sus respuestas
