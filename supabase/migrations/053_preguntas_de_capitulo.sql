@@ -14,11 +14,18 @@
 -- (unique en chapter_id) — si el admin quiere otra, edita o borra la que
 -- ya había. Sin edición de la propia respuesta una vez enviada (el
 -- constraint de unicidad en chapter_question_answers ya lo impide).
+--
+-- Todo escrito para poder volver a correrse sin romper (if not exists /
+-- drop policy if exists en cada create policy): un intento anterior de
+-- esta misma migración puede haberse cortado a mitad de camino (por
+-- ejemplo, si el editor de SQL corre cada sentencia por separado en vez
+-- de todo como una sola transacción) — dejando la tabla creada pero sin
+-- sus políticas, con guardar fallando en silencio para cualquiera.
 
 -- ============================================================
 -- 1. chapter_questions — la pregunta en sí, atada a un capítulo.
 -- ============================================================
-create table public.chapter_questions (
+create table if not exists public.chapter_questions (
   id uuid primary key default gen_random_uuid(),
   club_book_id uuid not null references public.club_books(id) on delete cascade,
   chapter_id uuid not null references public.chapters(id) on delete cascade unique,
@@ -42,6 +49,7 @@ create table public.chapter_questions (
 
 alter table public.chapter_questions enable row level security;
 
+drop policy if exists "miembros ven las preguntas de su club" on public.chapter_questions;
 create policy "miembros ven las preguntas de su club"
   on public.chapter_questions for select to authenticated
   using (exists (
@@ -49,6 +57,7 @@ create policy "miembros ven las preguntas de su club"
     where cb.id = chapter_questions.club_book_id and public.is_club_member(cb.club_id)
   ));
 
+drop policy if exists "administradores arman preguntas de capítulo" on public.chapter_questions;
 create policy "administradores arman preguntas de capítulo"
   on public.chapter_questions for insert to authenticated
   with check (
@@ -60,6 +69,7 @@ create policy "administradores arman preguntas de capítulo"
     )
   );
 
+drop policy if exists "administradores editan preguntas de capítulo" on public.chapter_questions;
 create policy "administradores editan preguntas de capítulo"
   on public.chapter_questions for update to authenticated
   using (exists (
@@ -68,6 +78,7 @@ create policy "administradores editan preguntas de capítulo"
     where cb.id = chapter_questions.club_book_id and m.profile_id = auth.uid() and m.role = 'admin'
   ));
 
+drop policy if exists "administradores borran preguntas de capítulo" on public.chapter_questions;
 create policy "administradores borran preguntas de capítulo"
   on public.chapter_questions for delete to authenticated
   using (exists (
@@ -82,7 +93,7 @@ create policy "administradores borran preguntas de capítulo"
 --    uno de los dos, nunca los dos ni ninguno. Única por
 --    (question_id, profile_id): no se puede responder dos veces.
 -- ============================================================
-create table public.chapter_question_answers (
+create table if not exists public.chapter_question_answers (
   id uuid primary key default gen_random_uuid(),
   question_id uuid not null references public.chapter_questions(id) on delete cascade,
   profile_id uuid not null references public.profiles(id),
@@ -95,13 +106,14 @@ create table public.chapter_question_answers (
   )
 );
 
-create index chapter_question_answers_question_id_idx on public.chapter_question_answers(question_id);
+create index if not exists chapter_question_answers_question_id_idx on public.chapter_question_answers(question_id);
 
 alter table public.chapter_question_answers enable row level security;
 
 -- Cualquier miembro del club ve todas las respuestas (no solo la propia):
 -- así se arma el resultado agregado — % de cada opción, o la lista de
 -- respuestas abiertas de todo el club.
+drop policy if exists "miembros ven las respuestas de su club" on public.chapter_question_answers;
 create policy "miembros ven las respuestas de su club"
   on public.chapter_question_answers for select to authenticated
   using (exists (
@@ -110,6 +122,7 @@ create policy "miembros ven las respuestas de su club"
     where q.id = chapter_question_answers.question_id and public.is_club_member(cb.club_id)
   ));
 
+drop policy if exists "cada quien responde una vez por pregunta" on public.chapter_question_answers;
 create policy "cada quien responde una vez por pregunta"
   on public.chapter_question_answers for insert to authenticated
   with check (
