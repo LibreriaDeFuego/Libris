@@ -1,12 +1,11 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Chip } from '@/design-system/components/core/Chip.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
-import { Blockquote } from '@/design-system/components/content/Blockquote.jsx';
 import { SpoilerBlock } from '@/design-system/components/content/SpoilerBlock.jsx';
 import { VoiceNotePlayer } from '@/design-system/components/content/VoiceNotePlayer.jsx';
 import { NewCommentForm } from '@/components/NewCommentForm';
@@ -31,43 +30,107 @@ function formatDuration(seconds) {
   return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-function CommentBody({ comment, book, clubName }) {
-  if (comment.kind === 'voice') {
-    return (
-      <VoiceNotePlayer
-        src={comment.audio_url ?? undefined}
-        duration={formatDuration(comment.voice_duration_seconds)}
-        transcript={comment.voice_transcript ?? undefined}
-      />
-    );
-  }
-  if (comment.kind === 'quote') {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <Blockquote>{comment.body}</Blockquote>
-        {comment.quote_style && (
+// Mismo tope que ActivityCard.jsx (Inicio/Perfil) para el texto de un
+// comentario o una cita — "igual que se ve cuando lo compartimos al feed".
+const TEXT_LINE_CLAMP = 5;
+
+// Una fila de esta lista — cita, comentario o nota de voz — calcada de
+// ActivityCard (Inicio/Perfil): mismo tamaño de avatar (30, no 36), mismo
+// borde entre una fila y la siguiente (no el "aire" de un gap parejo),
+// mismo tratamiento tipográfico del nombre + fecha, la cita como texto
+// itálico dorado en vez de la caja de Blockquote (con fondo propio, que
+// acá se sacó), y el mismo recorte a `TEXT_LINE_CLAMP` líneas con un "más"
+// para desplegar si el texto (comentario o cita) es largo — antes esta
+// pantalla mostraba TODO el texto siempre, sin cortar nada; ahora, tocar
+// el bloque lo despliega completo, igual que en el feed.
+function CommentRow({ comment, book, clubName, isOwn, onEditQuote, onDeleteQuote, onEditComment, onDeleteComment, onEditVoice, onDeleteVoice, replies, canShare }) {
+  const [expanded, setExpanded] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const textRef = useRef(null);
+  const name = comment.profiles?.display_name ?? 'Alguien';
+  const isQuote = comment.kind === 'quote';
+  const isVoice = comment.kind === 'voice';
+  // Voz no se recorta (el reproductor ya es compacto de por sí); foto/cita/
+  // comentario de texto sí, igual que en el feed.
+  const isClampable = !isVoice;
+
+  useEffect(() => {
+    if (!isClampable || !textRef.current) return;
+    setIsTruncated(textRef.current.scrollHeight > textRef.current.clientHeight + 1);
+  }, [isClampable, comment.body]);
+
+  const body = isVoice ? (
+    <VoiceNotePlayer
+      src={comment.audio_url ?? undefined}
+      duration={formatDuration(comment.voice_duration_seconds)}
+      transcript={comment.voice_transcript ?? undefined}
+    />
+  ) : (
+    <div>
+      <div
+        ref={textRef}
+        onClick={() => setExpanded((e) => !e)}
+        style={{
+          fontSize: 'var(--fs-sm)', lineHeight: 'var(--lh-snug)', whiteSpace: 'pre-wrap', cursor: 'pointer',
+          color: isQuote ? 'var(--gold-700)' : 'var(--text-secondary)',
+          fontStyle: isQuote ? 'italic' : 'normal',
+          display: '-webkit-box',
+          WebkitLineClamp: expanded ? 'unset' : TEXT_LINE_CLAMP,
+          WebkitBoxOrient: 'vertical',
+          overflow: expanded ? 'visible' : 'hidden',
+        }}
+      >
+        {isQuote ? `"${comment.body}"` : comment.body}
+        {!expanded && isTruncated && <span style={{ fontWeight: 700, color: 'var(--text-tertiary)' }}> más</span>}
+      </div>
+      {isQuote && comment.quote_style && (
+        <div style={{ marginTop: 8 }}>
           <DownloadQuoteImageButton
             style={comment.quote_style}
             quoteText={comment.body}
             book={book}
             clubName={clubName}
-            personName={comment.profiles?.display_name}
+            personName={name}
             imageUrl={comment.quote_image_url}
           />
-        )}
-      </div>
-    );
-  }
-  return (
-    <div>
-      <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>
-        {comment.body}
-      </p>
+        </div>
+      )}
       {comment.image_urls?.length > 0 && (
         <div style={{ marginTop: 8 }}>
           <PhotoCarousel urls={comment.image_urls} aspectRatio="4 / 3" maxWidth={320} />
         </div>
       )}
+    </div>
+  );
+
+  return (
+    <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border-subtle)', display: 'flex', gap: 10 }}>
+      <Avatar name={name} src={comment.profiles?.avatar_url} size={30} />
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-primary)' }}>
+            <span style={{ fontWeight: 700 }}>{name}</span>{' '}
+            <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(comment.created_at)}</span>
+          </span>
+          {isOwn && isQuote && (
+            <PostMenu editLabel="Editar cita" onEdit={onEditQuote} deleteLabel="Eliminar cita" onDelete={onDeleteQuote} />
+          )}
+          {isOwn && comment.kind === 'text' && (
+            <PostMenu editLabel="Editar comentario" onEdit={onEditComment} deleteLabel="Eliminar comentario" onDelete={onDeleteComment} />
+          )}
+          {isOwn && isVoice && (
+            <PostMenu editLabel="Editar nota de voz" onEdit={onEditVoice} deleteLabel="Eliminar nota de voz" onDelete={onDeleteVoice} />
+          )}
+        </div>
+        {comment.is_spoiler ? <SpoilerBlock>{body}</SpoilerBlock> : body}
+        <EngagementBlock
+          commentId={comment.id}
+          liked={comment.liked_by_me}
+          likeCount={comment.like_count}
+          replies={replies}
+          share={canShare ? { shared: comment.shared_to_feed, onToggle: () => toggleShareToFeed(comment.id) } : undefined}
+        />
+      </div>
     </div>
   );
 }
@@ -97,13 +160,14 @@ function ReviewCard({ review, book, isOwn, onEdit, replies }) {
     </div>
   );
   return (
-    <div style={{ display: 'flex', gap: 10 }}>
+    <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border-subtle)', display: 'flex', gap: 10 }}>
       <Avatar name={name} src={review.profiles?.avatar_url} size={30} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
-            {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· terminó el libro · {formatRelativeTime(review.created_at)}</span>
-          </div>
+          <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-primary)' }}>
+            <span style={{ fontWeight: 700 }}>{name}</span>{' '}
+            <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· terminó el libro · {formatRelativeTime(review.created_at)}</span>
+          </span>
           {isOwn && (
             <PostMenu
               editLabel="Editar reseña"
@@ -208,7 +272,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
       </div>
 
       {!cameFromChapterLink && reviews.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border-subtle)' }}>
           {reviews.map((review) => (
             <ReviewCard
               key={review.id}
@@ -238,66 +302,27 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
 
           {!cameFromChapterLink && composeBlock}
 
-          {visibleComments.map((comment) => {
-            const name = comment.profiles?.display_name ?? 'Alguien';
-            const isOwn = comment.profile_id === myProfileId;
-            return (
-              <div key={comment.id} style={{ display: 'flex', gap: 10 }}>
-                <Avatar name={name} src={comment.profiles?.avatar_url} size={36} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {name} <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(comment.created_at)}</span>
-                    </div>
-                    {isOwn && comment.kind === 'quote' && (
-                      <PostMenu
-                        editLabel="Editar cita"
-                        onEdit={() => setEditingQuote(comment)}
-                        deleteLabel="Eliminar cita"
-                        onDelete={() => handleDeleteQuote(comment.id)}
-                      />
-                    )}
-                    {isOwn && comment.kind === 'text' && (
-                      <PostMenu
-                        editLabel="Editar comentario"
-                        onEdit={() => setEditingComment(comment)}
-                        deleteLabel="Eliminar comentario"
-                        onDelete={() => handleDeleteComment(comment.id)}
-                      />
-                    )}
-                    {isOwn && comment.kind === 'voice' && (
-                      <PostMenu
-                        editLabel="Editar nota de voz"
-                        onEdit={() => setEditingVoice(comment)}
-                        deleteLabel="Eliminar nota de voz"
-                        onDelete={() => handleDeleteVoice(comment.id)}
-                      />
-                    )}
-                  </div>
-                  <div style={{ marginTop: comment.kind === 'text' ? 0 : 6 }}>
-                    {comment.is_spoiler ? (
-                      <SpoilerBlock><CommentBody comment={comment} book={book} clubName={clubName} /></SpoilerBlock>
-                    ) : (
-                      <CommentBody comment={comment} book={book} clubName={clubName} />
-                    )}
-                  </div>
-                  <div style={{ marginTop: 6 }}>
-                    <EngagementBlock
-                      commentId={comment.id}
-                      liked={comment.liked_by_me}
-                      likeCount={comment.like_count}
-                      replies={repliesByParent.get(comment.id) ?? []}
-                      share={
-                        isOwn && (comment.kind === 'text' || comment.kind === 'voice')
-                          ? { shared: comment.shared_to_feed, onToggle: () => toggleShareToFeed(comment.id) }
-                          : undefined
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {visibleComments.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border-subtle)' }}>
+              {visibleComments.map((comment) => (
+                <CommentRow
+                  key={comment.id}
+                  comment={comment}
+                  book={book}
+                  clubName={clubName}
+                  isOwn={comment.profile_id === myProfileId}
+                  onEditQuote={() => setEditingQuote(comment)}
+                  onDeleteQuote={() => handleDeleteQuote(comment.id)}
+                  onEditComment={() => setEditingComment(comment)}
+                  onDeleteComment={() => handleDeleteComment(comment.id)}
+                  onEditVoice={() => setEditingVoice(comment)}
+                  onDeleteVoice={() => handleDeleteVoice(comment.id)}
+                  replies={repliesByParent.get(comment.id) ?? []}
+                  canShare={comment.profile_id === myProfileId && (comment.kind === 'text' || comment.kind === 'voice')}
+                />
+              ))}
+            </div>
+          )}
 
           {visibleComments.length === 0 && (
             <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '20px 0', textAlign: 'center' }}>
