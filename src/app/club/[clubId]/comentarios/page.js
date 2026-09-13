@@ -20,7 +20,7 @@ export default async function Page({ params, searchParams }) {
   const clubBook = await getActiveClubBook(supabase, clubId);
   if (!clubBook) redirect(`/club/${clubId}`);
 
-  const [{ data: comments, error: commentsError }, { data: chapters }, { data: volumes }] = await Promise.all([
+  const [{ data: comments, error: commentsError }, { data: chapters }, { data: volumes }, { data: myProfile }] = await Promise.all([
     supabase
       .from('comments')
       .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, parent_comment_id, reply_to_id, shared_to_feed, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, comment_photos(path, position), profiles(display_name, avatar_url)')
@@ -33,6 +33,10 @@ export default async function Page({ params, searchParams }) {
       .order('created_at', { ascending: false }),
     supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
     supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
+    // Para el avatar de la barra fija de "agregar" (ChapterComposerBar) —
+    // mismo dato que ya usa PostComposer en Perfil, acá no venía cargado
+    // porque ninguna consulta anterior necesitaba el PROPIO perfil.
+    supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).single(),
   ]);
   // Antes este select nunca chequeaba su propio error — si el embed de
   // "comment_photos(path, position)" fallara, "comments" quedaba en null y
@@ -88,6 +92,7 @@ export default async function Page({ params, searchParams }) {
       book={clubBook.books}
       clubName={club.name}
       myProfileId={user.id}
+      myProfile={myProfile}
       initialChapterId={capitulo ?? null}
     />
   );

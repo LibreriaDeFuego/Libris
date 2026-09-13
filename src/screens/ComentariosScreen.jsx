@@ -8,8 +8,10 @@ import { Chip } from '@/design-system/components/core/Chip.jsx';
 import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { SpoilerBlock } from '@/design-system/components/content/SpoilerBlock.jsx';
 import { VoiceNotePlayer } from '@/design-system/components/content/VoiceNotePlayer.jsx';
+import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
+import { ChapterComposerTabs } from '@/components/ChapterComposerTabs';
 import { PhotoCarousel } from '@/components/PhotoCarousel';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { BookReviewCard } from '@/components/BookReviewCard';
@@ -184,6 +186,46 @@ function ReviewCard({ review, book, isOwn, onEdit, replies }) {
   );
 }
 
+// La barra para agregar algo, entrando desde un capítulo puntual (Tu
+// camino) — antes acá vivía un `NewCommentForm` + `VoiceRecorder` siempre
+// desplegados, los dos a la vez, al final de la pantalla. Ahora es la
+// misma dinámica que "Compartir" en Perfil (`PostComposer`): una pastilla
+// angosta ("Avatar + placeholder"), que al tocarla abre el mismo `Modal`
+// con las cuatro pestañas de siempre — Comentario/Cita/Foto·GIF/Voz
+// (`ChapterComposerTabs`, compartido con el broche "+" de Tu camino) — en
+// vez de mostrar los formularios sueltos, sin pestañas, adentro de la
+// propia pantalla.
+function ChapterComposerBar({ clubBookId, chapterId, book, myProfile }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Comentar, citar, agregar una foto o GIF, o grabar una nota de voz en este capítulo"
+        onClick={() => setOpen(true)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+          padding: '8px 10px', borderRadius: 'var(--radius-pill)', cursor: 'pointer',
+          background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-sm)',
+          textAlign: 'left', fontFamily: 'var(--font-body)',
+        }}
+      >
+        <Avatar name={myProfile?.display_name} src={myProfile?.avatar_url} size={28} />
+        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>
+          Comentá, citá, agregá una foto o grabá una nota de voz…
+        </span>
+      </button>
+
+      {open && (
+        <Modal title="Agregar" onClose={() => setOpen(false)}>
+          <ChapterComposerTabs clubBookId={clubBookId} chapterId={chapterId} book={book} onDone={() => setOpen(false)} />
+        </Modal>
+      )}
+    </>
+  );
+}
+
 // Comentarios de un libro, siempre por capítulo — no hay una sección
 // "general del libro" (se sacó a propósito, para reforzar comentar
 // capítulo a capítulo). Arriba de todo, aparte, la reseña final de quienes
@@ -199,7 +241,7 @@ function ReviewCard({ review, book, isOwn, onEdit, replies }) {
 // club los ve. "Compartir" es aparte: solo aparece en tus propios
 // comentarios de capítulo y notas de voz (reseñas/citas ya aparecen
 // siempre en Inicio, no necesitan esto) y solo tú lo ves.
-export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myProfileId, initialChapterId }) {
+export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myProfileId, myProfile, initialChapterId }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
   // Las respuestas (parent_comment_id no nulo) no son "un comentario más" en
@@ -232,10 +274,12 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   // Entrando desde un capítulo puntual (pastilla de Tu camino), el objetivo
   // es leer lo que ya se dijo de ESE capítulo y comentar si querés — nada
   // de elegir otro capítulo (no hace falta ni el selector ni el link para
-  // desplegarlo) y el cuadro para comentar va DESPUÉS de los comentarios
-  // existentes, no antes. Entrando por el ícono de "Comentarios del club"
-  // (sin capítulo puntual) se sigue viendo todo como antes: selector
-  // completo arriba, cuadro para comentar antes que la lista.
+  // desplegarlo), y para agregar algo hay una barra fija al pie
+  // (`ChapterComposerBar`, más abajo), no un formulario suelto en medio de
+  // la pantalla. Entrando por el ícono de "Comentarios del club" (sin
+  // capítulo puntual — hoy no hay ningún link que lo dispare) se sigue
+  // viendo todo como antes: selector completo arriba, el formulario de
+  // siempre (`composeBlock`) antes que la lista.
   const composeBlock = (
     <>
       <NewCommentForm clubBookId={clubBookId} chapterId={chapterId} book={book} />
@@ -330,7 +374,17 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
             </div>
           )}
 
-          {cameFromChapterLink && composeBlock}
+          {cameFromChapterLink && (
+            <div
+              style={{
+                position: 'sticky', bottom: 'calc(70px + env(safe-area-inset-bottom, 8px))',
+                background: 'var(--surface-page)', borderTop: '1px solid var(--border-subtle)',
+                padding: '10px 0 4px', marginTop: 4,
+              }}
+            >
+              <ChapterComposerBar clubBookId={clubBookId} chapterId={chapterId} book={book} myProfile={myProfile} />
+            </div>
+          )}
         </>
       ) : (
         <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '20px 0', textAlign: 'center' }}>

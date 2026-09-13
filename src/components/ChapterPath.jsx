@@ -8,9 +8,7 @@ import { Button } from '@/design-system/components/core/Button.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { updateProgress, getClubMembersProgress, getChapterQuestions, answerChapterQuestion } from '@/app/actions/clubs';
-import { NewCommentForm } from '@/components/NewCommentForm';
-import { VoiceRecorder } from '@/components/VoiceRecorder';
-import { ChapterQuestionsManager } from '@/screens/GestionCapitulosScreen.jsx';
+import { ChapterComposerTabs } from '@/components/ChapterComposerTabs';
 
 // Lo leído ya no es un color plano: el camino recorrido va de un gris
 // azulado frío (el capítulo más viejo) al coral de siempre — justo en
@@ -747,121 +745,17 @@ function SpoilerWarning({ label, href, onDismiss }) {
 // TODO sentido — antes era un panel inline que empujaba el resto de Tu
 // camino hacia abajo; ahora es el mismo `Modal` compartido (hoja que sube
 // desde abajo), así que el título y el botón de cerrar los pone el propio
-// Modal, ya no hace falta un header a mano acá. "Comentario" no tiene su
-// propio botón de pestaña — la caja de texto ya es la vista por default al
-// abrir el panel, un botón para eso era redundante. Quedan tres pestañas,
-// Cita · Foto/GIF · Voz; tocar la que ya está activa vuelve al texto
-// (`toggleTab`) — es la única forma de salir de esas tres sin cerrar el
-// panel, ya que no hay ningún botón "Comentario" al que volver.
-// `NewCommentForm` resuelve el texto (con o sin foto) y la cita — son la
-// misma forma por dentro, kind fijo desde afuera, sin su propio chip — con
-// `autoOpenPicker` en Foto/GIF para ir directo al selector nativo, y
-// `showAddPhotoLink` en `true` solo ahí (en la vista de texto por default
-// ese botón se esconde, igual que en PostComposer: ya existe la pestaña
-// dedicada). El checkbox "Contiene spoilers" se esconde en las cuatro
-// pestañas (`hideSpoilerOption` en `NewCommentForm`, `showSpoilerOption`
-// en `false` en `VoiceRecorder`) — acá se agrega algo puntual y rápido, sin
-// esa marca; la pantalla de Comentarios del club la sigue mostrando igual
-// que siempre. Voz sigue siendo `VoiceRecorder`, aparte. Publicar en
-// cualquiera cierra el panel solo (`onDismiss`): ya cumplió su único
-// trabajo, y la pastilla de la izquierda se actualiza sola (revalidatePath
-// de siempre en postComment/postVoiceComment).
-//
-// "Pregunta" (migración 053) es una quinta pestaña, solo para
-// administradores — arma o edita la encuesta/pregunta/trivia de ESTE
-// capítulo sin ir hasta "Gestión de capítulos". Publicarla no cierra el
-// panel sola (a diferencia de las otras pestañas): se queda en la misma
-// pantalla de edición, con su propio aviso de "guardada", por si el
-// admin quiere seguir ajustándola.
+// Modal, ya no hace falta un header a mano acá. Las cuatro pestañas
+// (Comentario/Cita/Foto·GIF/Voz) y, si `isAdmin`, una quinta ("Pregunta")
+// viven en `ChapterComposerTabs` (`@/components/ChapterComposerTabs`) —
+// compartido con la barra fija al pie de "Comentarios de tu camino"
+// (`ComentariosScreen.jsx`, `ChapterComposerBar`), que usa exactamente el
+// mismo componente, sin la pestaña de Pregunta.
 function ChapterCommentsPanel({ clubBookId, book, chapterId, label, isAdmin, onDismiss }) {
-  const [activeTab, setActiveTab] = useState('comment'); // 'comment' (default, sin pestaña propia) | 'quote' | 'photo' | 'voice' | 'question'
-
-  function toggleTab(tab) {
-    setActiveTab((current) => (current === tab ? 'comment' : tab));
-  }
-
   return (
     <Modal title={`Agregar · ${label}`} onClose={onDismiss}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', marginBottom: 10 }}>
-          <TypeTabButton active={activeTab === 'quote'} onClick={() => toggleTab('quote')} icon="quote" label="Cita" />
-          <TypeTabButton active={activeTab === 'photo'} onClick={() => toggleTab('photo')} icon="image" label="Foto/GIF" />
-          <TypeTabButton active={activeTab === 'voice'} onClick={() => toggleTab('voice')} icon="mic" label="Voz" />
-          {isAdmin && (
-            <TypeTabButton active={activeTab === 'question'} onClick={() => toggleTab('question')} icon="clipboard-list" label="Pregunta" />
-          )}
-        </div>
-
-        {activeTab === 'voice' ? (
-          <VoiceRecorder extraFields={{ clubBookId, chapterId }} showSpoilerOption={false} onDone={onDismiss} />
-        ) : activeTab === 'question' ? (
-          <AdminQuestionTab chapterId={chapterId} clubBookId={clubBookId} />
-        ) : (
-          <NewCommentForm
-            key={activeTab}
-            clubBookId={clubBookId}
-            chapterId={chapterId}
-            book={book}
-            kind={activeTab === 'quote' ? 'quote' : 'text'}
-            hideKindChips
-            autoOpenPicker={activeTab === 'photo'}
-            showAddPhotoLink={activeTab === 'photo'}
-            hideSpoilerOption
-            onPosted={onDismiss}
-          />
-        )}
-      </div>
+      <ChapterComposerTabs clubBookId={clubBookId} chapterId={chapterId} book={book} isAdmin={isAdmin} onDone={onDismiss} />
     </Modal>
-  );
-}
-
-// Trae las preguntas que ya tenga este capítulo (puede haber varias
-// desde la migración 054) antes de mostrar el administrador de la lista
-// — igual que ya hace Gestión de capítulos. Se pide de nuevo cada vez
-// que se abre esta pestaña (sin cachear entre capítulos): es información
-// que solo importa mientras el admin está mirando esto, no vale la pena
-// guardarla en ningún estado más arriba.
-function AdminQuestionTab({ chapterId, clubBookId }) {
-  const [questions, setQuestions] = useState(undefined); // undefined = cargando; array después
-
-  useEffect(() => {
-    let cancelled = false;
-    getChapterQuestions(chapterId).then((result) => {
-      if (!cancelled) setQuestions(result?.questions ?? []);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [chapterId]);
-
-  if (questions === undefined) {
-    return <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', padding: '8px 0' }}>Cargando…</div>;
-  }
-  return <ChapterQuestionsManager chapterId={chapterId} clubBookId={clubBookId} questions={questions} />;
-}
-
-// Una pestaña de TIPO del panel de agregar — ícono + rótulo apilados,
-// centrados, con una rayita coral bajo la activa. Solo Cita/Foto·GIF/Voz
-// tienen botón acá — "Comentario" no, ver el comentario sobre
-// ChapterCommentsPanel más arriba.
-function TypeTabButton({ active, onClick, icon, label }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-        fontSize: 9.5, fontWeight: 700, padding: '8px 2px 7px', border: 'none', background: 'none',
-        cursor: 'pointer', fontFamily: 'var(--font-body)', position: 'relative',
-        color: active ? 'var(--accent-600)' : 'var(--text-tertiary)',
-      }}
-    >
-      <Icon name={icon} size={14} color={active ? 'var(--accent-600)' : 'var(--text-tertiary)'} />
-      {label}
-      {active && (
-        <span style={{ position: 'absolute', left: 6, right: 6, bottom: -1, height: 2, background: 'var(--accent-500)', borderRadius: '2px 2px 0 0' }} />
-      )}
-    </button>
   );
 }
 
