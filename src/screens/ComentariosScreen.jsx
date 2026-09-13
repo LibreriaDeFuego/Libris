@@ -213,7 +213,7 @@ function ChapterComposerBar({ clubBookId, chapterId, book, myProfile }) {
       >
         <Avatar name={myProfile?.display_name} src={myProfile?.avatar_url} size={28} />
         <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>
-          Comentá, citá, agregá una foto o grabá una nota de voz…
+          ¿Qué te pareció este capítulo?
         </span>
       </button>
 

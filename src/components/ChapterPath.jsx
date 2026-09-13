@@ -428,7 +428,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                       <button
                         type="button"
                         onClick={() => openQuestionsFor(chapter)}
-                        title={hasPendingQuestion ? 'Este capítulo tiene una pregunta sin responder' : 'Ya respondiste — tocá para ver qué contestaron los demás'}
+                        title={hasPendingQuestion ? 'Este capítulo tiene una pregunta sin responder' : 'Ya respondiste — toca para ver las respuestas de los demás'}
                         aria-label={hasPendingQuestion ? `Responder la pregunta del ${chapterLabel(chapter)}` : `Ver las respuestas de la pregunta del ${chapterLabel(chapter)}`}
                         style={{
                           position: 'absolute', top: -7, left: -9, width: 20, height: 20, borderRadius: '50%', padding: 0, cursor: 'pointer',
