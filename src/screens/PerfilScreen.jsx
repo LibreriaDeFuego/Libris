@@ -168,7 +168,10 @@ function BookCover({ book }) {
 // centrado, superpuesto sobre su borde inferior. Sin libros leídos
 // todavía, el avatar se muestra solo, sin estantería. Se llega a "Mi
 // biblioteca" tocando la estantería (o el número "Libros", más abajo) —
-// migración 046.
+// migración 046. `no-scrollbar` (globals.css, mismo que ya usa el
+// carrusel de "Tu camino"/"Actividad del club") esconde la barra de
+// scroll nativa sin tocar el scroll en sí — se sigue deslizando igual,
+// con el dedo o el mouse, solo que sin la barra fea abajo.
 function ProfileHero({ profile, booksRead, libraryHref }) {
   if (booksRead.length === 0) {
     return (
@@ -180,6 +183,7 @@ function ProfileHero({ profile, booksRead, libraryHref }) {
   return (
     <Link href={libraryHref} style={{ position: 'relative', display: 'block' }}>
       <div
+        className="no-scrollbar"
         style={{
           display: 'flex', gap: 12, height: 142, overflowX: 'auto', overflowY: 'hidden',
           WebkitOverflowScrolling: 'touch', padding: '2px 2px 10px',
