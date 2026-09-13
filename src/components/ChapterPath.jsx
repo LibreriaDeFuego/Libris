@@ -47,7 +47,10 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // de siempre justo en tu capítulo actual — un degradé, no un color fijo
 // (`pathColor`, arriba). Tocar un nodo actualiza el progreso al toque,
 // igual que hacían los chips que reemplaza. La racha de lectura
-// (migración 035) vive integrada en el nodo actual, no aparte.
+// (migración 035) se sigue calculando y guardando (`nextStreak`,
+// `clubs.js`) pero su insignia (🔥 sobre el nodo actual) está sacada de
+// la vista por pedido — a propósito reversible: ni el cálculo ni la
+// columna `streak_count` se tocaron, solo dejó de dibujarse.
 //
 // Junto a cada capítulo, cuántos comentarios tiene — siempre a la vista,
 // sin botón (es información útil de entrada). Si el capítulo es TU
@@ -73,8 +76,8 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // volumen (o ninguno, el caso de siempre) no se muestra nada.
 //
 // Agregar algo en un capítulo, sin salir de acá — cada nodo tiene su propio
-// broche "+" (esquina inferior derecha, mismo lugar que ya usa la insignia
-// de racha para la esquina opuesta), con un solo trabajo: agregar un
+// broche "+" (esquina inferior derecha — la insignia de racha, cuando
+// estaba, iba en la esquina opuesta), con un solo trabajo: agregar un
 // comentario, una cita, una foto/GIF o una nota de voz — nunca mostrar lo
 // que ya hay (para eso está la pastilla, a la izquierda). Se probaron antes
 // un botón aparte junto a la pastilla de comentarios y varios gestos
@@ -101,9 +104,9 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // (getChaptersWithQuestions, clubDetail.js) traen, de una sola vez, en qué
 // capítulos hay algo sin responder para VOS puntualmente y en cuáles ya
 // respondiste TODO — y cada uno de esos nodos (sea pasado, el actual o uno
-// que todavía no alcanzás) dibuja un circulito fijo, mismo lenguaje visual
-// que ya usa la insignia de racha (🔥, esquina opuesta): sólido si falta
-// responder algo, apagado (solo el borde) si ya respondiste todo — pero
+// que todavía no alcanzás) dibuja un circulito fijo en la esquina superior
+// izquierda del nodo: sólido si falta responder algo, apagado (solo el
+// borde) si ya respondiste todo — pero
 // SIEMPRE tocable, en cualquiera de los dos estados (`openQuestionsFor`),
 // para poder entrar a ver el agregado. Se armaron varios mockups con más
 // formas de resolver esto (un chip aparte, una tarjeta de pendientes
@@ -113,7 +116,11 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // compañeros cuando coinciden en el mismo capítulo. Pasa de sólido a
 // apagado solo apenas respondés (`answerChapterQuestion` revalida la
 // página entera) — no hace falta ningún estado local para eso acá.
-export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, streakCount = 0, commentCounts = {}, pendingQuestionChapterIds = [], answeredQuestionChapterIds = [], isAdmin = false, onOpenFull, onFinishBook }) {
+// `streakCount` ya no se recibe acá (ver arriba) — `ClubScreen` lo sigue
+// pasando igual, no hace falta tocarlo: una prop de más que nadie lee no
+// rompe nada, y reactivar la insignia el día de mañana es no más que
+// sumarla de nuevo a esta firma.
+export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, commentCounts = {}, pendingQuestionChapterIds = [], answeredQuestionChapterIds = [], isAdmin = false, onOpenFull, onFinishBook }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -351,7 +358,6 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
             // (isDone) es un link directo.
             const isAhead = currentIndex !== -1 && originalIndex >= currentIndex;
             const isSaving = pending && optimisticId === chapter.id;
-            const showFlame = isCurrent && streakCount >= 2;
             const hasPendingQuestion = pendingQuestionSet.has(chapter.id);
             const hasAnsweredQuestion = !hasPendingQuestion && answeredQuestionSet.has(chapter.id);
             const commentInfo = commentCounts[chapter.id];
@@ -412,18 +418,6 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                     >
                       {isDone ? <Icon name="check" size={16} color="var(--text-on-accent)" strokeWidth={3} /> : chapter.number}
                     </button>
-                    {showFlame && (
-                      <span
-                        aria-hidden
-                        style={{
-                          position: 'absolute', top: -8, right: -10, width: 24, height: 24, borderRadius: '50%',
-                          background: 'var(--gold-500)', border: '2.5px solid var(--surface-page)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
-                      >
-                        <Icon name="flame" size={11} color="#7A3E00" />
-                      </span>
-                    )}
                     {(hasPendingQuestion || hasAnsweredQuestion) && (
                       <button
                         type="button"
