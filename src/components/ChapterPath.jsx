@@ -92,7 +92,25 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // ("Ver compañeros" / "Ocultar compañeros") que, recién al tocarlo, trae el
 // capítulo actual de cada compañero (getClubMembersProgress) y los muestra
 // como un stack de avatares chicos debajo del nodo donde va cada uno.
-export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, streakCount = 0, commentCounts = {}, isAdmin = false, onOpenFull, onFinishBook }) {
+//
+// Distintivo de pregunta pendiente (migraciones 053/054) — hasta acá, una
+// pregunta de capítulo solo se veía al toparte con ella, en el modal que
+// salta al marcar ESE capítulo como el actual: el resto del tiempo era
+// invisible en el camino, incluso para capítulos que ya tenían una
+// esperando. `pendingQuestionChapterIds` (getChaptersWithPendingQuestions,
+// clubDetail.js) trae, de una sola vez, en qué capítulos hay algo sin
+// responder para VOS puntualmente — y cada uno de esos nodos (sea pasado,
+// el actual o uno que todavía no alcanzás) dibuja un circulito dorado fijo,
+// mismo lenguaje visual que ya usa la insignia de racha (🔥, esquina
+// opuesta). Se armaron varios mockups con más formas de resolver esto
+// (un chip aparte, una tarjeta de pendientes arriba del camino, una raya
+// al borde de la fila, entre otras) antes de elegir esta — la más
+// discreta de todas: no agrega ninguna fila nueva al camino, ni compite
+// con la pastilla de comentarios o el stack de compañeros cuando
+// coinciden en el mismo capítulo. Se apaga solo apenas respondés
+// (`answerChapterQuestion` revalida la página entera) — no hace falta
+// ningún estado local para eso acá.
+export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, streakCount = 0, commentCounts = {}, pendingQuestionChapterIds = [], isAdmin = false, onOpenFull, onFinishBook }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -131,6 +149,14 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
     }
     return map;
   }, [companions]);
+
+  // Migraciones 053/054 — qué capítulos tienen, para vos, alguna pregunta
+  // sin responder: el distintivo dorado se dibuja sobre CUALQUIER nodo que
+  // esté acá adentro, no solo el actual (a diferencia del modal, que solo
+  // salta al marcar el capítulo). Ver "Ordenar el capítulo cargado" en el
+  // historial de mockups — se eligió esta, la más discreta de las ocho: un
+  // solo circulito fijo, sin sumar ninguna fila nueva al camino.
+  const pendingQuestionSet = useMemo(() => new Set(pendingQuestionChapterIds), [pendingQuestionChapterIds]);
 
   if (!chapters || chapters.length === 0) return null;
 
@@ -305,6 +331,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
             const isAhead = currentIndex !== -1 && originalIndex >= currentIndex;
             const isSaving = pending && optimisticId === chapter.id;
             const showFlame = isCurrent && streakCount >= 2;
+            const hasPendingQuestion = pendingQuestionSet.has(chapter.id);
             const commentInfo = commentCounts[chapter.id];
             const nodeColor = isDone || isCurrent ? pathColor(originalIndex, currentIndex) : null;
 
@@ -349,7 +376,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                       ref={isCurrent ? currentNodeRef : undefined}
                       onClick={() => handleTap(chapter)}
                       disabled={isCurrent || isSaving}
-                      aria-label={`Cap. ${chapter.number}${isCurrent ? ' (tu capítulo actual)' : ''}`}
+                      aria-label={`Cap. ${chapter.number}${isCurrent ? ' (tu capítulo actual)' : ''}${hasPendingQuestion ? ' — tiene una pregunta sin responder' : ''}`}
                       style={{
                         width: '100%', height: '100%', borderRadius: '50%',
                         border: isDone || isCurrent ? 'none' : '2px solid var(--neutral-200)',
@@ -373,6 +400,19 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                         }}
                       >
                         <Icon name="flame" size={11} color="#7A3E00" />
+                      </span>
+                    )}
+                    {hasPendingQuestion && (
+                      <span
+                        aria-hidden
+                        title="Este capítulo tiene una pregunta sin responder"
+                        style={{
+                          position: 'absolute', top: -7, left: -9, width: 20, height: 20, borderRadius: '50%',
+                          background: 'var(--gold-500)', border: '2.5px solid var(--surface-page)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <Icon name="clipboard-list" size={10} color="#7A5300" />
                       </span>
                     )}
                     <button

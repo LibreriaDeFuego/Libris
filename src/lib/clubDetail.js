@@ -126,3 +126,33 @@ export async function getChapterCommentCounts(supabase, clubBookId) {
   }
   return counts;
 }
+
+// Preguntas de capítulo (migraciones 053/054): qué capítulos tienen, para
+// ESTE usuario, alguna pregunta todavía sin responder — para el distintivo
+// dorado que ChapterPath dibuja sobre el nodo (mockup "Ordenar el capítulo
+// cargado", opción elegida: un solo circulito fijo, sin sumar ninguna fila
+// nueva al camino). Trae TODAS las preguntas del libro de una sola vez,
+// igual que getChapterCommentCounts — evita un viaje al servidor por cada
+// capítulo del camino.
+export async function getChaptersWithPendingQuestions(supabase, clubBookId, userId) {
+  if (!clubBookId) return [];
+
+  const { data: questions } = await supabase
+    .from('chapter_questions')
+    .select('id, chapter_id')
+    .eq('club_book_id', clubBookId);
+  if (!questions || questions.length === 0) return [];
+
+  const { data: myAnswers } = await supabase
+    .from('chapter_question_answers')
+    .select('question_id')
+    .eq('profile_id', userId)
+    .in('question_id', questions.map((q) => q.id));
+  const answeredIds = new Set((myAnswers ?? []).map((a) => a.question_id));
+
+  const pending = new Set();
+  for (const q of questions) {
+    if (!answeredIds.has(q.id)) pending.add(q.chapter_id);
+  }
+  return [...pending];
+}

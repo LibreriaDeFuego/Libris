@@ -1124,6 +1124,12 @@ export async function answerChapterQuestion(formData) {
     return { error: friendlyDbError(error) };
   }
 
+  // Sin esto, getChaptersWithPendingQuestions (clubDetail.js) seguía
+  // devolviendo este capítulo como pendiente hasta la próxima navegación —
+  // el distintivo dorado del nodo, en Tu camino, no se apagaba solo apenas
+  // contestabas.
+  revalidatePath('/', 'layout');
+
   if (question.kind === 'open') {
     const { data: answers } = await supabase
       .from('chapter_question_answers')
