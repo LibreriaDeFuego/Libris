@@ -19,7 +19,7 @@ import { formatMeetingDate, googleMapsUrl } from '@/lib/meetingFormat';
 // (ver README). Lo que queda acá es un encabezado liviano (volver + nombre
 // del club + las mismas acciones de siempre) y, debajo, el camino y la
 // actividad del club — el contenido real de "Progreso y Actividad".
-export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, activity, commentCounts, pendingQuestionChapterIds, otherClubsCount, isAdmin, pendingRequestCount = 0 }) {
+export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, activity, commentCounts, pendingQuestionChapterIds, answeredQuestionChapterIds, otherClubsCount, isAdmin, pendingRequestCount = 0 }) {
   const [showModal, setShowModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const router = useRouter();
@@ -108,6 +108,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
                     streakCount={myProgress?.streak_count ?? 0}
                     commentCounts={commentCounts ?? {}}
                     pendingQuestionChapterIds={pendingQuestionChapterIds ?? []}
+                    answeredQuestionChapterIds={answeredQuestionChapterIds ?? []}
                     isAdmin={isAdmin}
                     onOpenFull={() => setShowModal(true)}
                     onFinishBook={() => setShowReviewModal(true)}

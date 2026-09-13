@@ -1058,12 +1058,53 @@ export async function deleteChapterQuestion(questionId) {
   return { error: null };
 }
 
+// El resultado agregado de una pregunta ya respondida — lo arma tanto
+// answerChapterQuestion (recién contestada) como getChapterQuestions (al
+// volver a abrirla más tarde, para ver qué contestaron los demás). En
+// "open", "answers" nunca incluye la propia — quien pregunta ya tiene esa
+// por separado (su propio texto, no hace falta traerlo de vuelta).
+async function loadQuestionResults(supabase, question, userId) {
+  if (question.kind === 'open') {
+    const { data: answers } = await supabase
+      .from('chapter_question_answers')
+      .select('profile_id, body, created_at, profiles(display_name, avatar_url)')
+      .eq('question_id', question.id)
+      .neq('profile_id', userId)
+      .order('created_at', { ascending: true });
+
+    return {
+      answers: (answers ?? []).map((a) => ({
+        profileId: a.profile_id,
+        displayName: a.profiles?.display_name ?? 'Alguien',
+        avatarUrl: a.profiles?.avatar_url ?? null,
+        body: a.body,
+      })),
+    };
+  }
+
+  const { data: allAnswers } = await supabase
+    .from('chapter_question_answers')
+    .select('option_index')
+    .eq('question_id', question.id);
+
+  const counts = (question.options ?? []).map(() => 0);
+  for (const a of allAnswers ?? []) {
+    if (a.option_index != null && counts[a.option_index] != null) counts[a.option_index] += 1;
+  }
+  return { counts, total: (allAnswers ?? []).length };
+}
+
 // Trae TODAS las preguntas de un capítulo (puede haber varias desde la
-// migración 054) y, para cada una, si quien pregunta ya la respondió —
-// se llama justo después de marcar ese capítulo como el actual
-// (ChapterPath, handleTap), para armar la cola de las que todavía faltan
-// responder. En un capítulo sin ninguna pregunta armada, questions queda
-// en un array vacío.
+// migración 054) y, para cada una, si quien pregunta ya la respondió — se
+// llama justo después de marcar ese capítulo como el actual (ChapterPath,
+// handleTap), para armar la cola de las que todavía faltan responder, PERO
+// también al tocar el distintivo del nodo en Tu camino para volver a
+// entrar a una que ya tenía respuesta, así se puede ver qué contestaron
+// los demás. Por eso una ya respondida no vuelve vacía: trae el resultado
+// agregado (`results`) y, para poder marcarla de entrada como "tu voto"
+// sin otro viaje al servidor, `myOptionIndex`/`myBody` según el tipo. En
+// un capítulo sin ninguna pregunta armada, questions queda en un array
+// vacío.
 export async function getChapterQuestions(chapterId) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
@@ -1078,12 +1119,20 @@ export async function getChapterQuestions(chapterId) {
 
   const { data: myAnswers } = await supabase
     .from('chapter_question_answers')
-    .select('question_id')
+    .select('question_id, option_index, body')
     .eq('profile_id', user.id)
     .in('question_id', questions.map((q) => q.id));
-  const answeredIds = new Set((myAnswers ?? []).map((a) => a.question_id));
+  const myAnswerByQuestion = new Map((myAnswers ?? []).map((a) => [a.question_id, a]));
 
-  return { questions: questions.map((q) => ({ ...q, answered: answeredIds.has(q.id) })) };
+  const enriched = await Promise.all(questions.map(async (q) => {
+    const mine = myAnswerByQuestion.get(q.id);
+    if (!mine) return { ...q, answered: false };
+
+    const results = await loadQuestionResults(supabase, q, user.id);
+    return { ...q, answered: true, myOptionIndex: mine.option_index, myBody: mine.body, results };
+  }));
+
+  return { questions: enriched };
 }
 
 // Responde una pregunta de capítulo (optionIndex para encuesta/trivia,
@@ -1124,44 +1173,14 @@ export async function answerChapterQuestion(formData) {
     return { error: friendlyDbError(error) };
   }
 
-  // Sin esto, getChaptersWithPendingQuestions (clubDetail.js) seguía
-  // devolviendo este capítulo como pendiente hasta la próxima navegación —
-  // el distintivo dorado del nodo, en Tu camino, no se apagaba solo apenas
-  // contestabas.
+  // Sin esto, getChaptersWithQuestions (clubDetail.js) seguía devolviendo
+  // este capítulo como pendiente hasta la próxima navegación — el
+  // distintivo del nodo, en Tu camino, no pasaba de "sin responder" a "ya
+  // respondida, tocá para ver resultados" hasta recién ahí.
   revalidatePath('/', 'layout');
 
-  if (question.kind === 'open') {
-    const { data: answers } = await supabase
-      .from('chapter_question_answers')
-      .select('profile_id, body, created_at, profiles(display_name, avatar_url)')
-      .eq('question_id', questionId)
-      .neq('profile_id', user.id)
-      .order('created_at', { ascending: true });
-
-    return {
-      error: null,
-      results: {
-        answers: (answers ?? []).map((a) => ({
-          profileId: a.profile_id,
-          displayName: a.profiles?.display_name ?? 'Alguien',
-          avatarUrl: a.profiles?.avatar_url ?? null,
-          body: a.body,
-        })),
-      },
-    };
-  }
-
-  const { data: allAnswers } = await supabase
-    .from('chapter_question_answers')
-    .select('option_index')
-    .eq('question_id', questionId);
-
-  const counts = (question.options ?? []).map(() => 0);
-  for (const a of allAnswers ?? []) {
-    if (a.option_index != null && counts[a.option_index] != null) counts[a.option_index] += 1;
-  }
-
-  return { error: null, results: { counts, total: (allAnswers ?? []).length } };
+  const results = await loadQuestionResults(supabase, { id: questionId, kind: question.kind, options: question.options }, user.id);
+  return { error: null, results };
 }
 
 // Comparte (o deja de compartir) tu propio comentario de capítulo o nota

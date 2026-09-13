@@ -128,20 +128,30 @@ export async function getChapterCommentCounts(supabase, clubBookId) {
 }
 
 // Preguntas de capítulo (migraciones 053/054): qué capítulos tienen, para
-// ESTE usuario, alguna pregunta todavía sin responder — para el distintivo
-// dorado que ChapterPath dibuja sobre el nodo (mockup "Ordenar el capítulo
-// cargado", opción elegida: un solo circulito fijo, sin sumar ninguna fila
-// nueva al camino). Trae TODAS las preguntas del libro de una sola vez,
-// igual que getChapterCommentCounts — evita un viaje al servidor por cada
-// capítulo del camino.
-export async function getChaptersWithPendingQuestions(supabase, clubBookId, userId) {
-  if (!clubBookId) return [];
+// ESTE usuario, alguna pregunta armada — para el distintivo que ChapterPath
+// dibuja sobre el nodo (mockup "Ordenar el capítulo cargado", opción
+// elegida: un solo circulito fijo, sin sumar ninguna fila nueva al
+// camino). Trae TODAS las preguntas del libro de una sola vez, igual que
+// getChapterCommentCounts — evita un viaje al servidor por cada capítulo
+// del camino.
+//
+// Separado en dos listas, no una sola: "pending" (todavía hay algo sin
+// responder ahí — el distintivo se ve sólido, invita a entrar) y
+// "answered" (ya respondiste TODAS las de ese capítulo — el distintivo
+// queda apagado, pero se sigue viendo para poder volver a entrar y ver qué
+// contestaron los demás; antes desaparecía del todo al responder, y no
+// había forma de volver a abrirlo). Un capítulo con alguna pendiente Y
+// alguna ya respondida cuenta como "pending" nada más — todavía hay algo
+// por hacer ahí, entrar muestra las dos igual (mezcladas, en el mismo
+// orden de siempre).
+export async function getChaptersWithQuestions(supabase, clubBookId, userId) {
+  if (!clubBookId) return { pending: [], answered: [] };
 
   const { data: questions } = await supabase
     .from('chapter_questions')
     .select('id, chapter_id')
     .eq('club_book_id', clubBookId);
-  if (!questions || questions.length === 0) return [];
+  if (!questions || questions.length === 0) return { pending: [], answered: [] };
 
   const { data: myAnswers } = await supabase
     .from('chapter_question_answers')
@@ -151,8 +161,12 @@ export async function getChaptersWithPendingQuestions(supabase, clubBookId, user
   const answeredIds = new Set((myAnswers ?? []).map((a) => a.question_id));
 
   const pending = new Set();
+  const answered = new Set();
   for (const q of questions) {
-    if (!answeredIds.has(q.id)) pending.add(q.chapter_id);
+    if (answeredIds.has(q.id)) answered.add(q.chapter_id);
+    else pending.add(q.chapter_id);
   }
-  return [...pending];
+  for (const chapterId of pending) answered.delete(chapterId);
+
+  return { pending: [...pending], answered: [...answered] };
 }

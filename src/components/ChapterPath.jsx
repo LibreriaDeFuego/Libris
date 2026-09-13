@@ -93,24 +93,29 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // capítulo actual de cada compañero (getClubMembersProgress) y los muestra
 // como un stack de avatares chicos debajo del nodo donde va cada uno.
 //
-// Distintivo de pregunta pendiente (migraciones 053/054) — hasta acá, una
-// pregunta de capítulo solo se veía al toparte con ella, en el modal que
-// salta al marcar ESE capítulo como el actual: el resto del tiempo era
-// invisible en el camino, incluso para capítulos que ya tenían una
-// esperando. `pendingQuestionChapterIds` (getChaptersWithPendingQuestions,
-// clubDetail.js) trae, de una sola vez, en qué capítulos hay algo sin
-// responder para VOS puntualmente — y cada uno de esos nodos (sea pasado,
-// el actual o uno que todavía no alcanzás) dibuja un circulito dorado fijo,
-// mismo lenguaje visual que ya usa la insignia de racha (🔥, esquina
-// opuesta). Se armaron varios mockups con más formas de resolver esto
-// (un chip aparte, una tarjeta de pendientes arriba del camino, una raya
-// al borde de la fila, entre otras) antes de elegir esta — la más
-// discreta de todas: no agrega ninguna fila nueva al camino, ni compite
-// con la pastilla de comentarios o el stack de compañeros cuando
-// coinciden en el mismo capítulo. Se apaga solo apenas respondés
-// (`answerChapterQuestion` revalida la página entera) — no hace falta
-// ningún estado local para eso acá.
-export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, streakCount = 0, commentCounts = {}, pendingQuestionChapterIds = [], isAdmin = false, onOpenFull, onFinishBook }) {
+// Distintivo de pregunta (migraciones 053/054) — hasta acá, una pregunta
+// de capítulo solo se veía al toparte con ella, en el modal que salta al
+// marcar ESE capítulo como el actual: el resto del tiempo era invisible en
+// el camino, incluso para capítulos que ya tenían una esperando — y, peor,
+// una vez respondida desaparecía del todo, sin ninguna forma de volver a
+// entrar para ver qué habían contestado los demás.
+// `pendingQuestionChapterIds`/`answeredQuestionChapterIds`
+// (getChaptersWithQuestions, clubDetail.js) traen, de una sola vez, en qué
+// capítulos hay algo sin responder para VOS puntualmente y en cuáles ya
+// respondiste TODO — y cada uno de esos nodos (sea pasado, el actual o uno
+// que todavía no alcanzás) dibuja un circulito fijo, mismo lenguaje visual
+// que ya usa la insignia de racha (🔥, esquina opuesta): sólido si falta
+// responder algo, apagado (solo el borde) si ya respondiste todo — pero
+// SIEMPRE tocable, en cualquiera de los dos estados (`openQuestionsFor`),
+// para poder entrar a ver el agregado. Se armaron varios mockups con más
+// formas de resolver esto (un chip aparte, una tarjeta de pendientes
+// arriba del camino, una raya al borde de la fila, entre otras) antes de
+// elegir esta — la más discreta de todas: no agrega ninguna fila nueva al
+// camino, ni compite con la pastilla de comentarios o el stack de
+// compañeros cuando coinciden en el mismo capítulo. Pasa de sólido a
+// apagado solo apenas respondés (`answerChapterQuestion` revalida la
+// página entera) — no hace falta ningún estado local para eso acá.
+export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, streakCount = 0, commentCounts = {}, pendingQuestionChapterIds = [], answeredQuestionChapterIds = [], isAdmin = false, onOpenFull, onFinishBook }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -151,12 +156,14 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
   }, [companions]);
 
   // Migraciones 053/054 — qué capítulos tienen, para vos, alguna pregunta
-  // sin responder: el distintivo dorado se dibuja sobre CUALQUIER nodo que
-  // esté acá adentro, no solo el actual (a diferencia del modal, que solo
-  // salta al marcar el capítulo). Ver "Ordenar el capítulo cargado" en el
-  // historial de mockups — se eligió esta, la más discreta de las ocho: un
-  // solo circulito fijo, sin sumar ninguna fila nueva al camino.
+  // sin responder (o ya toda respondida): el distintivo se dibuja sobre
+  // CUALQUIER nodo que esté en alguna de las dos listas, no solo el actual
+  // (a diferencia del modal, que solo salta al marcar el capítulo). Ver
+  // "Ordenar el capítulo cargado" en el historial de mockups — se eligió
+  // esta, la más discreta de las ocho: un solo circulito fijo, sin sumar
+  // ninguna fila nueva al camino.
   const pendingQuestionSet = useMemo(() => new Set(pendingQuestionChapterIds), [pendingQuestionChapterIds]);
+  const answeredQuestionSet = useMemo(() => new Set(answeredQuestionChapterIds), [answeredQuestionChapterIds]);
 
   if (!chapters || chapters.length === 0) return null;
 
@@ -247,6 +254,22 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
     });
   }
 
+  // El distintivo del nodo (sólido o apagado, ver arriba) llama a esto — a
+  // diferencia de handleTap, ACÁ no se filtra por `answered`: se abren
+  // TODAS las preguntas del capítulo, en el mismo orden de siempre. Las ya
+  // respondidas entran directo mostrando el resultado agregado
+  // (`ChapterQuestionModal` arranca su estado desde `question.results` /
+  // `myOptionIndex` / `myBody`, que ahora manda `getChapterQuestions`); las
+  // que faltan, con el formulario para responder — mismo componente,
+  // ningún caso especial. Tampoco marca el capítulo como el actual: es
+  // solo para ver/responder, no cambia el progreso de nadie.
+  function openQuestionsFor(chapter) {
+    getChapterQuestions(chapter.id).then(({ questions }) => {
+      if (questions.length === 0) return;
+      setQuestionQueue({ chapterLabel: chapterLabel(chapter), total: questions.length, items: questions });
+    });
+  }
+
   // Solo se llama para capítulos más adelante de tu progreso — para los
   // otros, la pastilla es directamente un link (ver SideExtras).
   function handleSpoilerTap(chapter) {
@@ -332,6 +355,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
             const isSaving = pending && optimisticId === chapter.id;
             const showFlame = isCurrent && streakCount >= 2;
             const hasPendingQuestion = pendingQuestionSet.has(chapter.id);
+            const hasAnsweredQuestion = !hasPendingQuestion && answeredQuestionSet.has(chapter.id);
             const commentInfo = commentCounts[chapter.id];
             const nodeColor = isDone || isCurrent ? pathColor(originalIndex, currentIndex) : null;
 
@@ -376,7 +400,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                       ref={isCurrent ? currentNodeRef : undefined}
                       onClick={() => handleTap(chapter)}
                       disabled={isCurrent || isSaving}
-                      aria-label={`Cap. ${chapter.number}${isCurrent ? ' (tu capítulo actual)' : ''}${hasPendingQuestion ? ' — tiene una pregunta sin responder' : ''}`}
+                      aria-label={`Cap. ${chapter.number}${isCurrent ? ' (tu capítulo actual)' : ''}${hasPendingQuestion ? ' — tiene una pregunta sin responder' : hasAnsweredQuestion ? ' — ya respondiste la pregunta de este capítulo' : ''}`}
                       style={{
                         width: '100%', height: '100%', borderRadius: '50%',
                         border: isDone || isCurrent ? 'none' : '2px solid var(--neutral-200)',
@@ -402,18 +426,21 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                         <Icon name="flame" size={11} color="#7A3E00" />
                       </span>
                     )}
-                    {hasPendingQuestion && (
-                      <span
-                        aria-hidden
-                        title="Este capítulo tiene una pregunta sin responder"
+                    {(hasPendingQuestion || hasAnsweredQuestion) && (
+                      <button
+                        type="button"
+                        onClick={() => openQuestionsFor(chapter)}
+                        title={hasPendingQuestion ? 'Este capítulo tiene una pregunta sin responder' : 'Ya respondiste — tocá para ver qué contestaron los demás'}
+                        aria-label={hasPendingQuestion ? `Responder la pregunta del ${chapterLabel(chapter)}` : `Ver las respuestas de la pregunta del ${chapterLabel(chapter)}`}
                         style={{
-                          position: 'absolute', top: -7, left: -9, width: 20, height: 20, borderRadius: '50%',
-                          background: 'var(--gold-500)', border: '2.5px solid var(--surface-page)',
+                          position: 'absolute', top: -7, left: -9, width: 20, height: 20, borderRadius: '50%', padding: 0, cursor: 'pointer',
+                          background: hasPendingQuestion ? 'var(--gold-500)' : 'var(--surface-card)',
+                          border: hasPendingQuestion ? '2.5px solid var(--surface-page)' : '2px solid var(--gold-500)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}
                       >
-                        <Icon name="clipboard-list" size={10} color="#7A5300" />
-                      </span>
+                        <Icon name="clipboard-list" size={10} color={hasPendingQuestion ? '#7A5300' : 'var(--gold-700)'} />
+                      </button>
                     )}
                     <button
                       type="button"
@@ -858,10 +885,17 @@ const QUESTION_KIND_META = {
 // componente entero vía `key`, en ChapterPath); si no queda ninguna,
 // cierra del todo. `position` (`{ index, total }`) solo se muestra
 // cuando hay más de una en la cola — para una sola no hace falta.
+// El `key={questionQueue.items[0].id}` con el que ChapterPath monta esto
+// (una vez por cada pregunta de la cola) es lo que permite sembrar el
+// estado inicial directo desde `question`, sin ningún useEffect: si ya la
+// habías respondido, `getChapterQuestions` viene con `results` (y
+// `myOptionIndex`/`myBody`) armados de entrada, y esta pantalla arranca
+// mostrando el agregado en vez del formulario — es como volver a entrar a
+// una que acabás de contestar en la misma sesión.
 function ChapterQuestionModal({ chapterLabel, question, position, onNext }) {
-  const [results, setResults] = useState(null); // null = todavía no respondiste
-  const [myPick, setMyPick] = useState(null); // optionIndex elegido, poll/trivia
-  const [openBody, setOpenBody] = useState('');
+  const [results, setResults] = useState(question.results ?? null); // null = todavía no respondiste
+  const [myPick, setMyPick] = useState(question.myOptionIndex ?? null); // optionIndex elegido, poll/trivia
+  const [openBody, setOpenBody] = useState(question.myBody ?? '');
   const [error, setError] = useState(null);
   const [pending, startTransition] = useTransition();
 

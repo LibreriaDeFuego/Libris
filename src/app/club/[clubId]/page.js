@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs, getActiveClubBook } from '@/lib/activeClub';
-import { getClubHeroExtras, getChapterCommentCounts, getChaptersWithPendingQuestions } from '@/lib/clubDetail';
+import { getClubHeroExtras, getChapterCommentCounts, getChaptersWithQuestions } from '@/lib/clubDetail';
 import { ClubScreen } from '@/screens/ClubScreen.jsx';
 
 export default async function Page({ params }) {
@@ -39,12 +39,13 @@ export default async function Page({ params }) {
         myReview={null}
         commentCounts={{}}
         pendingQuestionChapterIds={[]}
+        answeredQuestionChapterIds={[]}
         otherClubsCount={0}
       />
     );
   }
 
-  const [heroExtras, { data: otherClubsCount }, commentCounts, pendingQuestionChapterIds] = await Promise.all([
+  const [heroExtras, { data: otherClubsCount }, commentCounts, questionsByChapter] = await Promise.all([
     // Chapters, volumes, mi progreso, mi reseña, actividad reciente y
     // solicitudes pendientes — ver src/lib/clubDetail.js.
     getClubHeroExtras(supabase, { clubId, clubBookId: clubBook.id, userId: user.id, isAdmin }),
@@ -57,9 +58,10 @@ export default async function Page({ params }) {
     // Cuántos comentarios tiene cada capítulo, para la pastilla de
     // "Comentarios" en Tu camino.
     getChapterCommentCounts(supabase, clubBook.id),
-    // Qué capítulos tienen alguna pregunta sin responder, para el
-    // distintivo dorado del nodo en Tu camino (migraciones 053/054).
-    getChaptersWithPendingQuestions(supabase, clubBook.id, user.id),
+    // Qué capítulos tienen alguna pregunta sin responder (o ya respondida
+    // del todo), para el distintivo del nodo en Tu camino (migraciones
+    // 053/054).
+    getChaptersWithQuestions(supabase, clubBook.id, user.id),
   ]);
 
   return (
@@ -74,7 +76,8 @@ export default async function Page({ params }) {
       myReview={heroExtras.myReview}
       activity={heroExtras.activity}
       commentCounts={commentCounts}
-      pendingQuestionChapterIds={pendingQuestionChapterIds}
+      pendingQuestionChapterIds={questionsByChapter.pending}
+      answeredQuestionChapterIds={questionsByChapter.answered}
       otherClubsCount={Number(otherClubsCount ?? 0)}
     />
   );
