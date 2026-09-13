@@ -590,6 +590,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
               return rest.length > 0 ? { ...prev, items: rest } : null;
             });
           }}
+          onDismiss={() => setQuestionQueue(null)}
         />
       )}
     </div>
@@ -879,12 +880,15 @@ const QUESTION_KIND_META = {
 // responder cambia directo a la vista de resultados, sin un segundo
 // viaje al servidor.
 //
-// `onNext` es tanto "cerrar" como "pasar a la siguiente" — es lo que
-// `handleTap` le pasa como `onClose` del propio `Modal`: si en la cola
-// queda otra pregunta sin responder, la × avanza a esa (remontando este
-// componente entero vía `key`, en ChapterPath); si no queda ninguna,
-// cierra del todo. `position` (`{ index, total }`) solo se muestra
-// cuando hay más de una en la cola — para una sola no hace falta.
+// La × del propio `Modal` (`onDismiss`) cierra TODO de una — se sale de
+// la cola entera, aunque queden preguntas sin ver. Para avanzar de a una
+// dentro de la cola hay un botón aparte, "Siguiente pregunta →"
+// (`onNext`): antes la × hacía las dos cosas a la vez (avanzar si quedaba
+// otra, cerrar si no) — confundía "cerrar" con "pasar a la siguiente", ya
+// que las dos vivían en el mismo lugar. `onNext` remonta este componente
+// entero para la próxima pregunta de la cola, vía `key`, en ChapterPath.
+// `position` (`{ index, total }`) solo se muestra cuando hay más de una en
+// la cola — para una sola no hace falta ninguna de las dos cosas.
 // El `key={questionQueue.items[0].id}` con el que ChapterPath monta esto
 // (una vez por cada pregunta de la cola) es lo que permite sembrar el
 // estado inicial directo desde `question`, sin ningún useEffect: si ya la
@@ -892,7 +896,7 @@ const QUESTION_KIND_META = {
 // `myOptionIndex`/`myBody`) armados de entrada, y esta pantalla arranca
 // mostrando el agregado en vez del formulario — es como volver a entrar a
 // una que acabás de contestar en la misma sesión.
-function ChapterQuestionModal({ chapterLabel, question, position, onNext }) {
+function ChapterQuestionModal({ chapterLabel, question, position, onNext, onDismiss }) {
   const [results, setResults] = useState(question.results ?? null); // null = todavía no respondiste
   const [myPick, setMyPick] = useState(question.myOptionIndex ?? null); // optionIndex elegido, poll/trivia
   const [openBody, setOpenBody] = useState(question.myBody ?? '');
@@ -938,7 +942,7 @@ function ChapterQuestionModal({ chapterLabel, question, position, onNext }) {
   const gotItRight = isTrivia && myPick === question.correct_option_index;
 
   return (
-    <Modal title={chapterLabel} onClose={onNext}>
+    <Modal title={chapterLabel} onClose={onDismiss}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--accent-600)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
@@ -1072,6 +1076,12 @@ function ChapterQuestionModal({ chapterLabel, question, position, onNext }) {
           <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 10 }}>
             {error}
           </div>
+        )}
+
+        {position && position.index < position.total && (
+          <Button variant="secondary" size="md" type="button" onClick={onNext}>
+            Siguiente pregunta <Icon name="arrow-right" size={16} />
+          </Button>
         )}
       </div>
     </Modal>
