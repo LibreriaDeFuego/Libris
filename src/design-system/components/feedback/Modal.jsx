@@ -1,6 +1,19 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
+
+// Antes esto se montaba como un `<div position:fixed>` más, adentro del
+// árbol normal de la página — casi siempre alcanza, pero en el broche "+"
+// de Tu camino (y en cualquier otro lugar anidado bien adentro de
+// AppShell) el tab bar de abajo (`position: sticky`, su propio contexto de
+// apilamiento) terminaba pintándose ENCIMA del modal, tapando buena parte
+// del botón principal — "Publicar" quedaba como una tira naranja apenas
+// asomando arriba del tab bar. `createPortal` saca este `<div>` entero del
+// árbol de AppShell y lo cuelga directo de `document.body`: ya no importa
+// en qué parte de la página se dispare el modal, ni qué contexto de
+// apilamiento tenga alrededor — siempre pinta por encima de todo.
 export function Modal({title, children, onClose}) {
-  return React.createElement('div', {
+  if (typeof document === 'undefined') return null;
+  return createPortal(React.createElement('div', {
     style:{ position:'fixed', inset:0, background:'var(--surface-overlay)', display:'flex', alignItems:'flex-end', justifyContent:'center', zIndex:50 }
   },
     React.createElement('div', {
@@ -12,5 +25,5 @@ export function Modal({title, children, onClose}) {
       ),
       children
     )
-  );
+  ), document.body);
 }

@@ -768,6 +768,13 @@ Se encontró revisando los logs de Vercel en vivo (`get_runtime_errors`/`get_run
 
 Para el feed de Inicio/Perfil, el dato ni siquiera existía: `recent_activity`/`profile_activity` arman cada respuesta a mano con `jsonb_build_object`, y su `'profiles'` anidado solo llevaba `'display_name'`. Migración 044 agrega `'avatar_url'` a esas 8 respuestas armadas a mano (4 ramas × 2 funciones) — sin tocar ninguna otra cosa: como `replies` ya era una columna `jsonb`, esto solo enriquece lo que hay adentro de ese jsonb, no cambia el `returns table(...)` de ninguna función.
 
+### El modal "Agregar" quedaba tapado por el tab bar
+
+**Bug: en el broche "+" de Tu camino, el botón "Publicar" del modal se veía como una tira naranja apenas asomando arriba del tab bar de abajo (Inicio/Recursos/Club/Perfil).** El componente compartido `Modal` (`src/design-system/components/feedback/Modal.jsx`, usado en TODOS los modales de la app — "Compartir" en Perfil, "Agregar" en Tu camino, los de editar cita/comentario/nota de voz, el de preguntas de capítulo, etc.) se montaba como un `<div position:fixed>` más, adentro del árbol normal de la página. Casi siempre alcanza, pero cuando el modal se dispara bien adentro de `AppShell` (como el broche "+", varios niveles de componentes más abajo), el tab bar de abajo (`position: sticky`, con su propio contexto de apilamiento) terminaba pintándose ENCIMA del modal en vez de abajo — tapando buena parte del botón principal.
+
+- **Arreglo: `Modal` ahora se monta con `createPortal` (`react-dom`), directo en `document.body`** — deja de vivir adentro del árbol de `AppShell` por completo, así que ya no importa en qué parte de la página se dispare ni qué contexto de apilamiento tenga alrededor: siempre pinta por encima de todo. Cambio en un solo archivo compartido, alcanza a los diez y pico de lugares que ya usaban `Modal` sin tocar ninguno de ellos.
+- `typeof document === 'undefined'` devuelve `null` antes de intentar el portal — nunca hace falta en la práctica (todo modal de esta app arranca cerrado y se abre recién con un click, ya del lado del cliente), pero deja el componente a salvo si alguna vez se renderizara server-side con `open` en `true` desde el arranque.
+
 ### Contenido editorial
 
 `editorial_items` alimenta las solapas Guías/Cursos de **Recursos**. No hay panel de administración: se carga y edita desde el **Table Editor de Supabase**. `is_published` controla qué se ve.
