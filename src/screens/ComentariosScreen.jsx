@@ -153,20 +153,12 @@ function CommentRow({ comment, book, clubName, isOwn, isAdmin, onEditQuote, onDe
 // puntos junto al nombre ofrece editarla (abre FinalReviewModal, precargada)
 // o borrarla. Debajo, Me gusta + Comentar y el hilo de respuestas — igual
 // que en cualquier otro comentario (EngagementBlock).
-function ReviewCard({ review, book, isOwn, onEdit, replies }) {
+function ReviewCard({ review, book, isOwn, onEdit, onDelete, replies }) {
   const [expanded, setExpanded] = useState(false);
-  const [pending, startTransition] = useTransition();
   const name = review.profiles?.display_name ?? 'Alguien';
 
-  function handleDelete() {
-    if (!window.confirm('¿Eliminar esta reseña? No se puede deshacer.')) return;
-    startTransition(async () => {
-      await deleteBookReview(review.id);
-    });
-  }
-
   const card = (
-    <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer', opacity: pending ? 0.6 : 1 }}>
+    <div onClick={() => setExpanded((e) => !e)} style={{ cursor: 'pointer' }}>
       <BookReviewCard title={review.title} body={review.body} coverUrl={book?.cover_url} expanded={expanded} />
     </div>
   );
@@ -184,7 +176,7 @@ function ReviewCard({ review, book, isOwn, onEdit, replies }) {
               editLabel="Editar reseña"
               onEdit={() => onEdit(review)}
               deleteLabel="Eliminar reseña"
-              onDelete={handleDelete}
+              onDelete={onDelete}
             />
           )}
         </div>
@@ -253,9 +245,30 @@ function ChapterComposerBar({ clubBookId, chapterId, book, myProfile }) {
 export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myProfileId, myProfile, isAdmin = false, initialChapterId }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
+  // Antes de esto, borrar acá dependía por completo de que revalidatePath
+  // (clubs.js/media.js) alcanzara a refrescar los props de esta pantalla —
+  // pasaba, pero no al toque: mientras tanto, el comentario/cita/nota de
+  // voz recién borrada se seguía viendo, como si no hubiera pasado nada,
+  // hasta actualizar la página a mano. `deletedIds` la saca de la vista al
+  // toque, del lado del cliente, sin esperar ningún round-trip extra — y
+  // el `toast` (mismo pill oscuro que ya usa ChapterPath para "Listo, vas
+  // por el Cap. N") confirma que de verdad se borró.
+  const [deletedIds, setDeletedIds] = useState(() => new Set());
+  const [toast, setToast] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = setTimeout(() => setToast(null), 2400);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   // Las respuestas (parent_comment_id no nulo) no son "un comentario más" en
   // ninguna de estas listas — se agrupan aparte y se anidan bajo su original.
-  const reviews = useMemo(() => comments.filter((c) => c.kind === 'review' && !c.parent_comment_id), [comments]);
+  const reviews = useMemo(
+    () => comments.filter((c) => c.kind === 'review' && !c.parent_comment_id && !deletedIds.has(c.id)),
+    [comments, deletedIds],
+  );
   const repliesByParent = useMemo(() => {
     const map = new Map();
     for (const c of comments) {
@@ -278,7 +291,9 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   const [editingVoice, setEditingVoice] = useState(null);
   const [, startDeleteTransition] = useTransition();
 
-  const visibleComments = chapterId ? comments.filter((c) => c.chapter_id === chapterId && !c.parent_comment_id) : [];
+  const visibleComments = chapterId
+    ? comments.filter((c) => c.chapter_id === chapterId && !c.parent_comment_id && !deletedIds.has(c.id))
+    : [];
 
   // Entrando desde un capítulo puntual (pastilla de Tu camino), el objetivo
   // es leer lo que ya se dijo de ESE capítulo y comentar si querés — nada
@@ -296,24 +311,44 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
     </>
   );
 
+  // Sacarlo de la vista (deletedIds) y el toast de confirmación son los
+  // mismos para los tres tipos — solo cambia qué Server Action se llama y
+  // qué dice el toast.
+  function afterDelete(commentId, result, successMessage) {
+    if (result?.error) {
+      setDeleteError(result.error);
+      return;
+    }
+    setDeleteError(null);
+    setDeletedIds((prev) => new Set(prev).add(commentId));
+    setToast(successMessage);
+  }
+
   function handleDeleteQuote(commentId) {
     if (!window.confirm('¿Eliminar esta cita? No se puede deshacer.')) return;
     startDeleteTransition(async () => {
-      await deleteQuote(commentId);
+      afterDelete(commentId, await deleteQuote(commentId), 'Cita eliminada');
     });
   }
 
   function handleDeleteComment(commentId) {
     if (!window.confirm('¿Eliminar este comentario? No se puede deshacer.')) return;
     startDeleteTransition(async () => {
-      await deleteComment(commentId);
+      afterDelete(commentId, await deleteComment(commentId), 'Comentario eliminado');
     });
   }
 
   function handleDeleteVoice(commentId) {
     if (!window.confirm('¿Eliminar esta nota de voz? No se puede deshacer.')) return;
     startDeleteTransition(async () => {
-      await deleteVoiceComment(commentId);
+      afterDelete(commentId, await deleteVoiceComment(commentId), 'Nota de voz eliminada');
+    });
+  }
+
+  function handleDeleteReview(reviewId) {
+    if (!window.confirm('¿Eliminar esta reseña? No se puede deshacer.')) return;
+    startDeleteTransition(async () => {
+      afterDelete(reviewId, await deleteBookReview(reviewId), 'Reseña eliminada');
     });
   }
 
@@ -324,6 +359,23 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-xl)', fontWeight: 600, color: 'var(--text-primary)' }}>Comentarios</div>
       </div>
 
+      {toast && (
+        <div
+          style={{
+            alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6,
+            background: 'var(--neutral-900)', color: 'var(--hero-cream)', fontSize: 'var(--fs-xs)', fontWeight: 600,
+            padding: '7px 12px', borderRadius: 'var(--radius-pill)', boxShadow: 'var(--shadow-md)',
+          }}
+        >
+          <Icon name="check" size={12} color="var(--success)" />
+          {toast}
+        </div>
+      )}
+
+      {deleteError && (
+        <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)' }}>{deleteError}</div>
+      )}
+
       {!cameFromChapterLink && reviews.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border-subtle)' }}>
           {reviews.map((review) => (
@@ -333,6 +385,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
               book={book}
               isOwn={review.profile_id === myProfileId}
               onEdit={setEditingReview}
+              onDelete={() => handleDeleteReview(review.id)}
               replies={repliesByParent.get(review.id) ?? []}
             />
           ))}
