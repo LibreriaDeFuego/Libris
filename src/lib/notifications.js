@@ -21,6 +21,11 @@ function describe(n) {
       };
     case 'post_comment':
       return { text: `${n.actor_name} comentó tu foto`, href: '/perfil' };
+    case 'moderation_delete':
+      return {
+        text: `Un administrador de ${n.club_name} borró algo que publicaste por no ajustarse a las dinámicas del club`,
+        href: n.chapter_id ? `/club/${n.club_id}/comentarios?capitulo=${n.chapter_id}` : `/club/${n.club_id}/comentarios`,
+      };
     default:
       return { text: n.actor_name, href: '/perfil' };
   }

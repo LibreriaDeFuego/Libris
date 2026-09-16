@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/requireUser';
 import { friendlyDbError } from '@/lib/friendlyError';
+import { isClubBookAdmin, logModerationDelete } from '@/lib/clubAdmin';
 
 const MAX_COVER_BYTES = 5 * 1024 * 1024;  // 5 MB
 // 2 MB — antes 10 MB. Ahora que VoiceRecorder graba a 32 kbps (pensado para
@@ -151,9 +152,13 @@ export async function updateVoiceComment(formData) {
   return { error: null };
 }
 
-// Borra tu propia nota de voz — la fila y también el archivo en Storage
-// (bucket privado "voice-notes"); acá "voice_url" ya es el path guardado
-// directamente (no una URL pública), a diferencia de fotos y citas.
+// Borra una nota de voz — la fila y también el archivo en Storage (bucket
+// privado "voice-notes"); acá "voice_url" ya es el path guardado
+// directamente (no una URL pública), a diferencia de fotos y citas. Quien
+// la grabó siempre puede borrar la propia; un administrador del club
+// también puede borrar la de otra persona (moderación — RLS ya lo permite,
+// migración 055), y en ese caso deja un registro (`logModerationDelete`)
+// para que notifications_feed le avise a quien la había publicado.
 export async function deleteVoiceComment(commentId) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
@@ -161,21 +166,32 @@ export async function deleteVoiceComment(commentId) {
 
   const { data: existing } = await supabase
     .from('comments')
-    .select('voice_url')
+    .select('profile_id, club_book_id, chapter_id, voice_url, voice_transcript')
     .eq('id', commentId)
-    .eq('profile_id', user.id)
     .eq('kind', 'voice')
     .maybeSingle();
+  if (!existing) return { error: 'Esta nota de voz ya no existe.' };
+
+  const isOwn = existing.profile_id === user.id;
+  if (!isOwn && !(await isClubBookAdmin(supabase, existing.club_book_id, user.id))) {
+    return { error: 'No tienes permiso para borrar esta nota de voz.' };
+  }
 
   const { error } = await supabase
     .from('comments')
     .delete()
     .eq('id', commentId)
-    .eq('profile_id', user.id)
     .eq('kind', 'voice');
   if (error) return { error: friendlyDbError(error) };
 
-  if (existing?.voice_url) {
+  if (!isOwn) {
+    await logModerationDelete(supabase, {
+      clubBookId: existing.club_book_id, chapterId: existing.chapter_id, kind: 'voice',
+      preview: existing.voice_transcript || 'una nota de voz', targetProfileId: existing.profile_id, actorProfileId: user.id,
+    });
+  }
+
+  if (existing.voice_url) {
     await supabase.storage.from('voice-notes').remove([existing.voice_url]);
   }
 

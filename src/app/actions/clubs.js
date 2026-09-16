@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/requireUser';
 import { friendlyDbError } from '@/lib/friendlyError';
 import { orderChapters } from '@/lib/orderChapters';
+import { isClubBookAdmin, logModerationDelete } from '@/lib/clubAdmin';
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const MAX_CHAPTERS = 300;
@@ -765,9 +766,13 @@ export async function updateQuote(formData) {
   return { error: null };
 }
 
-// Borra tu propia cita — la fila y, si tenía imagen guardada, también el
-// archivo en Storage (mismo criterio que las fotos: acá la cita es dueña de
-// un único archivo propio, no compartido con nada más).
+// Borra una cita — la fila y, si tenía imagen guardada, también el archivo
+// en Storage (mismo criterio que las fotos: acá la cita es dueña de un
+// único archivo propio, no compartido con nada más). Quien la escribió
+// siempre puede borrar la propia; un administrador del club también puede
+// borrar la de otra persona (moderación — RLS ya lo permite, migración
+// 055), y en ese caso deja un registro (`logModerationDelete`) para que
+// notifications_feed le avise a quien la había publicado.
 export async function deleteQuote(commentId) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
@@ -775,23 +780,34 @@ export async function deleteQuote(commentId) {
 
   const { data: existing } = await supabase
     .from('comments')
-    .select('quote_image_url')
+    .select('profile_id, club_book_id, chapter_id, body, quote_image_url')
     .eq('id', commentId)
-    .eq('profile_id', user.id)
     .eq('kind', 'quote')
     .maybeSingle();
+  if (!existing) return { error: 'Esta cita ya no existe.' };
+
+  const isOwn = existing.profile_id === user.id;
+  if (!isOwn && !(await isClubBookAdmin(supabase, existing.club_book_id, user.id))) {
+    return { error: 'No tienes permiso para borrar esta cita.' };
+  }
 
   const { error } = await supabase
     .from('comments')
     .delete()
     .eq('id', commentId)
-    .eq('profile_id', user.id)
     .eq('kind', 'quote');
   if (error) return { error: friendlyDbError(error) };
 
-  const path = existing?.quote_image_url?.split('/quote-cards/')[1];
+  const path = existing.quote_image_url?.split('/quote-cards/')[1];
   if (path) {
     await supabase.storage.from('quote-cards').remove([path]);
+  }
+
+  if (!isOwn) {
+    await logModerationDelete(supabase, {
+      clubBookId: existing.club_book_id, chapterId: existing.chapter_id, kind: 'quote',
+      preview: existing.body, targetProfileId: existing.profile_id, actorProfileId: user.id,
+    });
   }
 
   revalidatePath('/', 'layout');
@@ -822,17 +838,34 @@ export async function updateComment(formData) {
   return { error: null };
 }
 
-// Borra tu propio comentario de capítulo — la fila y, si tenía fotos
-// adjuntas (carrusel, migración 042), también los archivos en
-// "comment-photos", para no dejarlos huérfanos (mismo criterio que
-// deletePost con "post-photos"). Las filas de "comment_photos" se van
-// solas (on delete cascade), pero eso no borra el archivo real en Storage
-// — eso hay que pedirlo aparte, y antes de borrar la fila (después ya no
-// hay forma de saber qué paths tenía).
+// Borra un comentario de capítulo — la fila y, si tenía fotos adjuntas
+// (carrusel, migración 042), también los archivos en "comment-photos",
+// para no dejarlos huérfanos (mismo criterio que deletePost con
+// "post-photos"). Las filas de "comment_photos" se van solas (on delete
+// cascade), pero eso no borra el archivo real en Storage — eso hay que
+// pedirlo aparte, y antes de borrar la fila (después ya no hay forma de
+// saber qué paths tenía). Quien lo escribió siempre puede borrar el propio;
+// un administrador del club también puede borrar el de otra persona
+// (moderación — RLS ya lo permite, migración 055), y en ese caso deja un
+// registro (`logModerationDelete`) para que notifications_feed le avise a
+// quien lo había publicado.
 export async function deleteComment(commentId) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
   if (!commentId) return { error: 'Falta el comentario.' };
+
+  const { data: existing } = await supabase
+    .from('comments')
+    .select('profile_id, club_book_id, chapter_id, body')
+    .eq('id', commentId)
+    .eq('kind', 'text')
+    .maybeSingle();
+  if (!existing) return { error: 'Este comentario ya no existe.' };
+
+  const isOwn = existing.profile_id === user.id;
+  if (!isOwn && !(await isClubBookAdmin(supabase, existing.club_book_id, user.id))) {
+    return { error: 'No tienes permiso para borrar este comentario.' };
+  }
 
   const { data: photos } = await supabase
     .from('comment_photos')
@@ -843,12 +876,18 @@ export async function deleteComment(commentId) {
     .from('comments')
     .delete()
     .eq('id', commentId)
-    .eq('profile_id', user.id)
     .eq('kind', 'text');
   if (error) return { error: friendlyDbError(error) };
 
   if (photos?.length) {
     await supabase.storage.from('comment-photos').remove(photos.map((p) => p.path));
+  }
+
+  if (!isOwn) {
+    await logModerationDelete(supabase, {
+      clubBookId: existing.club_book_id, chapterId: existing.chapter_id, kind: 'text',
+      preview: existing.body || 'una foto o GIF', targetProfileId: existing.profile_id, actorProfileId: user.id,
+    });
   }
 
   revalidatePath('/', 'layout');

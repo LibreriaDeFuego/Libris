@@ -93,6 +93,7 @@ export default async function Page({ params, searchParams }) {
       clubName={club.name}
       myProfileId={user.id}
       myProfile={myProfile}
+      isAdmin={club.role === 'admin'}
       initialChapterId={capitulo ?? null}
     />
   );

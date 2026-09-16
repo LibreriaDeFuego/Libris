@@ -45,7 +45,16 @@ const TEXT_LINE_CLAMP = 5;
 // para desplegar si el texto (comentario o cita) es largo — antes esta
 // pantalla mostraba TODO el texto siempre, sin cortar nada; ahora, tocar
 // el bloque lo despliega completo, igual que en el feed.
-function CommentRow({ comment, book, clubName, isOwn, onEditQuote, onDeleteQuote, onEditComment, onDeleteComment, onEditVoice, onDeleteVoice, replies, canShare }) {
+//
+// Moderación (migración 055) — un administrador del club ve el mismo menú
+// de 3 puntos en el comentario/cita/nota de voz de CUALQUIERA, no solo en
+// el propio (`canModerate = isAdmin && !isOwn`), pero solo con "Eliminar"
+// — nunca "Editar" contenido ajeno, eso sigue siendo únicamente de quien
+// lo escribió. `onDeleteX` ya sirve para los dos casos: `deleteComment`/
+// `deleteQuote`/`deleteVoiceComment` (clubs.js/media.js) chequean del lado
+// del servidor si sos el dueño o admin del club antes de borrar.
+function CommentRow({ comment, book, clubName, isOwn, isAdmin, onEditQuote, onDeleteQuote, onEditComment, onDeleteComment, onEditVoice, onDeleteVoice, replies, canShare }) {
+  const canModerate = isAdmin && !isOwn;
   const [expanded, setExpanded] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
   const textRef = useRef(null);
@@ -114,14 +123,14 @@ function CommentRow({ comment, book, clubName, isOwn, onEditQuote, onDeleteQuote
             <span style={{ fontWeight: 700 }}>{name}</span>{' '}
             <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(comment.created_at)}</span>
           </span>
-          {isOwn && isQuote && (
-            <PostMenu editLabel="Editar cita" onEdit={onEditQuote} deleteLabel="Eliminar cita" onDelete={onDeleteQuote} />
+          {(isOwn || canModerate) && isQuote && (
+            <PostMenu editLabel="Editar cita" onEdit={isOwn ? onEditQuote : undefined} deleteLabel="Eliminar cita" onDelete={onDeleteQuote} />
           )}
-          {isOwn && comment.kind === 'text' && (
-            <PostMenu editLabel="Editar comentario" onEdit={onEditComment} deleteLabel="Eliminar comentario" onDelete={onDeleteComment} />
+          {(isOwn || canModerate) && comment.kind === 'text' && (
+            <PostMenu editLabel="Editar comentario" onEdit={isOwn ? onEditComment : undefined} deleteLabel="Eliminar comentario" onDelete={onDeleteComment} />
           )}
-          {isOwn && isVoice && (
-            <PostMenu editLabel="Editar nota de voz" onEdit={onEditVoice} deleteLabel="Eliminar nota de voz" onDelete={onDeleteVoice} />
+          {(isOwn || canModerate) && isVoice && (
+            <PostMenu editLabel="Editar nota de voz" onEdit={isOwn ? onEditVoice : undefined} deleteLabel="Eliminar nota de voz" onDelete={onDeleteVoice} />
           )}
         </div>
         {comment.is_spoiler ? <SpoilerBlock>{body}</SpoilerBlock> : body}
@@ -241,7 +250,7 @@ function ChapterComposerBar({ clubBookId, chapterId, book, myProfile }) {
 // club los ve. "Compartir" es aparte: solo aparece en tus propios
 // comentarios de capítulo y notas de voz (reseñas/citas ya aparecen
 // siempre en Inicio, no necesitan esto) y solo tú lo ves.
-export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myProfileId, myProfile, initialChapterId }) {
+export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myProfileId, myProfile, isAdmin = false, initialChapterId }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
   // Las respuestas (parent_comment_id no nulo) no son "un comentario más" en
@@ -355,6 +364,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
                   book={book}
                   clubName={clubName}
                   isOwn={comment.profile_id === myProfileId}
+                  isAdmin={isAdmin}
                   onEditQuote={() => setEditingQuote(comment)}
                   onDeleteQuote={() => handleDeleteQuote(comment.id)}
                   onEditComment={() => setEditingComment(comment)}
