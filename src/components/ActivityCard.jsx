@@ -91,6 +91,31 @@ function formatDuration(seconds) {
   return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
+// "Ver el resto de los comentarios en el club" asume que el contenido
+// sigue siendo del libro que el club está leyendo ahora — Comentarios del
+// club siempre muestra el libro ACTIVO (getActiveClubBook), nunca uno que
+// ya se dejó (migración 056, "Empezar un libro nuevo"). Si esta fila es de
+// un libro anterior (is_current_book === false, migración 057), no hay a
+// dónde llevar: se muestra un aviso en su lugar, sin link.
+function ClubCommentsLink({ href, isCurrentBook }) {
+  if (isCurrentBook === false) {
+    return (
+      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>
+        Es de un libro anterior del club — ya no se puede abrir en Comentarios.
+      </div>
+    );
+  }
+  return (
+    <Link
+      href={href}
+      style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
+    >
+      Ver el resto de los comentarios en el club
+      <Icon name="arrow-right" size={12} color="var(--text-link)" />
+    </Link>
+  );
+}
+
 // Repostear (migración 039) — reenviar la publicación de OTRA persona a tu
 // feed, con RepostButton (ícono+número, mismo trato que LikeButton) en la
 // fila de acciones. Cuando la tarjeta llega marcada como repost
@@ -290,13 +315,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
               compact
             />
             {expanded && canOpenClub && (
-              <Link
-                href={`/club/${activity.club_id}/comentarios`}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
-              >
-                Ver el resto de los comentarios en el club
-                <Icon name="arrow-right" size={12} color="var(--text-link)" />
-              </Link>
+              <ClubCommentsLink href={`/club/${activity.club_id}/comentarios`} isCurrentBook={activity.is_current_book} />
             )}
           </div>
         </div>
@@ -462,13 +481,10 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
             />
           )}
           {expanded && canOpenClub && !isPhoto && (
-            <Link
+            <ClubCommentsLink
               href={activity.chapter_id ? `/club/${activity.club_id}/comentarios?capitulo=${activity.chapter_id}` : `/club/${activity.club_id}/comentarios`}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-link)' }}
-            >
-              Ver el resto de los comentarios en el club
-              <Icon name="arrow-right" size={12} color="var(--text-link)" />
-            </Link>
+              isCurrentBook={activity.is_current_book}
+            />
           )}
 
           {editingPhoto && (
