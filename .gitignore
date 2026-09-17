@@ -40,3 +40,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Android (TWA, migración 059) — bubblewrap regenera todo esto en CI a
+# partir de android/twa-manifest.json; nada de esto se versiona, y la
+# clave de firma NUNCA va al repo (vive como secret de GitHub Actions).
+/android/app/
+/android/gradle/
+/android/gradlew
+/android/gradlew.bat
+/android/build.gradle
+/android/settings.gradle
+/android/*.keystore
+/android/manifest-checksum.txt
+/android/*.aab
+/android/*.apk

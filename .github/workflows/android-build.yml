@@ -1,0 +1,75 @@
+name: Android (TWA) build
+
+# Migración 059 — arma el paquete de Android (.aab, para subir a Play
+# Console) a partir de la PWA ya publicada en libris.cl, envuelta con
+# Bubblewrap (Trusted Web Activity). Corre acá, NO en el entorno de
+# Claude Code — ese entorno bloquea el acceso a dl.google.com (donde vive
+# el Android SDK), así que nunca podría bajarlo. Los runners de GitHub sí
+# tienen internet completo.
+#
+# Manual a propósito (workflow_dispatch, no en cada push): armar el .aab
+# no hace falta en cada cambio de la app — el contenido de la PWA se
+# actualiza solo, en vivo, cada vez que Vercel despliega. Solo hace falta
+# correr esto de nuevo si cambia algo del EMPAQUETADO nativo (ícono,
+# nombre, colores, versión) — eso vive en android/twa-manifest.json.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      # Bubblewrap guarda, la primera vez que corre en una máquina, qué
+      # JDK/SDK usar en ~/.bubblewrap/config.json — sin esto, pregunta de
+      # forma interactiva (si instalarlos él mismo) y un runner de CI no
+      # tiene con quién hablar, así que se quedaría esperando para
+      # siempre. Se lo dejamos ya resuelto, apuntando a lo que acaban de
+      # instalar los dos pasos de arriba.
+      - name: Configurar Bubblewrap (sin prompts)
+        run: |
+          mkdir -p ~/.bubblewrap
+          SDK_PATH="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          echo "{\"jdkPath\":\"$JAVA_HOME\",\"androidSdkPath\":\"$SDK_PATH\"}" > ~/.bubblewrap/config.json
+          cat ~/.bubblewrap/config.json
+
+      # La clave de firma NUNCA vive en el repo — se restaura acá desde un
+      # secret (ver instrucciones más abajo para cargarlo la primera vez).
+      - name: Restaurar la clave de firma
+        working-directory: android
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android.keystore
+
+      # Genera el proyecto Android (carpeta app/, gradlew, etc.) desde
+      # android/twa-manifest.json — se regenera de cero en cada corrida,
+      # por eso nada de esto se versiona (ver .gitignore). skipVersionUpgrade
+      # evita que pregunte por un nombre de versión nuevo cada vez.
+      - name: Generar el proyecto Android
+        working-directory: android
+        run: npx -y @bubblewrap/cli update --skipVersionUpgrade
+
+      # Con BUBBLEWRAP_KEYSTORE_PASSWORD/BUBBLEWRAP_KEY_PASSWORD puestas,
+      # build no pregunta nada — están documentadas para este uso exacto
+      # (CI) en el propio README de @bubblewrap/cli. Como la clave es
+      # PKCS12, las dos son la misma contraseña.
+      - name: Compilar y firmar (.aab + .apk)
+        working-directory: android
+        env:
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: npx -y @bubblewrap/cli build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libris-android
+          path: |
+            android/app-release-bundle.aab
+            android/app-release-signed.apk
+          retention-days: 90

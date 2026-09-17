@@ -1,0 +1,42 @@
+{
+  "packageId": "cl.libris.app",
+  "host": "libris.cl",
+  "name": "Libris — Clubes de lectura",
+  "launcherName": "Libris",
+  "display": "standalone",
+  "themeColor": "#FF4F32",
+  "themeColorDark": "#000000",
+  "navigationColor": "#000000",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#00000000",
+  "navigationDividerColorDark": "#00000000",
+  "backgroundColor": "#FFF8EC",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://libris.cl/icons/icon-512.png",
+  "maskableIconUrl": "https://libris.cl/icons/icon-512-maskable.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "libris"
+  },
+  "appVersionCode": 1,
+  "appVersion": "1.0.0",
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://libris.cl/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://libris.cl/",
+  "minSdkVersion": 21,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": []
+}
