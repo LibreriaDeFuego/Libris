@@ -48,9 +48,13 @@ function EditProfileFields({ profile, onClose }) {
   );
 }
 
-// El menú de los tres puntos: Editar perfil / Compartir perfil. Compartir
-// sigue el mismo patrón que InviteButton — menú nativo del celular si existe,
-// si no copia el link (con aviso) o, como último recurso, un prompt.
+// El menú de los tres puntos: Editar perfil / Compartir perfil / Privacidad
+// / Cerrar sesión. Compartir sigue el mismo patrón que InviteButton — menú
+// nativo del celular si existe, si no copia el link (con aviso) o, como
+// último recurso, un prompt. "Privacidad" (`/privacidad`, pública, sin
+// sesión) se agregó acá para que la política de privacidad sea encontrable
+// DESDE ADENTRO de la app, no solo desde el link de la ficha de Play
+// Store/App Store — lo piden las dos tiendas.
 function ProfileMenu({ profileId, onEdit }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -106,6 +110,10 @@ function ProfileMenu({ profileId, onEdit }) {
             <button type="button" style={itemStyle} onClick={handleShare}>
               <Icon name="share-2" size={14} /> Compartir perfil
             </button>
+            <div style={{ height: 1, background: 'var(--border-subtle)' }} />
+            <Link href="/privacidad" style={{ ...itemStyle, textDecoration: 'none' }} onClick={() => setOpen(false)}>
+              <Icon name="shield" size={14} /> Privacidad
+            </Link>
             <div style={{ height: 1, background: 'var(--border-subtle)' }} />
             <form action={signOut}>
               <button type="submit" style={itemStyle}>
