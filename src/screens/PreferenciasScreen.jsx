@@ -12,6 +12,7 @@ import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { CoverUploader } from '@/components/CoverUploader';
 import { VisibilityPicker } from '@/components/VisibilityOption';
 import { PlaceAutocompleteInput } from '@/components/PlaceAutocompleteInput';
+import { StartNewBookModal } from '@/screens/StartNewBookModal.jsx';
 
 const initialState = { error: null };
 
@@ -174,6 +175,7 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [leaveError, setLeaveError] = useState(null);
   const [leavePending, startLeave] = useTransition();
+  const [showStartNewBook, setShowStartNewBook] = useState(false);
 
   const memberCount = members.length;
   const adminCount = members.filter((m) => m.role === 'admin').length;
@@ -276,8 +278,18 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
                     Gestionar capítulos
                   </Button>
                 </Link>
+                {isAdmin && (
+                  <Button variant="secondary" size="md" type="button" onClick={() => setShowStartNewBook(true)}>
+                    <Icon name="book-open" size={15} />
+                    Empezar un libro nuevo
+                  </Button>
+                )}
               </div>
             </Section>
+          )}
+
+          {showStartNewBook && (
+            <StartNewBookModal clubId={club.id} currentBookTitle={book?.title} onClose={() => setShowStartNewBook(false)} />
           )}
 
           {state?.error && (

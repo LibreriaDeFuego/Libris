@@ -103,6 +103,76 @@ export async function createClub(prevState, formData) {
   redirect('/');
 }
 
+// Cierra el libro en curso del club y arranca uno nuevo — mismos tres
+// campos que "Crear club" (título, autor, cantidad de capítulos). El
+// libro que se deja se ARCHIVA (is_active = false, migración 056): sus
+// comentarios, el progreso de cada persona y sus preguntas de capítulo
+// quedan guardados tal cual, nada se borra — pero dejan de verse en Tu
+// camino/Comentarios apenas arranca el nuevo (todavía no hay ninguna
+// pantalla para volver a ver un libro "viejo" del club).
+//
+// A diferencia de `addChapter` (que confía del todo en RLS), acá SÍ se
+// chequea admin del lado del servidor — cerrar el libro de todo un club
+// es bastante más grande que sumar un capítulo. El orden importa para
+// fallar lo más seguro posible (no es atómico, mismo trade-off aceptado
+// que ya tiene `createClub`): primero se arma el libro nuevo completo
+// (libro + club_books + capítulos) y RECIÉN AHÍ se cierra el viejo — si
+// algo falla a mitad de camino, el club se queda con el libro de siempre
+// activo, nunca sin ninguno.
+export async function startNewClubBook(prevState, formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const clubId = formData.get('clubId')?.toString();
+  const bookTitle = formData.get('bookTitle')?.toString().trim();
+  const bookAuthor = formData.get('bookAuthor')?.toString().trim();
+  if (!clubId || !bookTitle || !bookAuthor) {
+    return { error: 'Completa el título y el autor del libro nuevo.' };
+  }
+
+  const { data: membership } = await supabase
+    .from('club_members')
+    .select('role')
+    .eq('club_id', clubId)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+  if (membership?.role !== 'admin') {
+    return { error: 'Solo un administrador puede empezar un libro nuevo.' };
+  }
+
+  const parsedChapters = parseInt(formData.get('chapterCount')?.toString() ?? '', 10);
+  const chapterCount = Number.isFinite(parsedChapters)
+    ? Math.min(Math.max(parsedChapters, 1), MAX_CHAPTERS)
+    : 1;
+
+  const book = await findOrCreateBook(supabase, bookTitle, bookAuthor);
+  if (book.error) return { error: book.error };
+
+  const { data: clubBook, error: clubBookError } = await supabase
+    .from('club_books')
+    .insert({ club_id: clubId, book_id: book.id, is_active: true })
+    .select('id')
+    .single();
+  if (clubBookError) return { error: friendlyDbError(clubBookError) };
+
+  const { error: chapterError } = await supabase
+    .from('chapters')
+    .insert(chapterRows(clubBook.id, 1, chapterCount));
+  if (chapterError) return { error: friendlyDbError(chapterError) };
+
+  // Recién acá se cierra lo anterior — todo lo demás ya salió bien.
+  const { error: closeError } = await supabase
+    .from('club_books')
+    .update({ is_active: false })
+    .eq('club_id', clubId)
+    .eq('is_active', true)
+    .neq('id', clubBook.id);
+  if (closeError) return { error: friendlyDbError(closeError) };
+
+  revalidatePath('/', 'layout');
+  redirect(`/club/${clubId}`);
+}
+
 // Agrega un capítulo al libro activo. Solo administradores (lo impone RLS).
 // Sin volumen ni número explícitos (el chip "+ Nuevo" del modal de progreso),
 // sigue la numeración simple de siempre. Con volumen y/o número (la pantalla
