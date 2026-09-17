@@ -53,8 +53,9 @@ const TEXT_LINE_CLAMP = 5;
 // lo escribió. `onDeleteX` ya sirve para los dos casos: `deleteComment`/
 // `deleteQuote`/`deleteVoiceComment` (clubs.js/media.js) chequean del lado
 // del servidor si sos el dueño o admin del club antes de borrar.
-function CommentRow({ comment, book, clubName, isOwn, isAdmin, onEditQuote, onDeleteQuote, onEditComment, onDeleteComment, onEditVoice, onDeleteVoice, replies, canShare }) {
-  const canModerate = isAdmin && !isOwn;
+function CommentRow({ comment, book, clubName, isOwn, isAdmin, onEditQuote, onDeleteQuote, onEditComment, onDeleteComment, onEditVoice, onDeleteVoice, replies, canShare, readOnly }) {
+  const canModerate = isAdmin && !isOwn && !readOnly;
+  const canEditOwn = isOwn && !readOnly;
   const [expanded, setExpanded] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
   const textRef = useRef(null);
@@ -123,14 +124,14 @@ function CommentRow({ comment, book, clubName, isOwn, isAdmin, onEditQuote, onDe
             <span style={{ fontWeight: 700 }}>{name}</span>{' '}
             <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>· {formatRelativeTime(comment.created_at)}</span>
           </span>
-          {(isOwn || canModerate) && isQuote && (
-            <PostMenu editLabel="Editar cita" onEdit={isOwn ? onEditQuote : undefined} deleteLabel="Eliminar cita" onDelete={onDeleteQuote} />
+          {(canEditOwn || canModerate) && isQuote && (
+            <PostMenu editLabel="Editar cita" onEdit={canEditOwn ? onEditQuote : undefined} deleteLabel="Eliminar cita" onDelete={onDeleteQuote} />
           )}
-          {(isOwn || canModerate) && comment.kind === 'text' && (
-            <PostMenu editLabel="Editar comentario" onEdit={isOwn ? onEditComment : undefined} deleteLabel="Eliminar comentario" onDelete={onDeleteComment} />
+          {(canEditOwn || canModerate) && comment.kind === 'text' && (
+            <PostMenu editLabel="Editar comentario" onEdit={canEditOwn ? onEditComment : undefined} deleteLabel="Eliminar comentario" onDelete={onDeleteComment} />
           )}
-          {(isOwn || canModerate) && isVoice && (
-            <PostMenu editLabel="Editar nota de voz" onEdit={isOwn ? onEditVoice : undefined} deleteLabel="Eliminar nota de voz" onDelete={onDeleteVoice} />
+          {(canEditOwn || canModerate) && isVoice && (
+            <PostMenu editLabel="Editar nota de voz" onEdit={canEditOwn ? onEditVoice : undefined} deleteLabel="Eliminar nota de voz" onDelete={onDeleteVoice} />
           )}
         </div>
         {comment.is_spoiler ? <SpoilerBlock>{body}</SpoilerBlock> : body}
@@ -139,7 +140,8 @@ function CommentRow({ comment, book, clubName, isOwn, isAdmin, onEditQuote, onDe
           liked={comment.liked_by_me}
           likeCount={comment.like_count}
           replies={replies}
-          share={canShare ? { shared: comment.shared_to_feed, onToggle: () => toggleShareToFeed(comment.id) } : undefined}
+          share={canShare && !readOnly ? { shared: comment.shared_to_feed, onToggle: () => toggleShareToFeed(comment.id) } : undefined}
+          readOnly={readOnly}
         />
       </div>
     </div>
@@ -153,7 +155,13 @@ function CommentRow({ comment, book, clubName, isOwn, isAdmin, onEditQuote, onDe
 // puntos junto al nombre ofrece editarla (abre FinalReviewModal, precargada)
 // o borrarla. Debajo, Me gusta + Comentar y el hilo de respuestas — igual
 // que en cualquier otro comentario (EngagementBlock).
-function ReviewCard({ review, book, isOwn, onEdit, onDelete, replies }) {
+//
+// A propósito, ESTE menú no se apaga con `readOnly` (migración 058, libro
+// anterior del club) — la propia reseña sigue pudiéndose editar/borrar
+// aunque el resto de la pantalla quede de solo lectura; solo su hilo de
+// respuestas (EngagementBlock) se congela, igual que el del resto de los
+// comentarios.
+function ReviewCard({ review, book, isOwn, onEdit, onDelete, replies, readOnly }) {
   const [expanded, setExpanded] = useState(false);
   const name = review.profiles?.display_name ?? 'Alguien';
 
@@ -181,7 +189,7 @@ function ReviewCard({ review, book, isOwn, onEdit, onDelete, replies }) {
           )}
         </div>
         {review.is_spoiler ? <SpoilerBlock>{card}</SpoilerBlock> : card}
-        <EngagementBlock commentId={review.id} liked={review.liked_by_me} likeCount={review.like_count} replies={replies} />
+        <EngagementBlock commentId={review.id} liked={review.liked_by_me} likeCount={review.like_count} replies={replies} readOnly={readOnly} />
       </div>
     </div>
   );
@@ -242,7 +250,16 @@ function ChapterComposerBar({ clubBookId, chapterId, book, myProfile }) {
 // club los ve. "Compartir" es aparte: solo aparece en tus propios
 // comentarios de capítulo y notas de voz (reseñas/citas ya aparecen
 // siempre en Inicio, no necesitan esto) y solo tú lo ves.
-export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myProfileId, myProfile, isAdmin = false, initialChapterId }) {
+// `readOnly` (migración 058) — solo lo manda la página cuando se pidió un
+// libro puntual (?libro=) que el club ya dejó atrás: se puede seguir
+// viendo todo lo que ya se dijo (y tu propia reseña, si la escribiste,
+// se puede seguir editando/borrando — ReviewCard, arriba), pero desaparece
+// toda forma de agregar algo nuevo (la barra/formulario de siempre) y de
+// editar o borrar cualquier otra cosa (cita, comentario, nota de voz,
+// aunque sea tuya) o de responder en su hilo (EngagementBlock). Entrando
+// sin ese parámetro (el libro activo de siempre) esta pantalla se comporta
+// exactamente igual que antes.
+export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myProfileId, myProfile, isAdmin = false, initialChapterId, readOnly = false }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
   // Antes de esto, borrar acá dependía por completo de que revalidatePath
@@ -387,6 +404,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
               onEdit={setEditingReview}
               onDelete={() => handleDeleteReview(review.id)}
               replies={repliesByParent.get(review.id) ?? []}
+              readOnly={readOnly}
             />
           ))}
         </div>
@@ -406,7 +424,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
             </div>
           )}
 
-          {!cameFromChapterLink && composeBlock}
+          {!cameFromChapterLink && !readOnly && composeBlock}
 
           {visibleComments.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border-subtle)' }}>
@@ -426,6 +444,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
                   onDeleteVoice={() => handleDeleteVoice(comment.id)}
                   replies={repliesByParent.get(comment.id) ?? []}
                   canShare={comment.profile_id === myProfileId && (comment.kind === 'text' || comment.kind === 'voice')}
+                  readOnly={readOnly}
                 />
               ))}
             </div>
@@ -437,7 +456,7 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
             </div>
           )}
 
-          {cameFromChapterLink && (
+          {cameFromChapterLink && !readOnly && (
             <div
               style={{
                 position: 'sticky', bottom: 'calc(70px + env(safe-area-inset-bottom, 8px))',

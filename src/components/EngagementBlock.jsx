@@ -62,16 +62,18 @@ function ReplyRow({ reply, indented, onReply }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
           <LikeButton liked={reply.liked_by_me} count={reply.like_count} onToggle={() => toggleCommentLike(reply.id)} size={14} />
-          <button
-            type="button"
-            onClick={() => onReply(name, reply.id)}
-            style={{
-              padding: '8px 10px', border: 'none', background: 'none', cursor: 'pointer',
-              fontFamily: 'var(--font-body)', fontSize: 'var(--fs-2xs)', fontWeight: 600, color: 'var(--text-tertiary)',
-            }}
-          >
-            Responder
-          </button>
+          {onReply && (
+            <button
+              type="button"
+              onClick={() => onReply(name, reply.id)}
+              style={{
+                padding: '8px 10px', border: 'none', background: 'none', cursor: 'pointer',
+                fontFamily: 'var(--font-body)', fontSize: 'var(--fs-2xs)', fontWeight: 600, color: 'var(--text-tertiary)',
+              }}
+            >
+              Responder
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -141,7 +143,14 @@ const PREVIEW_COUNT = 2;
 // la tarjeta es un repost: cualquier respuesta que se escriba ahí queda
 // scopeada a ESE repost puntual, no al contenido original (ver
 // postReply). ComentariosScreen nunca lo pasa — ahí no hay reposts.
-export function EngagementBlock({ commentId, liked, likeCount, replies, share, repost, repostId, compact = false }) {
+//
+// `readOnly` (migración 058) — solo lo pasa ComentariosScreen, viendo un
+// libro que el club ya dejó atrás: se puede seguir viendo el hilo de
+// respuestas que ya había (con su propio "me gusta", que no es "agregar"
+// nada nuevo), pero "Comentar" desaparece del todo — nada de responder acá
+// ni desde el "Responder" de cada respuesta puesta. Solo aplica a la
+// versión sin `compact` — ComentariosScreen es la única que no la usa.
+export function EngagementBlock({ commentId, liked, likeCount, replies, share, repost, repostId, compact = false, readOnly = false }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [body, setBody] = useState('');
@@ -267,18 +276,20 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share, r
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <LikeButton liked={liked} count={likeCount} onToggle={() => toggleCommentLike(commentId)} />
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); if (replyOpen) closeReply(); else openReply(null, null); }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', border: 'none',
-            borderRadius: 'var(--radius-pill)', background: replyOpen ? 'var(--surface-sunken)' : 'none',
-            cursor: 'pointer', fontFamily: 'var(--font-body)',
-          }}
-        >
-          <Icon name="message-circle" size={18} color="var(--text-tertiary)" />
-          <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>Comentar</span>
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); if (replyOpen) closeReply(); else openReply(null, null); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', border: 'none',
+              borderRadius: 'var(--radius-pill)', background: replyOpen ? 'var(--surface-sunken)' : 'none',
+              cursor: 'pointer', fontFamily: 'var(--font-body)',
+            }}
+          >
+            <Icon name="message-circle" size={18} color="var(--text-tertiary)" />
+            <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>Comentar</span>
+          </button>
+        )}
         {share && <ShareButton shared={share.shared} onToggle={share.onToggle} />}
       </div>
 
@@ -286,9 +297,9 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share, r
         <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 38 }}>
           {groups.map(({ root, children }) => (
             <div key={root.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <ReplyRow reply={root} indented={false} onReply={openReply} />
+              <ReplyRow reply={root} indented={false} onReply={readOnly ? undefined : openReply} />
               {children.map((child) => (
-                <ReplyRow key={child.id} reply={child} indented onReply={openReply} />
+                <ReplyRow key={child.id} reply={child} indented onReply={readOnly ? undefined : openReply} />
               ))}
             </div>
           ))}

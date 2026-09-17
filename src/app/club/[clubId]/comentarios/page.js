@@ -8,7 +8,7 @@ export const metadata = { title: 'Comentarios · Libris' };
 
 export default async function Page({ params, searchParams }) {
   const { clubId } = await params;
-  const { capitulo } = await searchParams;
+  const { capitulo, libro } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
@@ -17,8 +17,28 @@ export default async function Page({ params, searchParams }) {
   const club = clubs.find((c) => c.id === clubId);
   if (!club) notFound();
 
-  const clubBook = await getActiveClubBook(supabase, clubId);
-  if (!clubBook) redirect(`/club/${clubId}`);
+  // "?libro=" (PastChapterPath, migración 058) pide un club_book PUNTUAL,
+  // en vez del activo de siempre — así se puede ver un libro que el club
+  // ya dejó atrás. `readOnly` sale de si ESE libro sigue activo o no, no
+  // de si vino el parámetro: un link viejo a un libro que mientras tanto
+  // volvió a quedar activo (no debería pasar, pero por las dudas) se
+  // comporta igual que entrar sin parámetro.
+  let clubBook;
+  let readOnly = false;
+  if (libro) {
+    const { data: requested } = await supabase
+      .from('club_books')
+      .select('id, club_id, book_id, is_active, books(id, title, author, cover_url)')
+      .eq('id', libro)
+      .eq('club_id', clubId)
+      .maybeSingle();
+    if (!requested) redirect(`/club/${clubId}`);
+    clubBook = requested;
+    readOnly = !requested.is_active;
+  } else {
+    clubBook = await getActiveClubBook(supabase, clubId);
+    if (!clubBook) redirect(`/club/${clubId}`);
+  }
 
   const [{ data: comments, error: commentsError }, { data: chapters }, { data: volumes }, { data: myProfile }] = await Promise.all([
     supabase
@@ -95,6 +115,7 @@ export default async function Page({ params, searchParams }) {
       myProfile={myProfile}
       isAdmin={club.role === 'admin'}
       initialChapterId={capitulo ?? null}
+      readOnly={readOnly}
     />
   );
 }

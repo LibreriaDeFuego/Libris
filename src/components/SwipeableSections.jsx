@@ -1,17 +1,34 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-// Carrusel horizontal entre secciones — "Tu camino" y "Actividad del club",
-// debajo del encabezado de un club puntual. Scroll nativo con snap (funciona
-// con el gesto de deslizar de toda la vida, sin librería), más los puntitos
-// de abajo por si alguien no descubre que se puede deslizar — se pueden
-// tocar para saltar directo a esa sección.
-export function SwipeableSections({ sections }) {
+// Carrusel horizontal entre secciones — "Libros anteriores" (si el club ya
+// tuvo alguno, migración 058), "Tu camino" y "Actividad del club", debajo
+// del encabezado de un club puntual. Scroll nativo con snap (funciona con
+// el gesto de deslizar de toda la vida, sin librería), más los puntitos de
+// abajo por si alguien no descubre que se puede deslizar — se pueden tocar
+// para saltar directo a esa sección.
+//
+// `initialIndex` — con "Libros anteriores" de primera, "Tu camino" ya no
+// es la sección 0: sin esto, la pantalla arrancaría mostrando la lista de
+// libros anteriores en vez del camino de siempre. Se posiciona de una sola
+// vez al montar, sin animación (un scroll "smooth" acá se vería como que
+// la pantalla se desliza sola apenas entrás).
+export function SwipeableSections({ sections, initialIndex = 0 }) {
   const containerRef = useRef(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
   const programmatic = useRef(false);
   const releaseTimer = useRef(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || initialIndex === 0) return;
+    programmatic.current = true;
+    el.scrollLeft = initialIndex * el.clientWidth;
+    const t = setTimeout(() => { programmatic.current = false; }, 50);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleScroll() {
     if (programmatic.current) return;

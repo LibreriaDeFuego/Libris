@@ -127,6 +127,34 @@ export async function getChapterCommentCounts(supabase, clubBookId) {
   return counts;
 }
 
+// Los libros que el club ya dejó atrás (migración 056, "Empezar un libro
+// nuevo") — para la lista de "Libros anteriores" en Tu camino (migración
+// 058). Trae, de cada uno, tus propias fechas de lectura si las tenés
+// (reading_progress.started_at/finished_at) — no hay ninguna fecha "de
+// cierre" del libro en sí (club_books no la guarda, is_active solo pasa a
+// false), así que se usa la misma fuente que ya usa "Mi biblioteca"
+// (profile_books_read, migraciones 045/047).
+export async function getClubBookHistory(supabase, clubId, userId) {
+  const { data } = await supabase
+    .from('club_books')
+    .select('id, books(title, author, cover_url), reading_progress(profile_id, started_at, finished_at)')
+    .eq('club_id', clubId)
+    .eq('is_active', false)
+    .order('started_at', { ascending: false });
+
+  return (data ?? []).map((cb) => {
+    const myProgress = (cb.reading_progress ?? []).find((rp) => rp.profile_id === userId);
+    return {
+      clubBookId: cb.id,
+      title: cb.books?.title ?? null,
+      author: cb.books?.author ?? null,
+      coverUrl: cb.books?.cover_url ?? null,
+      startedAt: myProgress?.started_at ?? null,
+      finishedAt: myProgress?.finished_at ?? null,
+    };
+  });
+}
+
 // Preguntas de capítulo (migraciones 053/054): qué capítulos tienen, para
 // ESTE usuario, alguna pregunta armada — para el distintivo que ChapterPath
 // dibuja sobre el nodo (mockup "Ordenar el capítulo cargado", opción

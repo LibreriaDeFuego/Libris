@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/requireUser';
 import { friendlyDbError } from '@/lib/friendlyError';
 import { orderChapters } from '@/lib/orderChapters';
 import { isClubBookAdmin, logModerationDelete } from '@/lib/clubAdmin';
+import { getChapterCommentCounts } from '@/lib/clubDetail';
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const MAX_CHAPTERS = 300;
@@ -679,6 +680,42 @@ export async function getClubMembersProgress(clubBookId) {
     .filter((m) => m.chapterId);
 
   return { members: result };
+}
+
+// Todo lo que necesita PastChapterPath ("Libros anteriores", migración
+// 058) para el camino de solo lectura de un libro puntual que el club ya
+// dejó — se pide bajo demanda (recién al tocar el libro en la lista), no
+// junto con el resto de "Tu camino", porque puede haber varios y no hace
+// falta traerlos todos de entrada. Mismo criterio de RLS que
+// getClubMembersProgress: no hay chequeo de membresía a mano porque las
+// tablas mismas ya restringen la lectura a quien pertenece a ese club.
+export async function getPastClubBookDetail(clubBookId) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+  if (!clubBookId) return { error: 'Libro no encontrado.' };
+
+  const { data: clubBook } = await supabase
+    .from('club_books')
+    .select('id, club_id, books(title, author, cover_url)')
+    .eq('id', clubBookId)
+    .maybeSingle();
+  if (!clubBook) return { error: 'Libro no encontrado.' };
+
+  const [{ data: chapters }, { data: volumes }, { data: myProgress }, commentCounts] = await Promise.all([
+    supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBookId).order('number'),
+    supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBookId).order('position'),
+    supabase.from('reading_progress').select('chapter_id').eq('club_book_id', clubBookId).eq('profile_id', user.id).maybeSingle(),
+    getChapterCommentCounts(supabase, clubBookId),
+  ]);
+
+  return {
+    clubId: clubBook.club_id,
+    book: clubBook.books,
+    chapters: chapters ?? [],
+    volumes: volumes ?? [],
+    myProgress: myProgress ?? null,
+    commentCounts,
+  };
 }
 
 // Estética propia de la cita ADENTRO de la app (migración 050) — deben

@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs, getActiveClubBook } from '@/lib/activeClub';
-import { getClubHeroExtras, getChapterCommentCounts, getChaptersWithQuestions } from '@/lib/clubDetail';
+import { getClubHeroExtras, getChapterCommentCounts, getChaptersWithQuestions, getClubBookHistory } from '@/lib/clubDetail';
 import { ClubScreen } from '@/screens/ClubScreen.jsx';
 
 export default async function Page({ params }) {
@@ -16,9 +16,12 @@ export default async function Page({ params }) {
 
   const isAdmin = club.role === 'admin';
 
-  const [{ count: memberCount }, clubBook] = await Promise.all([
+  const [{ count: memberCount }, clubBook, bookHistory] = await Promise.all([
     supabase.from('club_members').select('*', { count: 'exact', head: true }).eq('club_id', clubId),
     getActiveClubBook(supabase, clubId),
+    // Libros que el club ya dejó atrás (migración 058) — para "Libros
+    // anteriores" en Tu camino, deslizando a la izquierda.
+    getClubBookHistory(supabase, clubId, user.id),
   ]);
 
   const baseProps = {
@@ -41,6 +44,7 @@ export default async function Page({ params }) {
         pendingQuestionChapterIds={[]}
         answeredQuestionChapterIds={[]}
         otherClubsCount={0}
+        bookHistory={bookHistory}
       />
     );
   }
@@ -79,6 +83,7 @@ export default async function Page({ params }) {
       pendingQuestionChapterIds={questionsByChapter.pending}
       answeredQuestionChapterIds={questionsByChapter.answered}
       otherClubsCount={Number(otherClubsCount ?? 0)}
+      bookHistory={bookHistory}
     />
   );
 }
