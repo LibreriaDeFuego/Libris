@@ -37,7 +37,8 @@ jobs:
       # específica, por ejemplo).
       - name: Aceptar licencias del Android SDK
         run: |
-          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -maxdepth 2 -name sdkmanager -type f | head -n1)
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n1)
+          echo "sdkmanager encontrado en: $SDKMANAGER"
           yes | "$SDKMANAGER" --licenses > /dev/null || true
 
       # Bubblewrap guarda, la primera vez que corre en una máquina, qué
@@ -46,10 +47,26 @@ jobs:
       # tiene con quién hablar, así que se quedaría esperando para
       # siempre. Se lo dejamos ya resuelto, apuntando al JDK 17 de arriba
       # y al Android SDK que el runner ya trae instalado.
+      #
+      # `@bubblewrap/core` (leído directo del código instalado, no a
+      # ojo) espera la estructura VIEJA del Android SDK: valida que
+      # exista una carpeta `tools/` (o `bin/`) justo en la raíz, y para
+      # instalar build-tools busca puntual `tools/bin/sdkmanager` — el
+      # SDK moderno (como el que ya trae el runner) solo tiene
+      # `cmdline-tools/<versión>/bin/sdkmanager`, así que ninguna de las
+      # dos cosas existe de entrada. Un symlink de directorio
+      # `tools -> cmdline-tools/<versión>` resuelve las dos a la vez:
+      # deja `tools/bin/sdkmanager` funcionando de verdad (con su
+      # `lib/` hermana intacta, no solo el ejecutable suelto) y de paso
+      # hace que exista `tools/`, que es todo lo que pide la validación.
       - name: Configurar Bubblewrap (sin prompts)
         run: |
           mkdir -p ~/.bubblewrap
           SDK_PATH="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          CMDLINE_TOOLS_BIN=$(dirname "$(find "$SDK_PATH/cmdline-tools" -name sdkmanager -type f | head -n1)")
+          CMDLINE_TOOLS_DIR="$(dirname "$CMDLINE_TOOLS_BIN")"
+          ln -sfn "$CMDLINE_TOOLS_DIR" "$SDK_PATH/tools" || sudo ln -sfn "$CMDLINE_TOOLS_DIR" "$SDK_PATH/tools"
+          ls -la "$SDK_PATH/tools/bin/"
           echo "{\"jdkPath\":\"$JAVA_HOME\",\"androidSdkPath\":\"$SDK_PATH\"}" > ~/.bubblewrap/config.json
           cat ~/.bubblewrap/config.json
 
