@@ -26,14 +26,26 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
+      # `android-actions/setup-android@v3` (usado acá antes) intenta
+      # instalar además un paquete llamado "tools" que Google ya sacó de
+      # su repositorio hace años — falla siempre, en cualquier repo que
+      # lo use hoy. No hace falta ese action de todos modos: el runner de
+      # GitHub (`ubuntu-latest`) YA trae un Android SDK instalado y con
+      # las licencias aceptadas (`$ANDROID_HOME`), así que alcanza con
+      # aceptar cualquier licencia que falte para lo puntual que
+      # Bubblewrap vaya a necesitar (build-tools de una versión
+      # específica, por ejemplo).
+      - name: Aceptar licencias del Android SDK
+        run: |
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -maxdepth 2 -name sdkmanager -type f | head -n1)
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
 
       # Bubblewrap guarda, la primera vez que corre en una máquina, qué
       # JDK/SDK usar en ~/.bubblewrap/config.json — sin esto, pregunta de
       # forma interactiva (si instalarlos él mismo) y un runner de CI no
       # tiene con quién hablar, así que se quedaría esperando para
-      # siempre. Se lo dejamos ya resuelto, apuntando a lo que acaban de
-      # instalar los dos pasos de arriba.
+      # siempre. Se lo dejamos ya resuelto, apuntando al JDK 17 de arriba
+      # y al Android SDK que el runner ya trae instalado.
       - name: Configurar Bubblewrap (sin prompts)
         run: |
           mkdir -p ~/.bubblewrap
