@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useActionState, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Input } from '@/design-system/components/forms/Input.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
-import { addChapter, renameChapter, createVolume, renameVolume, saveChapterQuestion, deleteChapterQuestion } from '@/app/actions/clubs';
+import { CoverUploader } from '@/components/CoverUploader';
+import { addChapter, renameChapter, createVolume, renameVolume, saveChapterQuestion, deleteChapterQuestion, updateClubBookDetails } from '@/app/actions/clubs';
 import { groupChaptersByVolume, chapterDisplayLabel } from '@/lib/orderChapters';
 
 const QUESTION_KIND_META = {
@@ -553,6 +554,52 @@ function NewChapterForm({ clubBookId, volumes, nextNumber }) {
   );
 }
 
+// Título, autor y portada del libro que se está gestionando acá — no solo
+// el principal del club (ese ya tiene su propia sección en Preferencias):
+// un libro en paralelo (migración 060) no tenía antes NINGÚN lugar donde
+// cambiarle el título/autor o subirle portada, porque esa sección vivía
+// hardcodeada al libro principal. `updateClubBookDetails` toma el bookId
+// directo, sin pasar por el club_book_id ni por cuál es el principal.
+function BookDetailsForm({ book }) {
+  const [state, formAction, pending] = useActionState(updateClubBookDetails, { error: null });
+  const [title, setTitle] = useState(book.title ?? '');
+  const [author, setAuthor] = useState(book.author ?? '');
+
+  function submit() {
+    const formData = new FormData();
+    formData.set('bookId', book.id);
+    formData.set('title', title);
+    formData.set('author', author);
+    formAction(formData);
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--surface-card-alt)', borderRadius: 'var(--radius-md)', padding: 14 }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+        Datos del libro
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div
+          style={{
+            width: 44, height: 62, borderRadius: 'var(--radius-sm)', flexShrink: 0,
+            background: book.cover_url ? `center/cover no-repeat url(${book.cover_url})` : 'var(--accent-500)',
+          }}
+        />
+        <CoverUploader bookId={book.id} hasCover={Boolean(book.cover_url)} tone="light" />
+      </div>
+      <Input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} />
+      <Input placeholder="Autor" value={author} onChange={(e) => setAuthor(e.target.value)} />
+      <ErrorBox error={state?.error} />
+      {state?.saved && !state?.error && (
+        <div style={{ color: 'var(--success)', fontSize: 'var(--fs-2xs)' }}>Cambios guardados.</div>
+      )}
+      <Button variant="secondary" size="sm" type="button" onClick={submit} disabled={pending}>
+        {pending ? 'Guardando…' : 'Guardar datos del libro'}
+      </Button>
+    </div>
+  );
+}
+
 export function GestionCapitulosScreen({ club, book, clubBookId, chapters, volumes, questions = [] }) {
   const router = useRouter();
   const groups = groupChaptersByVolume(chapters, volumes);
@@ -577,6 +624,8 @@ export function GestionCapitulosScreen({ club, book, clubBookId, chapters, volum
           <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>{book.title}</div>
         </div>
       </div>
+
+      <BookDetailsForm book={book} />
 
       {groups.length === 0 && (
         <div style={{ color: 'var(--text-tertiary)', fontSize: 'var(--fs-sm)', padding: '12px 0', textAlign: 'center' }}>

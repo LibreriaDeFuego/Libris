@@ -523,6 +523,30 @@ export async function updateClubPreferences(prevState, formData) {
   return { error: null, saved: true };
 }
 
+// Título y autor de UN libro del club puntual — a diferencia de
+// updateClubPreferences (que solo toca el libro PRINCIPAL, el único que
+// tiene sección en Preferencias), esto lo usa "Gestionar capítulos"
+// (siempre con un club_book_id concreto, principal o en paralelo —
+// migración 060) para poder editar también los libros que no son el
+// destacado. La política de RLS de "books" ya alcanza para los dos casos
+// (cualquier administrador del club dueño de ese club_book puede
+// actualizarlo, ver migración 013) — no hace falta volver a chequear acá.
+export async function updateClubBookDetails(prevState, formData) {
+  const supabase = await createClient();
+  await requireUser(supabase);
+
+  const bookId = formData.get('bookId')?.toString();
+  const title = formData.get('title')?.toString().trim();
+  const author = formData.get('author')?.toString().trim();
+  if (!bookId || !title || !author) return { error: 'Completa el título y el autor.' };
+
+  const { error } = await supabase.from('books').update({ title, author }).eq('id', bookId);
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null, saved: true };
+}
+
 // "Hoy" y "ayer" en UTC, como 'YYYY-MM-DD' — mismo criterio que la columna
 // date de last_activity_date. Simplificación consciente: alguien que lee
 // pasada la medianoche en su huso horario puede ver la racha contarse un
