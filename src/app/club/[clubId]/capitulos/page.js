@@ -1,12 +1,13 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getMyClubs, getActiveClubBook } from '@/lib/activeClub';
+import { getMyClubs, getPrincipalClubBook } from '@/lib/activeClub';
 import { GestionCapitulosScreen } from '@/screens/GestionCapitulosScreen.jsx';
 
 export const metadata = { title: 'Capítulos · Libris' };
 
-export default async function Page({ params }) {
+export default async function Page({ params, searchParams }) {
   const { clubId } = await params;
+  const { libro } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
@@ -16,7 +17,12 @@ export default async function Page({ params }) {
   if (!club) notFound();
   if (club.role !== 'admin') redirect(`/club/${clubId}`);
 
-  const clubBook = await getActiveClubBook(supabase, clubId);
+  // "?libro=" (migración 060) — gestionar los capítulos de un libro en
+  // paralelo, no solo el principal del club; sin el parámetro, se sigue
+  // administrando el principal, como siempre.
+  const clubBook = libro
+    ? (await supabase.from('club_books').select('id, book_id, books(id, title, author, cover_url)').eq('id', libro).eq('club_id', clubId).maybeSingle()).data
+    : await getPrincipalClubBook(supabase, clubId);
   if (!clubBook) redirect(`/club/${clubId}`);
 
   const [{ data: chapters }, { data: volumes }, { data: questions }] = await Promise.all([

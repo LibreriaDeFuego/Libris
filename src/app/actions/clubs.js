@@ -90,7 +90,7 @@ export async function createClub(prevState, formData) {
 
   const { data: clubBook, error: clubBookError } = await supabase
     .from('club_books')
-    .insert({ club_id: club.id, book_id: book.id, is_active: true })
+    .insert({ club_id: club.id, book_id: book.id, is_active: true, is_principal: true })
     .select('id')
     .single();
   if (clubBookError) return { error: friendlyDbError(clubBookError) };
@@ -104,22 +104,27 @@ export async function createClub(prevState, formData) {
   redirect('/');
 }
 
-// Cierra el libro en curso del club y arranca uno nuevo — mismos tres
-// campos que "Crear club" (título, autor, cantidad de capítulos). El
-// libro que se deja se ARCHIVA (is_active = false, migración 056): sus
-// comentarios, el progreso de cada persona y sus preguntas de capítulo
-// quedan guardados tal cual, nada se borra — pero dejan de verse en Tu
-// camino/Comentarios apenas arranca el nuevo (todavía no hay ninguna
-// pantalla para volver a ver un libro "viejo" del club).
+// Arranca un libro nuevo para el club — mismos tres campos que "Crear
+// club" (título, autor, cantidad de capítulos) más una elección,
+// "makesPrincipal": si este libro pasa a ser el PRINCIPAL del club (el
+// que se destaca en "Mis clubes de lectura" y el que abre "Tu camino" por
+// default) o si se suma en paralelo, sin tocar el principal de siempre.
+//
+// A diferencia de como funcionaba hasta la migración 060 ("Empezar un
+// libro nuevo" archivaba el que se dejaba), ACÁ NINGÚN LIBRO SE CIERRA:
+// is_active del libro anterior ni se toca — se pidió explícitamente que
+// los clubes puedan seguir con varios libros en curso a la vez, cada uno
+// con sus comentarios y su progreso funcionando normal. Lo único que
+// puede cambiar es is_principal, y solo si se eligió "makesPrincipal".
 //
 // A diferencia de `addChapter` (que confía del todo en RLS), acá SÍ se
-// chequea admin del lado del servidor — cerrar el libro de todo un club
-// es bastante más grande que sumar un capítulo. El orden importa para
-// fallar lo más seguro posible (no es atómico, mismo trade-off aceptado
+// chequea admin del lado del servidor — tocar qué libro es el principal
+// del club es bastante más grande que sumar un capítulo. El orden sigue
+// el mismo criterio de siempre (no es atómico, mismo trade-off aceptado
 // que ya tiene `createClub`): primero se arma el libro nuevo completo
-// (libro + club_books + capítulos) y RECIÉN AHÍ se cierra el viejo — si
-// algo falla a mitad de camino, el club se queda con el libro de siempre
-// activo, nunca sin ninguno.
+// (libro + club_books + capítulos, SIEMPRE como no-principal al insertar)
+// y RECIÉN AHÍ, si corresponde, se mueve is_principal — si algo falla a
+// mitad del armado del libro, no se tocó nada del resto del club.
 export async function startNewClubBook(prevState, formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
@@ -127,6 +132,7 @@ export async function startNewClubBook(prevState, formData) {
   const clubId = formData.get('clubId')?.toString();
   const bookTitle = formData.get('bookTitle')?.toString().trim();
   const bookAuthor = formData.get('bookAuthor')?.toString().trim();
+  const makesPrincipal = formData.get('makesPrincipal') === 'true';
   if (!clubId || !bookTitle || !bookAuthor) {
     return { error: 'Completa el título y el autor del libro nuevo.' };
   }
@@ -151,7 +157,7 @@ export async function startNewClubBook(prevState, formData) {
 
   const { data: clubBook, error: clubBookError } = await supabase
     .from('club_books')
-    .insert({ club_id: clubId, book_id: book.id, is_active: true })
+    .insert({ club_id: clubId, book_id: book.id, is_active: true, is_principal: false })
     .select('id')
     .single();
   if (clubBookError) return { error: friendlyDbError(clubBookError) };
@@ -161,17 +167,27 @@ export async function startNewClubBook(prevState, formData) {
     .insert(chapterRows(clubBook.id, 1, chapterCount));
   if (chapterError) return { error: friendlyDbError(chapterError) };
 
-  // Recién acá se cierra lo anterior — todo lo demás ya salió bien.
-  const { error: closeError } = await supabase
-    .from('club_books')
-    .update({ is_active: false })
-    .eq('club_id', clubId)
-    .eq('is_active', true)
-    .neq('id', clubBook.id);
-  if (closeError) return { error: friendlyDbError(closeError) };
+  // Recién acá se mueve is_principal — todo lo demás ya salió bien. El
+  // índice único (migración 060) no deja a dos libros del club ser
+  // principales a la vez, así que primero hay que sacarle esa marca al
+  // que la tenía antes de ponérsela al nuevo.
+  if (makesPrincipal) {
+    const { error: unsetError } = await supabase
+      .from('club_books')
+      .update({ is_principal: false })
+      .eq('club_id', clubId)
+      .eq('is_principal', true);
+    if (unsetError) return { error: friendlyDbError(unsetError) };
+
+    const { error: setError } = await supabase
+      .from('club_books')
+      .update({ is_principal: true })
+      .eq('id', clubBook.id);
+    if (setError) return { error: friendlyDbError(setError) };
+  }
 
   revalidatePath('/', 'layout');
-  redirect(`/club/${clubId}`);
+  redirect(makesPrincipal ? `/club/${clubId}` : `/club/${clubId}?libro=${clubBook.id}`);
 }
 
 // Agrega un capítulo al libro activo. Solo administradores (lo impone RLS).

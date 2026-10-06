@@ -35,13 +35,20 @@ export async function getClubMembers(supabase, clubId) {
   }));
 }
 
-// Libro activo de un club puntual.
-export async function getActiveClubBook(supabase, clubId) {
+// El libro PRINCIPAL de un club puntual — el que se destaca en "Mis
+// clubes de lectura" y el que abre "Tu camino" por default. Hasta la
+// migración 060 esto era "el" libro activo del club (como mucho uno a la
+// vez); ahora un club puede tener varios libros en curso al mismo tiempo
+// (is_active), pero sigue habiendo como mucho un principal entre ellos
+// (is_principal) — para no romper ninguna pantalla que asuma "el libro
+// del club". Los demás libros en curso (y los archivados) se piden aparte
+// con getClubOtherBooks (clubDetail.js).
+export async function getPrincipalClubBook(supabase, clubId) {
   const { data } = await supabase
     .from('club_books')
     .select('id, club_id, book_id, books(id, title, author, cover_url)')
     .eq('club_id', clubId)
-    .eq('is_active', true)
+    .eq('is_principal', true)
     .maybeSingle();
   return data ?? null;
 }

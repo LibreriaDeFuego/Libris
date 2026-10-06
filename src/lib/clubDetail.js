@@ -1,8 +1,9 @@
 import { buildClubActivity } from '@/lib/clubActivity';
 
-// Todo lo que necesitan "Tu camino" y "Actividad del club" para un club
-// puntual, más allá del libro activo (que ya se resuelve aparte con
-// getActiveClubBook). Lo usa /club/[clubId] al entrar a un club.
+// Todo lo que necesitan "Tu camino" y "Actividad del club" para UN libro
+// puntual del club (el que se esté mirando — principal o en paralelo, se
+// resuelve aparte en club/[clubId]/page.js). Lo usa /club/[clubId] al
+// entrar a un club.
 export async function getClubHeroExtras(supabase, { clubId, clubBookId, userId, isAdmin }) {
   if (!clubBookId) {
     return { chapters: [], volumes: [], myProgress: null, myReview: null, activity: [], pendingRequestCount: 0 };
@@ -127,20 +128,27 @@ export async function getChapterCommentCounts(supabase, clubBookId) {
   return counts;
 }
 
-// Los libros que el club ya dejó atrás (migración 056, "Empezar un libro
-// nuevo") — para la lista de "Libros anteriores" en Tu camino (migración
-// 058). Trae, de cada uno, tus propias fechas de lectura si las tenés
+// Todos los libros del club que NO sean el que se está mirando ahora
+// mismo (migración 060) — para la sección "Otros libros del club" en Tu
+// camino. Mezcla dos tipos bien distintos, cada uno con su propia
+// `isActive`: libros en paralelo (is_active = true — se puede seguir
+// comentando y marcando progreso igual que en el principal, solo que no
+// son el destacado) y libros archivados a mano (is_active = false —
+// quedan de solo lectura, ver PastChapterPath). `excludeClubBookId` es el
+// libro que ya se está viendo, para no listarse a sí mismo.
+//
+// Trae, de cada uno, tus propias fechas de lectura si las tenés
 // (reading_progress.started_at/finished_at) — no hay ninguna fecha "de
-// cierre" del libro en sí (club_books no la guarda, is_active solo pasa a
-// false), así que se usa la misma fuente que ya usa "Mi biblioteca"
-// (profile_books_read, migraciones 045/047).
-export async function getClubBookHistory(supabase, clubId, userId) {
-  const { data } = await supabase
+// cierre" del libro en sí, así que se usa la misma fuente que ya usa "Mi
+// biblioteca" (profile_books_read, migraciones 045/047).
+export async function getClubOtherBooks(supabase, clubId, userId, excludeClubBookId) {
+  let query = supabase
     .from('club_books')
-    .select('id, books(title, author, cover_url), reading_progress(profile_id, started_at, finished_at)')
+    .select('id, is_active, is_principal, books(title, author, cover_url), reading_progress(profile_id, started_at, finished_at)')
     .eq('club_id', clubId)
-    .eq('is_active', false)
     .order('started_at', { ascending: false });
+  if (excludeClubBookId) query = query.neq('id', excludeClubBookId);
+  const { data } = await query;
 
   return (data ?? []).map((cb) => {
     const myProgress = (cb.reading_progress ?? []).find((rp) => rp.profile_id === userId);
@@ -151,6 +159,8 @@ export async function getClubBookHistory(supabase, clubId, userId) {
       coverUrl: cb.books?.cover_url ?? null,
       startedAt: myProgress?.started_at ?? null,
       finishedAt: myProgress?.finished_at ?? null,
+      isActive: cb.is_active,
+      isPrincipal: cb.is_principal,
     };
   });
 }

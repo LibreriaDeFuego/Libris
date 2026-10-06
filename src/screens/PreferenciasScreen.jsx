@@ -251,7 +251,7 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
           </Section>
 
           {book && (
-            <Section title="El libro en curso">
+            <Section title="El libro principal">
               <div>
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Título</div>
                 <Input name="bookTitle" defaultValue={book.title} />
@@ -309,7 +309,7 @@ export function PreferenciasScreen({ club, book, isAdmin, currentUserId, members
         </form>
       ) : (
         <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>
-          Solo los administradores de <strong>{club.name}</strong> pueden cambiar el nombre, la visibilidad, el libro en curso y los capítulos.
+          Solo los administradores de <strong>{club.name}</strong> pueden cambiar el nombre, la visibilidad, el libro principal y los capítulos.
         </div>
       )}
 

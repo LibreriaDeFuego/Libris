@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { getMyClubs, getActiveClubBook, getClubMembers } from '@/lib/activeClub';
+import { getMyClubs, getPrincipalClubBook, getClubMembers } from '@/lib/activeClub';
 import { getClubProgressSummary } from '@/lib/clubDetail';
 import { computeHeroProgress } from '@/lib/heroProgress';
 import { OnboardingScreen } from '@/screens/OnboardingScreen.jsx';
@@ -32,7 +32,7 @@ export default async function Page() {
   const enrichedClubs = await Promise.all(
     clubs.map(async (club) => {
       const [clubBook, members] = await Promise.all([
-        getActiveClubBook(supabase, club.id),
+        getPrincipalClubBook(supabase, club.id),
         getClubMembers(supabase, club.id),
       ]);
       const membersWithFollow = members.map((m) => ({ ...m, isFollowing: followingSet.has(m.profileId) }));

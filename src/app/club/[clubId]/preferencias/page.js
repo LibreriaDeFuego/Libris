@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getMyClubs, getActiveClubBook } from '@/lib/activeClub';
+import { getMyClubs, getPrincipalClubBook } from '@/lib/activeClub';
 import { PreferenciasScreen } from '@/screens/PreferenciasScreen.jsx';
 
 export const metadata = { title: 'Preferencias · Libris' };
@@ -23,7 +23,7 @@ export default async function Page({ params }) {
       .select('profile_id, role, joined_at, profiles(display_name, avatar_url)')
       .eq('club_id', clubId)
       .order('joined_at'),
-    getActiveClubBook(supabase, clubId),
+    getPrincipalClubBook(supabase, clubId),
     isAdmin
       ? supabase
           .from('club_join_requests')

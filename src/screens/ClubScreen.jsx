@@ -21,14 +21,17 @@ import { formatMeetingDate, googleMapsUrl } from '@/lib/meetingFormat';
 // del club + las mismas acciones de siempre) y, debajo, el camino y la
 // actividad del club — el contenido real de "Progreso y Actividad".
 //
-// "Libros anteriores" (migración 058) se suma como una sección más del
-// mismo carrusel, PERO solo si el club ya tuvo alguno — antes de "Tu
+// "Otros libros del club" (migraciones 058/060) se suma como una sección
+// más del mismo carrusel, PERO solo si el club tiene alguno — antes de "Tu
 // camino", así que deslizar a la izquierda es cómo se llega. Con esa
 // sección de más, "Tu camino" deja de ser la 0 (initialIndex se lo pasa a
 // SwipeableSections para que la pantalla siga arrancando ahí, como
-// siempre); sin libros anteriores, "Tu camino" sigue siendo la primera y
-// el carrusel queda exactamente como antes.
-export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, activity, commentCounts, pendingQuestionChapterIds, answeredQuestionChapterIds, otherClubsCount, isAdmin, pendingRequestCount = 0, bookHistory = [] }) {
+// siempre); sin otros libros, "Tu camino" sigue siendo la primera y el
+// carrusel queda exactamente como antes. "Tu camino" en sí muestra SIEMPRE
+// el libro que resolvió la página (el principal del club, o el que pida
+// "?libro=" — ver club/[clubId]/page.js) — un libro en paralelo se ve y se
+// usa exactamente igual que el principal, nada queda en solo lectura ahí.
+export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, activity, commentCounts, pendingQuestionChapterIds, answeredQuestionChapterIds, otherClubsCount, isAdmin, pendingRequestCount = 0, otherBooks = [] }) {
   const [showModal, setShowModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const router = useRouter();
@@ -103,10 +106,10 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
       {book ? (
         <>
           <SwipeableSections
-            initialIndex={bookHistory.length > 0 ? 1 : 0}
+            initialIndex={otherBooks.length > 0 ? 1 : 0}
             sections={[
-              ...(bookHistory.length > 0
-                ? [{ key: 'historial', node: <PastBooksList clubId={club.id} books={bookHistory} /> }]
+              ...(otherBooks.length > 0
+                ? [{ key: 'otros', node: <PastBooksList clubId={club.id} books={otherBooks} isAdmin={isAdmin} /> }]
                 : []),
               {
                 key: 'camino',

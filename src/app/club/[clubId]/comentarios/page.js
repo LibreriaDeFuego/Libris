@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getMyClubs, getActiveClubBook } from '@/lib/activeClub';
+import { getMyClubs, getPrincipalClubBook } from '@/lib/activeClub';
 import { signCommentImageUrls } from '@/lib/commentPhotos';
 import { ComentariosScreen } from '@/screens/ComentariosScreen.jsx';
 
@@ -17,12 +17,12 @@ export default async function Page({ params, searchParams }) {
   const club = clubs.find((c) => c.id === clubId);
   if (!club) notFound();
 
-  // "?libro=" (PastChapterPath, migración 058) pide un club_book PUNTUAL,
-  // en vez del activo de siempre — así se puede ver un libro que el club
-  // ya dejó atrás. `readOnly` sale de si ESE libro sigue activo o no, no
-  // de si vino el parámetro: un link viejo a un libro que mientras tanto
-  // volvió a quedar activo (no debería pasar, pero por las dudas) se
-  // comporta igual que entrar sin parámetro.
+  // "?libro=" pide un club_book PUNTUAL en vez del principal de siempre —
+  // así se puede ver tanto un libro en PARALELO (migración 060, de lectura
+  // normal) como uno ARCHIVADO (migración 058, de solo lectura). `readOnly`
+  // sale de si ESE libro sigue activo o no, no de si vino el parámetro: un
+  // libro en paralelo da readOnly = false (comenta y marca progreso
+  // igual que el principal), uno archivado da readOnly = true.
   let clubBook;
   let readOnly = false;
   if (libro) {
@@ -36,7 +36,7 @@ export default async function Page({ params, searchParams }) {
     clubBook = requested;
     readOnly = !requested.is_active;
   } else {
-    clubBook = await getActiveClubBook(supabase, clubId);
+    clubBook = await getPrincipalClubBook(supabase, clubId);
     if (!clubBook) redirect(`/club/${clubId}`);
   }
 

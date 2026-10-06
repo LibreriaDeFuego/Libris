@@ -91,12 +91,24 @@ function formatDuration(seconds) {
   return `${minutes}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-// "Ver el resto de los comentarios en el club" asume que el contenido
-// sigue siendo del libro que el club está leyendo ahora — Comentarios del
-// club siempre muestra el libro ACTIVO (getActiveClubBook), nunca uno que
-// ya se dejó (migración 056, "Empezar un libro nuevo"). Si esta fila es de
-// un libro anterior (is_current_book === false, migración 057), no hay a
-// dónde llevar: se muestra un aviso en su lugar, sin link.
+// "Ver el resto de los comentarios en el club" tiene que apuntar al libro
+// EXACTO de esta fila, no al que Comentarios del club abre por default
+// (el principal) — desde que un club puede tener varios libros a la vez
+// en paralelo (migración 060), esos dos ya no son necesariamente el
+// mismo. `club_book_id` (migración 061) trae ese dato listo desde
+// recent_activity/profile_activity; se arma como "?libro=" para pedir ese
+// club_book puntual (mismo parámetro que ya entiende esa pantalla desde
+// la migración 058). Si esta fila es de un libro archivado
+// (is_current_book === false, migración 057), no hay a dónde llevar: se
+// muestra un aviso en su lugar, sin link.
+function buildClubCommentsHref(activity) {
+  const params = new URLSearchParams();
+  if (activity.chapter_id) params.set('capitulo', activity.chapter_id);
+  if (activity.club_book_id) params.set('libro', activity.club_book_id);
+  const query = params.toString();
+  return `/club/${activity.club_id}/comentarios${query ? `?${query}` : ''}`;
+}
+
 function ClubCommentsLink({ href, isCurrentBook }) {
   if (isCurrentBook === false) {
     return (
@@ -315,7 +327,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
               compact
             />
             {expanded && canOpenClub && (
-              <ClubCommentsLink href={`/club/${activity.club_id}/comentarios`} isCurrentBook={activity.is_current_book} />
+              <ClubCommentsLink href={buildClubCommentsHref(activity)} isCurrentBook={activity.is_current_book} />
             )}
           </div>
         </div>
@@ -481,10 +493,7 @@ export function ActivityCard({ activity, canOpenClub, personName, author, isOwn,
             />
           )}
           {expanded && canOpenClub && !isPhoto && (
-            <ClubCommentsLink
-              href={activity.chapter_id ? `/club/${activity.club_id}/comentarios?capitulo=${activity.chapter_id}` : `/club/${activity.club_id}/comentarios`}
-              isCurrentBook={activity.is_current_book}
-            />
+            <ClubCommentsLink href={buildClubCommentsHref(activity)} isCurrentBook={activity.is_current_book} />
           )}
 
           {editingPhoto && (

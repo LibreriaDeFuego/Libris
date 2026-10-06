@@ -1,11 +1,12 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getMyClubs, getActiveClubBook } from '@/lib/activeClub';
-import { getClubHeroExtras, getChapterCommentCounts, getChaptersWithQuestions, getClubBookHistory } from '@/lib/clubDetail';
+import { getMyClubs, getPrincipalClubBook } from '@/lib/activeClub';
+import { getClubHeroExtras, getChapterCommentCounts, getChaptersWithQuestions, getClubOtherBooks } from '@/lib/clubDetail';
 import { ClubScreen } from '@/screens/ClubScreen.jsx';
 
-export default async function Page({ params }) {
+export default async function Page({ params, searchParams }) {
   const { clubId } = await params;
+  const { libro } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
@@ -16,13 +17,26 @@ export default async function Page({ params }) {
 
   const isAdmin = club.role === 'admin';
 
-  const [{ count: memberCount }, clubBook, bookHistory] = await Promise.all([
+  // "?libro=" (migración 060) — ver un libro en paralelo del club, no solo
+  // el principal; así se llega desde "Otros libros del club" o desde el
+  // redirect de startNewClubBook cuando el libro nuevo NO pasa a ser el
+  // principal. Un libro ARCHIVADO acá redirige al club a secas: esa vista
+  // es de solo lectura (PastChapterPath, migración 058), no "Tu camino" de
+  // verdad — llegar con un link viejo a un libro que mientras tanto se
+  // archivó no debería dejar marcar progreso ni comentar como si nada.
+  const [{ count: memberCount }, clubBook] = await Promise.all([
     supabase.from('club_members').select('*', { count: 'exact', head: true }).eq('club_id', clubId),
-    getActiveClubBook(supabase, clubId),
-    // Libros que el club ya dejó atrás (migración 058) — para "Libros
-    // anteriores" en Tu camino, deslizando a la izquierda.
-    getClubBookHistory(supabase, clubId, user.id),
+    libro
+      ? supabase
+          .from('club_books')
+          .select('id, club_id, book_id, is_active, books(id, title, author, cover_url)')
+          .eq('id', libro)
+          .eq('club_id', clubId)
+          .maybeSingle()
+          .then(({ data }) => data)
+      : getPrincipalClubBook(supabase, clubId),
   ]);
+  if (libro && (!clubBook || !clubBook.is_active)) redirect(`/club/${clubId}`);
 
   const baseProps = {
     club: { ...club, memberCount: memberCount ?? 0 },
@@ -30,6 +44,10 @@ export default async function Page({ params }) {
   };
 
   if (!clubBook) {
+    // Sin libro principal (club recién creado, o un estado raro) — igual
+    // puede tener libros en paralelo/archivados, por eso otherBooks se
+    // pide siempre, pase lo que pase acá arriba.
+    const otherBooks = await getClubOtherBooks(supabase, clubId, user.id, null);
     return (
       <ClubScreen
         {...baseProps}
@@ -44,12 +62,12 @@ export default async function Page({ params }) {
         pendingQuestionChapterIds={[]}
         answeredQuestionChapterIds={[]}
         otherClubsCount={0}
-        bookHistory={bookHistory}
+        otherBooks={otherBooks}
       />
     );
   }
 
-  const [heroExtras, { data: otherClubsCount }, commentCounts, questionsByChapter] = await Promise.all([
+  const [heroExtras, { data: otherClubsCount }, commentCounts, questionsByChapter, otherBooks] = await Promise.all([
     // Chapters, volumes, mi progreso, mi reseña, actividad reciente y
     // solicitudes pendientes — ver src/lib/clubDetail.js.
     getClubHeroExtras(supabase, { clubId, clubBookId: clubBook.id, userId: user.id, isAdmin }),
@@ -66,6 +84,9 @@ export default async function Page({ params }) {
     // del todo), para el distintivo del nodo en Tu camino (migraciones
     // 053/054).
     getChaptersWithQuestions(supabase, clubBook.id, user.id),
+    // Los demás libros del club — en paralelo y/o archivados (migración
+    // 060) — para "Otros libros del club", deslizando a la izquierda.
+    getClubOtherBooks(supabase, clubId, user.id, clubBook.id),
   ]);
 
   return (
@@ -83,7 +104,7 @@ export default async function Page({ params }) {
       pendingQuestionChapterIds={questionsByChapter.pending}
       answeredQuestionChapterIds={questionsByChapter.answered}
       otherClubsCount={Number(otherClubsCount ?? 0)}
-      bookHistory={bookHistory}
+      otherBooks={otherBooks}
     />
   );
 }
