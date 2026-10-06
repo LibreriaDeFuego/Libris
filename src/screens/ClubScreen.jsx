@@ -41,7 +41,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
   const headerRight = (
     <>
       <InviteButton clubId={club.id} />
-      <PreferenciasIconButton clubId={club.id} pendingRequestCount={isAdmin ? pendingRequestCount : 0} />
+      <PreferenciasIconButton clubId={club.id} clubBookId={clubBookId} pendingRequestCount={isAdmin ? pendingRequestCount : 0} />
     </>
   );
 

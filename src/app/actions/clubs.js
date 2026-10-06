@@ -36,6 +36,27 @@ async function findOrCreateBook(supabase, title, author) {
   return { id: created.id };
 }
 
+// A lo sumo un libro principal por club (índice único, migración 060) —
+// primero hay que sacarle la marca al que la tenía antes de ponérsela al
+// nuevo. La usan tanto startNewClubBook (al elegir "pasa a ser el
+// principal") como makeClubBookPrincipal (promover uno ya existente).
+async function setPrincipalClubBook(supabase, clubId, clubBookId) {
+  const { error: unsetError } = await supabase
+    .from('club_books')
+    .update({ is_principal: false })
+    .eq('club_id', clubId)
+    .eq('is_principal', true);
+  if (unsetError) return { error: friendlyDbError(unsetError) };
+
+  const { error: setError } = await supabase
+    .from('club_books')
+    .update({ is_principal: true })
+    .eq('id', clubBookId);
+  if (setError) return { error: friendlyDbError(setError) };
+
+  return { error: null };
+}
+
 function chapterRows(clubBookId, from, count) {
   return Array.from({ length: count }, (_, i) => ({
     club_book_id: clubBookId,
@@ -167,27 +188,45 @@ export async function startNewClubBook(prevState, formData) {
     .insert(chapterRows(clubBook.id, 1, chapterCount));
   if (chapterError) return { error: friendlyDbError(chapterError) };
 
-  // Recién acá se mueve is_principal — todo lo demás ya salió bien. El
-  // índice único (migración 060) no deja a dos libros del club ser
-  // principales a la vez, así que primero hay que sacarle esa marca al
-  // que la tenía antes de ponérsela al nuevo.
+  // Recién acá se mueve is_principal — todo lo demás ya salió bien.
   if (makesPrincipal) {
-    const { error: unsetError } = await supabase
-      .from('club_books')
-      .update({ is_principal: false })
-      .eq('club_id', clubId)
-      .eq('is_principal', true);
-    if (unsetError) return { error: friendlyDbError(unsetError) };
-
-    const { error: setError } = await supabase
-      .from('club_books')
-      .update({ is_principal: true })
-      .eq('id', clubBook.id);
-    if (setError) return { error: friendlyDbError(setError) };
+    const { error } = await setPrincipalClubBook(supabase, clubId, clubBook.id);
+    if (error) return { error };
   }
 
   revalidatePath('/', 'layout');
   redirect(makesPrincipal ? `/club/${clubId}` : `/club/${clubId}?libro=${clubBook.id}`);
+}
+
+// Promueve a principal un libro que el club ya está leyendo en paralelo —
+// la única forma de volver a destacar un libro después de haberlo sumado
+// con "Se lee en paralelo" (antes, esa elección era definitiva: no había
+// manera de cambiarla sin volver a crear el libro). El que era principal
+// NO se archiva ni deja de poder comentarse — solo deja de ser el
+// destacado, pasa a listarse en "Otros libros del club".
+export async function makeClubBookPrincipal(prevState, formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const clubId = formData.get('clubId')?.toString();
+  const clubBookId = formData.get('clubBookId')?.toString();
+  if (!clubId || !clubBookId) return { error: 'Falta el libro.' };
+
+  const { data: membership } = await supabase
+    .from('club_members')
+    .select('role')
+    .eq('club_id', clubId)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+  if (membership?.role !== 'admin') {
+    return { error: 'Solo un administrador puede cambiar el libro principal.' };
+  }
+
+  const { error } = await setPrincipalClubBook(supabase, clubId, clubBookId);
+  if (error) return { error };
+
+  revalidatePath('/', 'layout');
+  redirect(`/club/${clubId}`);
 }
 
 // Agrega un capítulo al libro activo. Solo administradores (lo impone RLS).
