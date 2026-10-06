@@ -126,26 +126,26 @@ export async function createClub(prevState, formData) {
 }
 
 // Arranca un libro nuevo para el club — mismos tres campos que "Crear
-// club" (título, autor, cantidad de capítulos) más una elección,
-// "makesPrincipal": si este libro pasa a ser el PRINCIPAL del club (el
-// que se destaca en "Mis clubes de lectura" y el que abre "Tu camino" por
-// default) o si se suma en paralelo, sin tocar el principal de siempre.
+// club" (título, autor, cantidad de capítulos). SIEMPRE pasa a ser el
+// PRINCIPAL del club (el que se destaca en "Mis clubes de lectura" y el
+// que abre "Tu camino" por default) — se pidió que el último libro
+// agregado sea siempre el principal, sin elección de por medio (antes
+// había un chip "Se lee en paralelo"; se sacó).
 //
-// A diferencia de como funcionaba hasta la migración 060 ("Empezar un
+// A diferencia de como funcionaba antes de la migración 060 ("Empezar un
 // libro nuevo" archivaba el que se dejaba), ACÁ NINGÚN LIBRO SE CIERRA:
-// is_active del libro anterior ni se toca — se pidió explícitamente que
-// los clubes puedan seguir con varios libros en curso a la vez, cada uno
-// con sus comentarios y su progreso funcionando normal. Lo único que
-// puede cambiar es is_principal, y solo si se eligió "makesPrincipal".
+// is_active del libro anterior ni se toca — sigue pudiendo comentarse y
+// marcando progreso igual que siempre (aunque pasen años), solo que deja
+// de ser el destacado y se ve desde "Otros libros del club".
 //
 // A diferencia de `addChapter` (que confía del todo en RLS), acá SÍ se
 // chequea admin del lado del servidor — tocar qué libro es el principal
 // del club es bastante más grande que sumar un capítulo. El orden sigue
 // el mismo criterio de siempre (no es atómico, mismo trade-off aceptado
 // que ya tiene `createClub`): primero se arma el libro nuevo completo
-// (libro + club_books + capítulos, SIEMPRE como no-principal al insertar)
-// y RECIÉN AHÍ, si corresponde, se mueve is_principal — si algo falla a
-// mitad del armado del libro, no se tocó nada del resto del club.
+// (libro + club_books + capítulos, como no-principal al insertar) y
+// RECIÉN AHÍ se mueve is_principal — si algo falla a mitad del armado del
+// libro, no se tocó nada del resto del club.
 export async function startNewClubBook(prevState, formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
@@ -153,7 +153,6 @@ export async function startNewClubBook(prevState, formData) {
   const clubId = formData.get('clubId')?.toString();
   const bookTitle = formData.get('bookTitle')?.toString().trim();
   const bookAuthor = formData.get('bookAuthor')?.toString().trim();
-  const makesPrincipal = formData.get('makesPrincipal') === 'true';
   if (!clubId || !bookTitle || !bookAuthor) {
     return { error: 'Completa el título y el autor del libro nuevo.' };
   }
@@ -189,13 +188,11 @@ export async function startNewClubBook(prevState, formData) {
   if (chapterError) return { error: friendlyDbError(chapterError) };
 
   // Recién acá se mueve is_principal — todo lo demás ya salió bien.
-  if (makesPrincipal) {
-    const { error } = await setPrincipalClubBook(supabase, clubId, clubBook.id);
-    if (error) return { error };
-  }
+  const { error: principalError } = await setPrincipalClubBook(supabase, clubId, clubBook.id);
+  if (principalError) return { error: principalError };
 
   revalidatePath('/', 'layout');
-  redirect(makesPrincipal ? `/club/${clubId}` : `/club/${clubId}?libro=${clubBook.id}`);
+  redirect(`/club/${clubId}`);
 }
 
 // Promueve a principal un libro que el club ya está leyendo en paralelo —
