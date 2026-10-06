@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
@@ -31,6 +32,7 @@ function formatRange(startedAt, finishedAt) {
 // agregarle capítulos a algo que ya se cerró), y el principal ya tiene su
 // propia entrada en Preferencias, no hace falta duplicarla acá.
 export function PastBooksList({ clubId, books, isAdmin }) {
+  const router = useRouter();
   const [openId, setOpenId] = useState(null);
   const [detail, setDetail] = useState(null);
   const [, startTransition] = useTransition();
@@ -103,9 +105,23 @@ export function PastBooksList({ clubId, books, isAdmin }) {
         );
 
         return b.isActive ? (
-          <Link key={b.clubBookId} href={href} style={{ textDecoration: 'none', width: '100%' }}>
+          // Un <div> navegable, no <Link> — la fila ya puede traer adentro
+          // el link de "Gestionar capítulos" (ver más abajo), y un <a>
+          // anidado dentro de otro <a> es HTML inválido: el navegador lo
+          // corrige al parsear, y el toque en el ícono interno terminaba
+          // disparando la navegación de ESTA fila en vez de la suya.
+          <div
+            key={b.clubBookId}
+            role="link"
+            tabIndex={0}
+            onClick={() => router.push(href)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') router.push(href);
+            }}
+            style={{ width: '100%', cursor: 'pointer' }}
+          >
             {row}
-          </Link>
+          </div>
         ) : (
           <button
             key={b.clubBookId}
