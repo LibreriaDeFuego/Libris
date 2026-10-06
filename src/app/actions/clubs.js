@@ -36,26 +36,6 @@ async function findOrCreateBook(supabase, title, author) {
   return { id: created.id };
 }
 
-// A lo sumo un libro principal por club (índice único, migración 060) —
-// primero hay que sacarle la marca al que la tenía antes de ponérsela al
-// nuevo.
-async function setPrincipalClubBook(supabase, clubId, clubBookId) {
-  const { error: unsetError } = await supabase
-    .from('club_books')
-    .update({ is_principal: false })
-    .eq('club_id', clubId)
-    .eq('is_principal', true);
-  if (unsetError) return { error: friendlyDbError(unsetError) };
-
-  const { error: setError } = await supabase
-    .from('club_books')
-    .update({ is_principal: true })
-    .eq('id', clubBookId);
-  if (setError) return { error: friendlyDbError(setError) };
-
-  return { error: null };
-}
-
 function chapterRows(clubBookId, from, count) {
   return Array.from({ length: count }, (_, i) => ({
     club_book_id: clubBookId,
@@ -110,7 +90,7 @@ export async function createClub(prevState, formData) {
 
   const { data: clubBook, error: clubBookError } = await supabase
     .from('club_books')
-    .insert({ club_id: club.id, book_id: book.id, is_active: true, is_principal: true })
+    .insert({ club_id: club.id, book_id: book.id, is_active: true })
     .select('id')
     .single();
   if (clubBookError) return { error: friendlyDbError(clubBookError) };
@@ -127,9 +107,12 @@ export async function createClub(prevState, formData) {
 // Arranca un libro nuevo para el club — mismos tres campos que "Crear
 // club" (título, autor, cantidad de capítulos). SIEMPRE pasa a ser el
 // PRINCIPAL del club (el que se destaca en "Mis clubes de lectura" y el
-// que abre "Tu camino" por default) — se pidió que el último libro
-// agregado sea siempre el principal, sin elección de por medio (antes
-// había un chip "Se lee en paralelo"; se sacó).
+// que abre "Tu camino" por default): desde la migración 062, el
+// principal no es un flag que haya que mover — es, siempre, el libro
+// ACTIVO con la fecha de ingreso más reciente (ver getPrincipalClubBook,
+// activeClub.js), así que alcanza con insertar el club_book nuevo; ya
+// nace siendo el principal, sin un paso aparte que pueda fallar o
+// desincronizarse.
 //
 // A diferencia de como funcionaba antes de la migración 060 ("Empezar un
 // libro nuevo" archivaba el que se dejaba), ACÁ NINGÚN LIBRO SE CIERRA:
@@ -138,13 +121,8 @@ export async function createClub(prevState, formData) {
 // de ser el destacado y se ve desde "Otros libros del club".
 //
 // A diferencia de `addChapter` (que confía del todo en RLS), acá SÍ se
-// chequea admin del lado del servidor — tocar qué libro es el principal
-// del club es bastante más grande que sumar un capítulo. El orden sigue
-// el mismo criterio de siempre (no es atómico, mismo trade-off aceptado
-// que ya tiene `createClub`): primero se arma el libro nuevo completo
-// (libro + club_books + capítulos, como no-principal al insertar) y
-// RECIÉN AHÍ se mueve is_principal — si algo falla a mitad del armado del
-// libro, no se tocó nada del resto del club.
+// chequea admin del lado del servidor — crear un libro nuevo para el
+// club es bastante más grande que sumar un capítulo.
 export async function startNewClubBook(prevState, formData) {
   const supabase = await createClient();
   const user = await requireUser(supabase);
@@ -176,7 +154,7 @@ export async function startNewClubBook(prevState, formData) {
 
   const { data: clubBook, error: clubBookError } = await supabase
     .from('club_books')
-    .insert({ club_id: clubId, book_id: book.id, is_active: true, is_principal: false })
+    .insert({ club_id: clubId, book_id: book.id, is_active: true })
     .select('id')
     .single();
   if (clubBookError) return { error: friendlyDbError(clubBookError) };
@@ -185,10 +163,6 @@ export async function startNewClubBook(prevState, formData) {
     .from('chapters')
     .insert(chapterRows(clubBook.id, 1, chapterCount));
   if (chapterError) return { error: friendlyDbError(chapterError) };
-
-  // Recién acá se mueve is_principal — todo lo demás ya salió bien.
-  const { error: principalError } = await setPrincipalClubBook(supabase, clubId, clubBook.id);
-  if (principalError) return { error: principalError };
 
   revalidatePath('/', 'layout');
   redirect(`/club/${clubId}`);

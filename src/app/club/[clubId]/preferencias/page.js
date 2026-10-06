@@ -24,21 +24,27 @@ export default async function Page({ params, searchParams }) {
   // desde qué libro se abriera Preferencias — el ícono de Preferencias en
   // "Tu camino" de un libro en paralelo terminaba mostrando los datos de
   // otro libro.
-  const [{ data: members }, clubBook, { data: pendingRequests }] = await Promise.all([
+  //
+  // El principal siempre se pide aparte (ya no es una columna del libro
+  // que se esté mirando, migración 062) — para poder comparar y saber si
+  // "este" libro es el principal o no, sin otra consulta más si no hace
+  // falta.
+  const [{ data: members }, principalClubBook, clubBook, { data: pendingRequests }] = await Promise.all([
     supabase
       .from('club_members')
       .select('profile_id, role, joined_at, profiles(display_name, avatar_url)')
       .eq('club_id', clubId)
       .order('joined_at'),
+    getPrincipalClubBook(supabase, clubId),
     libro
       ? supabase
           .from('club_books')
-          .select('id, is_principal, books(id, title, author, cover_url)')
+          .select('id, books(id, title, author, cover_url)')
           .eq('id', libro)
           .eq('club_id', clubId)
           .maybeSingle()
           .then(({ data }) => data)
-      : getPrincipalClubBook(supabase, clubId),
+      : Promise.resolve(null),
     isAdmin
       ? supabase
           .from('club_join_requests')
@@ -49,12 +55,14 @@ export default async function Page({ params, searchParams }) {
       : Promise.resolve({ data: [] }),
   ]);
 
+  const effectiveClubBook = libro ? clubBook : principalClubBook;
+
   return (
     <PreferenciasScreen
       club={club}
-      book={clubBook?.books ?? null}
-      clubBookId={clubBook?.id ?? null}
-      isBookPrincipal={clubBook?.is_principal ?? true}
+      book={effectiveClubBook?.books ?? null}
+      clubBookId={effectiveClubBook?.id ?? null}
+      isBookPrincipal={effectiveClubBook?.id === principalClubBook?.id}
       isAdmin={isAdmin}
       currentUserId={user.id}
       members={members ?? []}

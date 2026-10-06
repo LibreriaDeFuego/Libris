@@ -36,19 +36,22 @@ export async function getClubMembers(supabase, clubId) {
 }
 
 // El libro PRINCIPAL de un club puntual — el que se destaca en "Mis
-// clubes de lectura" y el que abre "Tu camino" por default. Hasta la
-// migración 060 esto era "el" libro activo del club (como mucho uno a la
-// vez); ahora un club puede tener varios libros en curso al mismo tiempo
-// (is_active), pero sigue habiendo como mucho un principal entre ellos
-// (is_principal) — para no romper ninguna pantalla que asuma "el libro
-// del club". Los demás libros en curso (y los archivados) se piden aparte
+// clubes de lectura" y el que abre "Tu camino" por default. Un club puede
+// tener varios libros en curso a la vez (is_active, migración 060); el
+// principal es, siempre, el ACTIVO con la fecha de ingreso (started_at)
+// más reciente — "el último que se agrega es el principal, y punto", sin
+// elección de por medio (antes era un flag aparte, is_principal, que
+// había que mover a mano y podía desincronizarse; migración 062 lo saca
+// del todo). Los demás libros en curso (y los archivados) se piden aparte
 // con getClubOtherBooks (clubDetail.js).
 export async function getPrincipalClubBook(supabase, clubId) {
   const { data } = await supabase
     .from('club_books')
     .select('id, club_id, book_id, books(id, title, author, cover_url)')
     .eq('club_id', clubId)
-    .eq('is_principal', true)
+    .eq('is_active', true)
+    .order('started_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
   return data ?? null;
 }
