@@ -38,8 +38,7 @@ async function findOrCreateBook(supabase, title, author) {
 
 // A lo sumo un libro principal por club (índice único, migración 060) —
 // primero hay que sacarle la marca al que la tenía antes de ponérsela al
-// nuevo. La usan tanto startNewClubBook (al elegir "pasa a ser el
-// principal") como makeClubBookPrincipal (promover uno ya existente).
+// nuevo.
 async function setPrincipalClubBook(supabase, clubId, clubBookId) {
   const { error: unsetError } = await supabase
     .from('club_books')
@@ -190,37 +189,6 @@ export async function startNewClubBook(prevState, formData) {
   // Recién acá se mueve is_principal — todo lo demás ya salió bien.
   const { error: principalError } = await setPrincipalClubBook(supabase, clubId, clubBook.id);
   if (principalError) return { error: principalError };
-
-  revalidatePath('/', 'layout');
-  redirect(`/club/${clubId}`);
-}
-
-// Promueve a principal un libro que el club ya está leyendo en paralelo —
-// la única forma de volver a destacar un libro después de haberlo sumado
-// con "Se lee en paralelo" (antes, esa elección era definitiva: no había
-// manera de cambiarla sin volver a crear el libro). El que era principal
-// NO se archiva ni deja de poder comentarse — solo deja de ser el
-// destacado, pasa a listarse en "Otros libros del club".
-export async function makeClubBookPrincipal(prevState, formData) {
-  const supabase = await createClient();
-  const user = await requireUser(supabase);
-
-  const clubId = formData.get('clubId')?.toString();
-  const clubBookId = formData.get('clubBookId')?.toString();
-  if (!clubId || !clubBookId) return { error: 'Falta el libro.' };
-
-  const { data: membership } = await supabase
-    .from('club_members')
-    .select('role')
-    .eq('club_id', clubId)
-    .eq('profile_id', user.id)
-    .maybeSingle();
-  if (membership?.role !== 'admin') {
-    return { error: 'Solo un administrador puede cambiar el libro principal.' };
-  }
-
-  const { error } = await setPrincipalClubBook(supabase, clubId, clubBookId);
-  if (error) return { error };
 
   revalidatePath('/', 'layout');
   redirect(`/club/${clubId}`);

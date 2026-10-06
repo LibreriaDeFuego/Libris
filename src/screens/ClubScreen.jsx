@@ -31,7 +31,7 @@ import { formatMeetingDate, googleMapsUrl } from '@/lib/meetingFormat';
 // el libro que resolvió la página (el principal del club, o el que pida
 // "?libro=" — ver club/[clubId]/page.js) — un libro en paralelo se ve y se
 // usa exactamente igual que el principal, nada queda en solo lectura ahí.
-export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, activity, commentCounts, pendingQuestionChapterIds, answeredQuestionChapterIds, otherClubsCount, isAdmin, pendingRequestCount = 0, otherBooks = [] }) {
+export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, activity, commentCounts, pendingQuestionChapterIds, answeredQuestionChapterIds, isAdmin, pendingRequestCount = 0, otherBooks = [] }) {
   const [showModal, setShowModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const router = useRouter();
@@ -106,6 +106,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
       {book ? (
         <>
           <SwipeableSections
+            key={clubBookId}
             initialIndex={otherBooks.length > 0 ? 1 : 0}
             sections={[
               ...(otherBooks.length > 0
@@ -134,17 +135,6 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
               { key: 'actividad', node: <ClubActivityFeed clubId={club.id} activity={activity} /> },
             ]}
           />
-
-          {otherClubsCount > 0 && (
-            <div style={{ padding: '20px 18px 24px', background: 'var(--surface-page)' }}>
-              <div style={{ background: 'var(--success)', borderRadius: 'var(--radius-lg)', padding: 14, display: 'flex', gap: 12, alignItems: 'center' }}>
-                <Icon name="users" size={20} color="#fff" />
-                <div style={{ fontSize: 'var(--fs-xs)', color: '#fff', fontWeight: 600, lineHeight: 'var(--lh-snug)' }}>
-                  {otherClubsCount} {otherClubsCount === 1 ? 'club más está leyendo' : 'clubes más están leyendo'} {book.title} esta semana
-                </div>
-              </div>
-            </div>
-          )}
 
           {showModal && (
             <UpdateProgressModal

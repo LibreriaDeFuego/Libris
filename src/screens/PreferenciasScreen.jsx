@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { updateClubPreferences, leaveClub, promoteAdmin, demoteAdmin, respondToJoinRequest, makeClubBookPrincipal } from '@/app/actions/clubs';
+import { updateClubPreferences, leaveClub, promoteAdmin, demoteAdmin, respondToJoinRequest } from '@/app/actions/clubs';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
@@ -110,27 +110,6 @@ function MemberRow({ member, canManage, adminCount, currentUserId }) {
         </div>
       )}
     </div>
-  );
-}
-
-// Promueve el libro que se está mirando a principal del club — la única
-// forma de volver sobre la elección de "Se lee en paralelo" (antes
-// definitiva, ver makeClubBookPrincipal). Un <form> propio en vez de
-// sumarse al de preferencias: es una acción aparte, server action
-// distinta, que además redirige sola al terminar.
-function MakePrincipalForm({ clubId, clubBookId }) {
-  const [state, action, pending] = useActionState(makeClubBookPrincipal, initialState);
-  return (
-    <form action={action}>
-      <input type="hidden" name="clubId" value={clubId} />
-      <input type="hidden" name="clubBookId" value={clubBookId} />
-      <Button variant="primary" size="md" type="submit" disabled={pending}>
-        {pending ? 'Guardando…' : 'Hacer principal'}
-      </Button>
-      {state?.error && (
-        <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', marginTop: 8 }}>{state.error}</div>
-      )}
-    </form>
   );
 }
 
@@ -273,8 +252,7 @@ export function PreferenciasScreen({ club, book, clubBookId, isBookPrincipal = t
 
           {book && (
             <Section
-              title={isBookPrincipal ? 'El libro principal' : 'Este libro (en paralelo)'}
-              description={!isBookPrincipal ? 'No es el libro destacado del club — no aparece en "Mis clubes de lectura" ni abre por default "Tu camino".' : undefined}
+              title={isBookPrincipal ? 'El libro principal' : 'Este libro'}
             >
               <div>
                 <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Título</div>
@@ -293,8 +271,6 @@ export function PreferenciasScreen({ club, book, clubBookId, isBookPrincipal = t
                 />
                 <CoverUploader bookId={book.id} hasCover={Boolean(book.cover_url)} tone="light" />
               </div>
-
-              {!isBookPrincipal && <MakePrincipalForm clubId={club.id} clubBookId={clubBookId} />}
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <Link href={`/club/${club.id}/capitulos?libro=${clubBookId}`}>

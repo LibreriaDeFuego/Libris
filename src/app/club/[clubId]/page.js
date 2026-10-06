@@ -61,22 +61,15 @@ export default async function Page({ params, searchParams }) {
         commentCounts={{}}
         pendingQuestionChapterIds={[]}
         answeredQuestionChapterIds={[]}
-        otherClubsCount={0}
         otherBooks={otherBooks}
       />
     );
   }
 
-  const [heroExtras, { data: otherClubsCount }, commentCounts, questionsByChapter, otherBooks] = await Promise.all([
+  const [heroExtras, commentCounts, questionsByChapter, otherBooks] = await Promise.all([
     // Chapters, volumes, mi progreso, mi reseña, actividad reciente y
     // solicitudes pendientes — ver src/lib/clubDetail.js.
     getClubHeroExtras(supabase, { clubId, clubBookId: clubBook.id, userId: user.id, isAdmin }),
-    // RLS solo expone los clubes propios; el conteo de "otros clubes leyendo
-    // lo mismo" viene de una función security definer.
-    supabase.rpc('other_clubs_reading_count', {
-      target_book_id: clubBook.book_id,
-      exclude_club_id: clubId,
-    }),
     // Cuántos comentarios tiene cada capítulo, para la pastilla de
     // "Comentarios" en Tu camino.
     getChapterCommentCounts(supabase, clubBook.id),
@@ -103,7 +96,6 @@ export default async function Page({ params, searchParams }) {
       commentCounts={commentCounts}
       pendingQuestionChapterIds={questionsByChapter.pending}
       answeredQuestionChapterIds={questionsByChapter.answered}
-      otherClubsCount={Number(otherClubsCount ?? 0)}
       otherBooks={otherBooks}
     />
   );
