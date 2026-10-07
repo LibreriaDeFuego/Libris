@@ -47,7 +47,7 @@ export default async function Page({ params, searchParams }) {
     // Sin libro principal (club recién creado, o un estado raro) — igual
     // puede tener libros en paralelo/archivados, por eso otherBooks se
     // pide siempre, pase lo que pase acá arriba.
-    const otherBooks = await getClubOtherBooks(supabase, clubId, user.id, null);
+    const otherBooks = await getClubOtherBooks(supabase, clubId, null);
     return (
       <ClubScreen
         {...baseProps}
@@ -79,7 +79,7 @@ export default async function Page({ params, searchParams }) {
     getChaptersWithQuestions(supabase, clubBook.id, user.id),
     // Los demás libros del club — en paralelo y/o archivados (migración
     // 060) — para "Otros libros del club", deslizando a la izquierda.
-    getClubOtherBooks(supabase, clubId, user.id, clubBook.id),
+    getClubOtherBooks(supabase, clubId, clubBook.id),
   ]);
 
   return (

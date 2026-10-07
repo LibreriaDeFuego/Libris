@@ -8,14 +8,26 @@ import { Icon } from '@/design-system/components/core/Icon.jsx';
 import { getPastClubBookDetail } from '@/app/actions/clubs';
 import { PastChapterPath } from '@/components/PastChapterPath';
 
-function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+function formatMonthYear(iso) {
+  const d = new Date(iso);
+  return `${MESES[d.getMonth()]} ${d.getFullYear()}`;
 }
-function formatRange(startedAt, finishedAt) {
-  if (startedAt && finishedAt) return `${formatDate(startedAt)} – ${formatDate(finishedAt)}`;
-  if (finishedAt) return `Terminado ${formatDate(finishedAt)}`;
-  if (startedAt) return `Empezado ${formatDate(startedAt)}`;
-  return null;
+const ORDINALES = { 1: '1er', 2: '2do', 3: '3er', 4: '4to', 5: '5to', 6: '6to', 7: '7mo', 8: '8vo', 9: '9no', 10: '10mo' };
+function ordinal(n) {
+  return ORDINALES[n] ?? `${n}º`;
+}
+// "2do libro · desde marzo 2025" — a diferencia de la fecha de lectura
+// personal que mostraba esto antes (reading_progress, dependía de que
+// VOS hubieras marcado progreso en ese libro), `order`/`joinedAt` vienen
+// de club_books.started_at (clubDetail.js) — siempre existen, sin
+// depender de quién mire la pantalla.
+function formatOrderAndDate(order, joinedAt) {
+  if (!order || !joinedAt) return null;
+  return `${ordinal(order)} libro · desde ${formatMonthYear(joinedAt)}`;
 }
 
 // "Otros libros del club" (migración 060) — todo lo que el club tiene
@@ -54,7 +66,7 @@ export function PastBooksList({ clubId, books, isAdmin }) {
       </div>
 
       {books.map((b) => {
-        const statusLabel = b.isPrincipal ? 'Principal' : b.isActive ? 'En paralelo' : 'Archivado';
+        const statusLabel = b.isPrincipal ? 'Principal' : b.isActive ? 'Ya leído' : 'Archivado';
         const statusColor = b.isActive ? 'var(--accent-600)' : 'var(--text-tertiary)';
         const href = b.isPrincipal ? `/club/${clubId}` : `/club/${clubId}?libro=${b.clubBookId}`;
 
@@ -82,9 +94,9 @@ export function PastBooksList({ clubId, books, isAdmin }) {
               </div>
               <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-primary)' }}>{b.title}</div>
               <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)' }}>{b.author}</div>
-              {formatRange(b.startedAt, b.finishedAt) && (
+              {formatOrderAndDate(b.order, b.joinedAt) && (
                 <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>
-                  {formatRange(b.startedAt, b.finishedAt)}
+                  {formatOrderAndDate(b.order, b.joinedAt)}
                 </div>
               )}
             </div>

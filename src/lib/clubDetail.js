@@ -131,9 +131,9 @@ export async function getChapterCommentCounts(supabase, clubBookId) {
 // Todos los libros del club que NO sean el que se está mirando ahora
 // mismo (migración 060) — para la sección "Otros libros del club" en Tu
 // camino. Mezcla dos tipos bien distintos, cada uno con su propia
-// `isActive`: libros en paralelo (is_active = true — se puede seguir
-// comentando y marcando progreso igual que en el principal, solo que no
-// son el destacado) y libros archivados a mano (is_active = false —
+// `isActive`: libros ya leídos que se pueden seguir comentando y
+// marcando progreso igual que el principal (is_active = true, solo que
+// no son el destacado) y libros archivados a mano (is_active = false —
 // quedan de solo lectura, ver PastChapterPath). `excludeClubBookId` es el
 // libro que ya se está viendo, para no listarse a sí mismo.
 //
@@ -144,35 +144,37 @@ export async function getChapterCommentCounts(supabase, clubBookId) {
 // paralelo, el principal de verdad tiene que poder seguir apareciendo acá
 // marcado como tal.
 //
-// Trae, de cada uno, tus propias fechas de lectura si las tenés
-// (reading_progress.started_at/finished_at) — no hay ninguna fecha "de
-// cierre" del libro en sí, así que se usa la misma fuente que ya usa "Mi
-// biblioteca" (profile_books_read, migraciones 045/047).
-export async function getClubOtherBooks(supabase, clubId, userId, excludeClubBookId) {
+// `order` es la posición de cada libro en la historia del club (1, 2,
+// 3…) y `joinedAt` la fecha en la que ESE libro se sumó al club — las
+// dos se calculan acá a partir de started_at, no hay ninguna columna que
+// las guarde. A diferencia de una fecha de lectura personal
+// (reading_progress), started_at de club_books siempre existe, sin
+// depender de que vos (u otro miembro) hayan marcado progreso.
+export async function getClubOtherBooks(supabase, clubId, excludeClubBookId) {
   const { data } = await supabase
     .from('club_books')
-    .select('id, is_active, started_at, books(title, author, cover_url), reading_progress(profile_id, started_at, finished_at)')
+    .select('id, is_active, started_at, books(title, author, cover_url)')
     .eq('club_id', clubId)
     .order('started_at', { ascending: false });
 
   const rows = data ?? [];
   const principalId = rows.find((cb) => cb.is_active)?.id ?? null;
 
+  const orderById = new Map();
+  [...rows].reverse().forEach((cb, i) => orderById.set(cb.id, i + 1));
+
   return rows
     .filter((cb) => cb.id !== excludeClubBookId)
-    .map((cb) => {
-      const myProgress = (cb.reading_progress ?? []).find((rp) => rp.profile_id === userId);
-      return {
-        clubBookId: cb.id,
-        title: cb.books?.title ?? null,
-        author: cb.books?.author ?? null,
-        coverUrl: cb.books?.cover_url ?? null,
-        startedAt: myProgress?.started_at ?? null,
-        finishedAt: myProgress?.finished_at ?? null,
-        isActive: cb.is_active,
-        isPrincipal: cb.id === principalId,
-      };
-    });
+    .map((cb) => ({
+      clubBookId: cb.id,
+      title: cb.books?.title ?? null,
+      author: cb.books?.author ?? null,
+      coverUrl: cb.books?.cover_url ?? null,
+      joinedAt: cb.started_at,
+      order: orderById.get(cb.id),
+      isActive: cb.is_active,
+      isPrincipal: cb.id === principalId,
+    }));
 }
 
 // Preguntas de capítulo (migraciones 053/054): qué capítulos tienen, para
