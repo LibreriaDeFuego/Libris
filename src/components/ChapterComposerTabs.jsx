@@ -8,10 +8,10 @@ import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { ChapterQuestionsManager } from '@/screens/GestionCapitulosScreen.jsx';
 
 // Una pestaña de TIPO del panel de agregar — ícono + rótulo apilados,
-// centrados, con una rayita coral bajo la activa. Solo Cita/Foto·GIF/Voz
-// (y Pregunta, si isAdmin) tienen botón acá — "Comentario" no, ver el
-// comentario sobre ChapterComposerTabs más abajo. Mismo componente y mismo
-// estilo que ya usa PostComposer.jsx (Perfil) para sus propias pestañas.
+// centrados, con una rayita coral bajo la activa. Cita/Foto·GIF/Voz/
+// Pregunta tienen botón acá — "Comentario" no, ver el comentario sobre
+// ChapterComposerTabs más abajo. Mismo componente y mismo estilo que ya
+// usa PostComposer.jsx (Perfil) para sus propias pestañas.
 function TypeTabButton({ active, onClick, icon, label }) {
   return (
     <button
@@ -37,9 +37,9 @@ function TypeTabButton({ active, onClick, icon, label }) {
 // la migración 054) antes de mostrar el administrador de la lista — igual
 // que ya hace Gestión de capítulos. Se pide de nuevo cada vez que se abre
 // esta pestaña (sin cachear entre capítulos): es información que solo
-// importa mientras el admin está mirando esto, no vale la pena guardarla
-// en ningún estado más arriba.
-function AdminQuestionTab({ chapterId, clubBookId }) {
+// importa mientras se está mirando esto, no vale la pena guardarla en
+// ningún estado más arriba.
+function QuestionTab({ chapterId, clubBookId, isAdmin, currentUserId }) {
   const [questions, setQuestions] = useState(undefined); // undefined = cargando; array después
 
   useEffect(() => {
@@ -55,7 +55,15 @@ function AdminQuestionTab({ chapterId, clubBookId }) {
   if (questions === undefined) {
     return <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)', padding: '8px 0' }}>Cargando…</div>;
   }
-  return <ChapterQuestionsManager chapterId={chapterId} clubBookId={clubBookId} questions={questions} />;
+  return (
+    <ChapterQuestionsManager
+      chapterId={chapterId}
+      clubBookId={clubBookId}
+      questions={questions}
+      isAdmin={isAdmin}
+      currentUserId={currentUserId}
+    />
+  );
 }
 
 // Comentario, cita, foto/GIF o nota de voz para UN capítulo puntual —
@@ -65,15 +73,17 @@ function AdminQuestionTab({ chapterId, clubBookId }) {
 // texto (`toggleTab`), la única forma de salir de esas tres sin cerrar el
 // panel entero. Se usa envuelto en un `Modal` en DOS lugares:
 //   - El broche "+" de cada nodo en Tu camino (ChapterPath.jsx,
-//     ChapterCommentsPanel) — ahí sí, con `isAdmin`, agrega una quinta
-//     pestaña, "Pregunta" (armar/editar la encuesta del capítulo).
+//     ChapterCommentsPanel) — ahí sí agrega una quinta pestaña,
+//     "Pregunta" (armar una nueva, o editar/borrar la propia — editar o
+//     borrar la de otro miembro queda reservado a administradores,
+//     migración 064).
 //   - La barra fija al pie de "Comentarios de tu camino"
 //     (ComentariosScreen.jsx, ChapterComposerBar) — sin la pestaña de
 //     Pregunta, esa vive solo en el broche "+" de arriba.
 // `NewCommentForm` resuelve Comentario/Cita/Foto·GIF por dentro (mismo
 // formulario, distinta configuración vía `kind`/`autoOpenPicker`); Voz
 // sigue siendo `VoiceRecorder`, aparte.
-export function ChapterComposerTabs({ clubBookId, chapterId, book, isAdmin = false, onDone }) {
+export function ChapterComposerTabs({ clubBookId, chapterId, book, isAdmin = false, currentUserId, onDone }) {
   const [activeTab, setActiveTab] = useState('comment'); // 'comment' (default) | 'quote' | 'photo' | 'voice' | 'question'
 
   function toggleTab(tab) {
@@ -86,15 +96,13 @@ export function ChapterComposerTabs({ clubBookId, chapterId, book, isAdmin = fal
         <TypeTabButton active={activeTab === 'quote'} onClick={() => toggleTab('quote')} icon="quote" label="Cita" />
         <TypeTabButton active={activeTab === 'photo'} onClick={() => toggleTab('photo')} icon="image" label="Foto/GIF" />
         <TypeTabButton active={activeTab === 'voice'} onClick={() => toggleTab('voice')} icon="mic" label="Voz" />
-        {isAdmin && (
-          <TypeTabButton active={activeTab === 'question'} onClick={() => toggleTab('question')} icon="clipboard-list" label="Pregunta" />
-        )}
+        <TypeTabButton active={activeTab === 'question'} onClick={() => toggleTab('question')} icon="clipboard-list" label="Pregunta" />
       </div>
 
       {activeTab === 'voice' ? (
         <VoiceRecorder extraFields={{ clubBookId, chapterId }} showSpoilerOption={false} onDone={onDone} />
       ) : activeTab === 'question' ? (
-        <AdminQuestionTab chapterId={chapterId} clubBookId={clubBookId} />
+        <QuestionTab chapterId={chapterId} clubBookId={clubBookId} isAdmin={isAdmin} currentUserId={currentUserId} />
       ) : (
         <NewCommentForm
           key={activeTab}

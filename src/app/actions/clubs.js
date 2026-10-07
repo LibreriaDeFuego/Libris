@@ -1158,7 +1158,9 @@ const MAX_QUESTION_OPTIONS = 6;
 
 // Arma una pregunta nueva (sin questionId) o edita una existente (con
 // questionId, la reemplaza entera) — nunca "la" pregunta del capítulo,
-// puede haber varias. Solo administradores: lo impone la policy de
+// puede haber varias. Cualquier miembro del club puede armar una
+// (migración 064); para editar una ya existente hace falta haberla
+// armado uno mismo, o ser administrador — lo impone la policy de
 // insert/update de la tabla, acá no hace falta chequearlo aparte.
 export async function saveChapterQuestion(formData) {
   const supabase = await createClient();
@@ -1209,7 +1211,8 @@ export async function saveChapterQuestion(formData) {
 }
 
 // Borra una pregunta puntual — de paso borra todas sus respuestas (on
-// delete cascade). Solo administradores, lo impone la policy de delete.
+// delete cascade). Quien la armó, o un administrador — lo impone la
+// policy de delete.
 export async function deleteChapterQuestion(questionId) {
   const supabase = await createClient();
   await requireUser(supabase);
@@ -1276,7 +1279,7 @@ export async function getChapterQuestions(chapterId) {
 
   const { data: questions } = await supabase
     .from('chapter_questions')
-    .select('id, kind, prompt, options, correct_option_index')
+    .select('id, kind, prompt, options, correct_option_index, created_by')
     .eq('chapter_id', chapterId)
     .order('created_at', { ascending: true });
   if (!questions || questions.length === 0) return { questions: [] };

@@ -28,7 +28,7 @@ export default async function Page({ params, searchParams }) {
   const [{ data: chapters }, { data: volumes }, { data: questions }] = await Promise.all([
     supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
     supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
-    supabase.from('chapter_questions').select('id, chapter_id, kind, prompt, options, correct_option_index').eq('club_book_id', clubBook.id),
+    supabase.from('chapter_questions').select('id, chapter_id, kind, prompt, options, correct_option_index, created_by').eq('club_book_id', clubBook.id),
   ]);
 
   return (
@@ -39,6 +39,7 @@ export default async function Page({ params, searchParams }) {
       chapters={chapters ?? []}
       volumes={volumes ?? []}
       questions={questions ?? []}
+      currentUserId={user.id}
     />
   );
 }

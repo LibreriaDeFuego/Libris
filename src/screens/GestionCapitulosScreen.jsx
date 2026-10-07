@@ -48,7 +48,7 @@ function VolumeSelect({ volumes, value, onChange }) {
 // — el formulario precargado — y no había forma de distinguir a simple
 // vista si lo que se veía era lo guardado o algo a medio escribir).
 // "Editar" recién ahí abre el formulario.
-function QuestionSummaryCard({ question, onEdit, onDelete, pending }) {
+function QuestionSummaryCard({ question, onEdit, onDelete, pending, canManage }) {
   const meta = QUESTION_KIND_META[question.kind];
   return (
     <div style={{ background: 'var(--surface-card-alt)', borderRadius: 'var(--radius-md)', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -87,12 +87,14 @@ function QuestionSummaryCard({ question, onEdit, onDelete, pending }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Button variant="secondary" size="sm" type="button" onClick={onDelete} disabled={pending}>
-          {pending ? '...' : 'Borrar'}
-        </Button>
-        <Button variant="primary" size="sm" type="button" onClick={onEdit} disabled={pending}>Editar</Button>
-      </div>
+      {canManage && (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="secondary" size="sm" type="button" onClick={onDelete} disabled={pending}>
+            {pending ? '...' : 'Borrar'}
+          </Button>
+          <Button variant="primary" size="sm" type="button" onClick={onEdit} disabled={pending}>Editar</Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -101,7 +103,7 @@ function QuestionSummaryCard({ question, onEdit, onDelete, pending }) {
 // edita una existente (`questionId` puesto, la reemplaza entera).
 // Aparte de `ChapterQuestionsManager`, para poder reusarlo tanto para
 // "Agregar otra pregunta" como para editar una fila puntual de la lista.
-function QuestionForm({ chapterId, clubBookId, questionId, initial, onSaved, onCancel }) {
+function QuestionForm({ chapterId, clubBookId, questionId, initial, currentUserId, onSaved, onCancel }) {
   const [kind, setKind] = useState(initial?.kind ?? 'poll');
   const [prompt, setPrompt] = useState(initial?.prompt ?? '');
   const [options, setOptions] = useState(initial?.options?.length ? initial.options : ['', '']);
@@ -144,6 +146,7 @@ function QuestionForm({ chapterId, clubBookId, questionId, initial, onSaved, onC
         id: result.id, kind, prompt,
         options: kind === 'open' ? null : options,
         correct_option_index: kind === 'trivia' ? correctIndex : null,
+        created_by: initial?.created_by ?? currentUserId,
       });
     });
   }
@@ -237,14 +240,18 @@ function QuestionForm({ chapterId, clubBookId, questionId, initial, onSaved, onC
 // una por una, en ChapterPath cuando alguien marca este capítulo como el
 // que está leyendo. Vive acá dentro de la edición de ChapterRow
 // (número/título/volumen), y se exporta porque ChapterPath también la usa
-// — un administrador puede armar preguntas directo desde el broche "+"
-// de Tu camino, sin venir hasta esta pantalla (ver AdminQuestionTab).
+// — cualquier miembro del club puede armar preguntas directo desde el
+// broche "+" de Tu camino, sin venir hasta esta pantalla (migración
+// 064; ver QuestionTab en ChapterComposerTabs).
 //
 // Cada pregunta ya guardada se ve como `QuestionSummaryCard` — sin
 // ninguna duda de que hay algo persistido de verdad — y "Editar" recién
 // ahí abre su formulario, en el lugar de esa tarjeta. Al final, un botón
 // para agregar una más (o el formulario en blanco, si se tocó ese botón).
-export function ChapterQuestionsManager({ chapterId, clubBookId, questions }) {
+// "Editar"/"Borrar" solo se ven en la pregunta propia, o en cualquiera
+// si quien mira es administrador (`canManage`, moderación) — las de los
+// demás se ven igual, pero de solo lectura.
+export function ChapterQuestionsManager({ chapterId, clubBookId, questions, isAdmin = false, currentUserId }) {
   const [items, setItems] = useState(questions);
   const [editingId, setEditingId] = useState(null); // null | 'new' | el id de una existente
   const [deletingId, setDeletingId] = useState(null);
@@ -281,14 +288,16 @@ export function ChapterQuestionsManager({ chapterId, clubBookId, questions }) {
         </div>
       </div>
 
-      {items.map((q) =>
-        editingId === q.id ? (
+      {items.map((q) => {
+        const canManage = isAdmin || q.created_by === currentUserId;
+        return editingId === q.id ? (
           <QuestionForm
             key={q.id}
             chapterId={chapterId}
             clubBookId={clubBookId}
             questionId={q.id}
             initial={q}
+            currentUserId={currentUserId}
             onSaved={(item) => handleSaved(item, q.id)}
             onCancel={() => setEditingId(null)}
           />
@@ -296,12 +305,13 @@ export function ChapterQuestionsManager({ chapterId, clubBookId, questions }) {
           <QuestionSummaryCard
             key={q.id}
             question={q}
+            canManage={canManage}
             onEdit={() => setEditingId(q.id)}
             onDelete={() => remove(q.id)}
             pending={deletingId === q.id}
           />
-        )
-      )}
+        );
+      })}
 
       {editingId === 'new' ? (
         <QuestionForm
@@ -309,6 +319,7 @@ export function ChapterQuestionsManager({ chapterId, clubBookId, questions }) {
           clubBookId={clubBookId}
           questionId={null}
           initial={null}
+          currentUserId={currentUserId}
           onSaved={(item) => handleSaved(item, null)}
           onCancel={() => setEditingId(null)}
         />
@@ -335,7 +346,7 @@ export function ChapterQuestionsManager({ chapterId, clubBookId, questions }) {
 // mantiene su lugar en el orden gracias a este número, aunque tenga nombre
 // propio), a qué volumen pertenece, y sus preguntas opcionales (encuesta,
 // pregunta abierta o trivia, una o varias — ver ChapterQuestionsManager).
-function ChapterRow({ chapter, volumes, clubBookId, questions = [] }) {
+function ChapterRow({ chapter, volumes, clubBookId, questions = [], isAdmin, currentUserId }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(chapter.title ?? '');
   const [number, setNumber] = useState(String(chapter.number));
@@ -402,7 +413,7 @@ function ChapterRow({ chapter, volumes, clubBookId, questions = [] }) {
       </div>
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '2px 0' }} />
-      <ChapterQuestionsManager chapterId={chapter.id} clubBookId={clubBookId} questions={questions} />
+      <ChapterQuestionsManager chapterId={chapter.id} clubBookId={clubBookId} questions={questions} isAdmin={isAdmin} currentUserId={currentUserId} />
     </div>
   );
 }
@@ -600,7 +611,7 @@ function BookDetailsForm({ book }) {
   );
 }
 
-export function GestionCapitulosScreen({ club, book, clubBookId, chapters, volumes, questions = [] }) {
+export function GestionCapitulosScreen({ club, book, clubBookId, chapters, volumes, questions = [], currentUserId }) {
   const router = useRouter();
   const groups = groupChaptersByVolume(chapters, volumes);
   const nextNumber = chapters.length > 0 ? Math.max(...chapters.map((c) => c.number)) + 1 : 1;
@@ -650,6 +661,8 @@ export function GestionCapitulosScreen({ club, book, clubBookId, chapters, volum
                 volumes={volumes}
                 clubBookId={clubBookId}
                 questions={questionsByChapterId.get(chapter.id) ?? []}
+                isAdmin={club.role === 'admin'}
+                currentUserId={currentUserId}
               />
             ))}
           </div>

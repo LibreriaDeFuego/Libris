@@ -120,7 +120,7 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // pasando igual, no hace falta tocarlo: una prop de más que nadie lee no
 // rompe nada, y reactivar la insignia el día de mañana es no más que
 // sumarla de nuevo a esta firma.
-export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, commentCounts = {}, pendingQuestionChapterIds = [], answeredQuestionChapterIds = [], isAdmin = false, onOpenFull, onFinishBook }) {
+export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, commentCounts = {}, pendingQuestionChapterIds = [], answeredQuestionChapterIds = [], isAdmin = false, currentUserId, onOpenFull, onFinishBook }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -247,10 +247,10 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
         setToast(null);
         return;
       }
-      // Si el admin armó preguntas para este capítulo (migración 053; más
-      // de una desde la 054) y todavía faltan por responder, saltan acá
-      // mismo, una por una — nunca vuelven a aparecer solas las que ya
-      // respondiste antes.
+      // Si alguien armó preguntas para este capítulo (migración 053; más
+      // de una desde la 054, cualquier miembro desde la 064) y todavía
+      // faltan por responder, saltan acá mismo, una por una — nunca
+      // vuelven a aparecer solas las que ya respondiste antes.
       const { questions } = await getChapterQuestions(chapter.id);
       const pendingQuestions = questions.filter((q) => !q.answered);
       if (pendingQuestions.length > 0) {
@@ -480,6 +480,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                     chapterId={chapter.id}
                     label={chapterLabel(chapter)}
                     isAdmin={isAdmin}
+                    currentUserId={currentUserId}
                     onDismiss={() => setComposerChapterId(null)}
                   />
                 )}
@@ -739,16 +740,18 @@ function SpoilerWarning({ label, href, onDismiss }) {
 // TODO sentido — antes era un panel inline que empujaba el resto de Tu
 // camino hacia abajo; ahora es el mismo `Modal` compartido (hoja que sube
 // desde abajo), así que el título y el botón de cerrar los pone el propio
-// Modal, ya no hace falta un header a mano acá. Las cuatro pestañas
-// (Comentario/Cita/Foto·GIF/Voz) y, si `isAdmin`, una quinta ("Pregunta")
-// viven en `ChapterComposerTabs` (`@/components/ChapterComposerTabs`) —
-// compartido con la barra fija al pie de "Comentarios de tu camino"
-// (`ComentariosScreen.jsx`, `ChapterComposerBar`), que usa exactamente el
-// mismo componente, sin la pestaña de Pregunta.
-function ChapterCommentsPanel({ clubBookId, book, chapterId, label, isAdmin, onDismiss }) {
+// Modal, ya no hace falta un header a mano acá. Las cinco pestañas
+// (Comentario/Cita/Foto·GIF/Voz/Pregunta) viven en `ChapterComposerTabs`
+// (`@/components/ChapterComposerTabs`) — compartido con la barra fija al
+// pie de "Comentarios de tu camino" (`ComentariosScreen.jsx`,
+// `ChapterComposerBar`), que usa exactamente el mismo componente, sin la
+// pestaña de Pregunta. `isAdmin` ahí adentro ya no decide si se ve la
+// pestaña (cualquier miembro puede armar una, migración 064) — decide si
+// se pueden editar/borrar las preguntas de OTROS, no solo la propia.
+function ChapterCommentsPanel({ clubBookId, book, chapterId, label, isAdmin, currentUserId, onDismiss }) {
   return (
     <Modal title={`Agregar · ${label}`} onClose={onDismiss}>
-      <ChapterComposerTabs clubBookId={clubBookId} chapterId={chapterId} book={book} isAdmin={isAdmin} onDone={onDismiss} />
+      <ChapterComposerTabs clubBookId={clubBookId} chapterId={chapterId} book={book} isAdmin={isAdmin} currentUserId={currentUserId} onDone={onDismiss} />
     </Modal>
   );
 }

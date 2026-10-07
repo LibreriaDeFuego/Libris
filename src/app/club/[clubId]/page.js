@@ -41,6 +41,7 @@ export default async function Page({ params, searchParams }) {
   const baseProps = {
     club: { ...club, memberCount: memberCount ?? 0 },
     isAdmin,
+    currentUserId: user.id,
   };
 
   if (!clubBook) {
