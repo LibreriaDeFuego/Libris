@@ -253,7 +253,11 @@ function QuestionForm({ chapterId, clubBookId, questionId, initial, currentUserI
 // demás se ven igual, pero de solo lectura.
 export function ChapterQuestionsManager({ chapterId, clubBookId, questions, isAdmin = false, currentUserId }) {
   const [items, setItems] = useState(questions);
-  const [editingId, setEditingId] = useState(null); // null | 'new' | el id de una existente
+  // Sin preguntas todavía: arranca directo en el formulario, sin el paso
+  // de tocar "Agregar pregunta" primero. Con alguna ya puesta, se vuelve
+  // a pedir el toque — abrir un formulario vacío debajo de una lista ya
+  // armada sería más ruido que ayuda.
+  const [editingId, setEditingId] = useState(questions.length === 0 ? 'new' : null); // null | 'new' | el id de una existente
   const [deletingId, setDeletingId] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
   const [, startDelete] = useTransition();
@@ -279,13 +283,8 @@ export function ChapterQuestionsManager({ chapterId, clubBookId, questions, isAd
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
-          Preguntas del capítulo
-        </div>
-        <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-snug)', marginTop: 2 }}>
-          Opcionales. Aparecen cuando alguien marca este capítulo como el que está leyendo — se puede agregar más de una.
-        </div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+        Preguntas del capítulo
       </div>
 
       {items.map((q) => {
