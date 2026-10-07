@@ -1,0 +1,18 @@
+-- Libris — migración 063: reactiva los libros que habían quedado
+-- archivados de ANTES de la migración 060.
+--
+-- Hasta la migración 060, "Empezar un libro nuevo" archivaba
+-- automáticamente el libro que se dejaba (is_active = false) — apenas
+-- arrancaba el nuevo, el viejo pasaba a solo lectura (PastChapterPath):
+-- sin comentarios nuevos, sin marcar progreso. La migración 060 sacó ese
+-- comportamiento ("ningún libro se cierra solo"), pero no fue retroactiva
+-- — no tocó los libros que ya habían quedado archivados antes de
+-- aplicarse. Hoy tampoco hay ningún botón en la app para archivar un
+-- libro a mano (se dejó preparado en la 060, nunca se construyó), así que
+-- todo lo que hoy está en is_active = false es, sin excepción, resabio de
+-- ese comportamiento viejo — no una decisión de nadie.
+--
+-- Se pidió explícitamente que ningún libro quede cerrado, sin importar
+-- cuánto tiempo pase — esto alinea los datos existentes con esa regla:
+-- reactiva TODOS los libros archivados de TODOS los clubes.
+update public.club_books set is_active = true where is_active = false;
