@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { PhotoLightbox } from '@/components/PhotoLightbox';
 
 // Carrusel simple con scroll-snap nativo — sin ninguna librería, mismo
 // criterio que el resto de la app (PhotoCropModal, PostComposer, etc. ya
@@ -9,8 +10,13 @@ import { useState } from 'react';
 // solo aparece si hay más de una. Se usa tanto en Comentarios del club
 // como en ActivityCard (Inicio/Perfil) para las fotos que se adjuntan a
 // un comentario de capítulo (migración 042).
+//
+// El recorte a `aspectRatio` (objectFit: cover) es a propósito, para que
+// el carrusel quede parejo — pero recorta. Tocar una foto abre
+// PhotoLightbox con esa misma foto completa, sin recortar.
 export function PhotoCarousel({ urls, aspectRatio = '3 / 4', maxWidth }) {
   const [index, setIndex] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   function handleScroll(e) {
     const el = e.currentTarget;
@@ -35,10 +41,14 @@ export function PhotoCarousel({ urls, aspectRatio = '3 / 4', maxWidth }) {
             key={i}
             src={url}
             alt=""
-            style={{ width: '100%', aspectRatio, objectFit: 'cover', flexShrink: 0, scrollSnapAlign: 'start' }}
+            onClick={() => setLightboxIndex(i)}
+            style={{ width: '100%', aspectRatio, objectFit: 'cover', flexShrink: 0, scrollSnapAlign: 'start', cursor: 'zoom-in' }}
           />
         ))}
       </div>
+      {lightboxIndex !== null && (
+        <PhotoLightbox urls={urls} initialIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />
+      )}
       {urls.length > 1 && (
         <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5, pointerEvents: 'none' }}>
           {urls.map((_, i) => (
