@@ -14,6 +14,7 @@ import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { ChapterComposerTabs } from '@/components/ChapterComposerTabs';
 import { PhotoCarousel } from '@/components/PhotoCarousel';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
+import { QuoteFeedCard } from '@/components/QuoteFeedCard';
 import { BookReviewCard } from '@/components/BookReviewCard';
 import { PostMenu } from '@/components/PostMenu';
 import { EngagementBlock } from '@/components/EngagementBlock';
@@ -62,9 +63,15 @@ function CommentRow({ comment, book, clubName, isOwn, isAdmin, onEditQuote, onDe
   const name = comment.profiles?.display_name ?? 'Alguien';
   const isQuote = comment.kind === 'quote';
   const isVoice = comment.kind === 'voice';
+  // La estética propia de una cita (migración 050) — la misma tarjeta que
+  // ya se ve en el feed (ActivityCard) y que se eligió al publicar con
+  // CardStylePicker. Antes esta pantalla ignoraba card_style del todo y
+  // mostraba siempre el tratamiento genérico (texto en cursiva) — la cita
+  // se veía distinta acá que en el feed, aunque fuera la misma.
+  const hasCardStyle = isQuote && Boolean(comment.card_style);
   // Voz no se recorta (el reproductor ya es compacto de por sí); foto/cita/
   // comentario de texto sí, igual que en el feed.
-  const isClampable = !isVoice;
+  const isClampable = !isVoice && !hasCardStyle;
 
   useEffect(() => {
     if (!isClampable || !textRef.current) return;
@@ -79,22 +86,26 @@ function CommentRow({ comment, book, clubName, isOwn, isAdmin, onEditQuote, onDe
     />
   ) : (
     <div>
-      <div
-        ref={textRef}
-        onClick={() => setExpanded((e) => !e)}
-        style={{
-          fontSize: 'var(--fs-sm)', lineHeight: 'var(--lh-snug)', whiteSpace: 'pre-wrap', cursor: 'pointer',
-          color: isQuote ? 'var(--gold-700)' : 'var(--text-secondary)',
-          fontStyle: isQuote ? 'italic' : 'normal',
-          display: '-webkit-box',
-          WebkitLineClamp: expanded ? 'unset' : TEXT_LINE_CLAMP,
-          WebkitBoxOrient: 'vertical',
-          overflow: expanded ? 'visible' : 'hidden',
-        }}
-      >
-        {isQuote ? `"${comment.body}"` : comment.body}
-        {!expanded && isTruncated && <span style={{ fontWeight: 700, color: 'var(--text-tertiary)' }}> más</span>}
-      </div>
+      {hasCardStyle ? (
+        <QuoteFeedCard style={comment.card_style} color={comment.card_color} quoteText={comment.body} book={book} />
+      ) : (
+        <div
+          ref={textRef}
+          onClick={() => setExpanded((e) => !e)}
+          style={{
+            fontSize: 'var(--fs-sm)', lineHeight: 'var(--lh-snug)', whiteSpace: 'pre-wrap', cursor: 'pointer',
+            color: isQuote ? 'var(--gold-700)' : 'var(--text-secondary)',
+            fontStyle: isQuote ? 'italic' : 'normal',
+            display: '-webkit-box',
+            WebkitLineClamp: expanded ? 'unset' : TEXT_LINE_CLAMP,
+            WebkitBoxOrient: 'vertical',
+            overflow: expanded ? 'visible' : 'hidden',
+          }}
+        >
+          {isQuote ? `"${comment.body}"` : comment.body}
+          {!expanded && isTruncated && <span style={{ fontWeight: 700, color: 'var(--text-tertiary)' }}> más</span>}
+        </div>
+      )}
       {isQuote && comment.quote_style && (
         <div style={{ marginTop: 8 }}>
           <DownloadQuoteImageButton
