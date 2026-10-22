@@ -168,6 +168,41 @@ export async function startNewClubBook(prevState, formData) {
   redirect(`/club/${clubId}`);
 }
 
+// Elimina un libro del club por completo — a diferencia de "archivarlo"
+// (que nunca se usa más, migración 063), esto borra de verdad la fila de
+// club_books y, en cascada, todo lo que cuelga de ella: capítulos,
+// volúmenes, progreso de lectura, comentarios y preguntas de capítulo
+// (migración 065). Pensado para sacar un libro agregado por error — un
+// título mal escrito, un duplicado — no para "cerrar" uno ya leído, que
+// sigue siendo "Otros libros del club" para siempre. El libro principal
+// se recalcula solo (es el activo con started_at más reciente, migración
+// 062): si se borra el principal, el que sigue pasa a serlo sin que haga
+// falta ningún paso aparte.
+export async function deleteClubBook(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+
+  const clubId = formData.get('clubId')?.toString();
+  const clubBookId = formData.get('clubBookId')?.toString();
+  if (!clubId || !clubBookId) return { error: 'Falta el libro.' };
+
+  const { data: membership } = await supabase
+    .from('club_members')
+    .select('role')
+    .eq('club_id', clubId)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+  if (membership?.role !== 'admin') {
+    return { error: 'Solo un administrador puede eliminar un libro.' };
+  }
+
+  const { error } = await supabase.from('club_books').delete().eq('id', clubBookId);
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  redirect(`/club/${clubId}`);
+}
+
 // Agrega un capítulo al libro activo. Solo administradores (lo impone RLS).
 // Sin volumen ni número explícitos (el chip "+ Nuevo" del modal de progreso),
 // sigue la numeración simple de siempre. Con volumen y/o número (la pantalla

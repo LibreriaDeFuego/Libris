@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { updateClubPreferences, leaveClub, promoteAdmin, demoteAdmin, respondToJoinRequest } from '@/app/actions/clubs';
+import { updateClubPreferences, leaveClub, deleteClubBook, promoteAdmin, demoteAdmin, respondToJoinRequest } from '@/app/actions/clubs';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
@@ -176,6 +176,9 @@ export function PreferenciasScreen({ club, book, clubBookId, isBookPrincipal = t
   const [leaveError, setLeaveError] = useState(null);
   const [leavePending, startLeave] = useTransition();
   const [showStartNewBook, setShowStartNewBook] = useState(false);
+  const [confirmDeleteBook, setConfirmDeleteBook] = useState(false);
+  const [deleteBookError, setDeleteBookError] = useState(null);
+  const [deleteBookPending, startDeleteBook] = useTransition();
 
   const memberCount = members.length;
   const adminCount = members.filter((m) => m.role === 'admin').length;
@@ -187,6 +190,17 @@ export function PreferenciasScreen({ club, book, clubBookId, isBookPrincipal = t
     startLeave(async () => {
       const result = await leaveClub(formData);
       if (result?.error) setLeaveError(result.error);
+    });
+  }
+
+  function handleDeleteBook() {
+    const formData = new FormData();
+    formData.set('clubId', club.id);
+    formData.set('clubBookId', clubBookId);
+    setDeleteBookError(null);
+    startDeleteBook(async () => {
+      const result = await deleteClubBook(formData);
+      if (result?.error) setDeleteBookError(result.error);
     });
   }
 
@@ -286,6 +300,34 @@ export function PreferenciasScreen({ club, book, clubBookId, isBookPrincipal = t
                   </Button>
                 )}
               </div>
+
+              {isAdmin && (
+                confirmDeleteBook ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 'var(--lh-snug)' }}>
+                      Se borran para siempre sus capítulos, comentarios, progreso de lectura y preguntas — de todo el club, no solo lo tuyo. No se puede deshacer.
+                    </div>
+                    {deleteBookError && (
+                      <div style={{ color: 'var(--danger)', fontSize: 'var(--fs-xs)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', padding: 10 }}>
+                        {deleteBookError}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button variant="secondary" size="md" type="button" onClick={() => setConfirmDeleteBook(false)}>Cancelar</Button>
+                      <Button variant="primary" size="md" type="button" onClick={handleDeleteBook} disabled={deleteBookPending}>
+                        {deleteBookPending ? 'Eliminando…' : `Sí, eliminar "${book.title}"`}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <Button variant="secondary" size="md" type="button" onClick={() => setConfirmDeleteBook(true)}>
+                      <Icon name="trash-2" size={15} />
+                      Eliminar libro
+                    </Button>
+                  </div>
+                )
+              )}
             </Section>
           )}
 
