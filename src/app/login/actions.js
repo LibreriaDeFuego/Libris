@@ -87,6 +87,42 @@ export async function signInWithGoogle(prevState, formData) {
   redirect(data.url);
 }
 
+// Pide el mail de "restablecer contraseña" — Supabase siempre devuelve
+// éxito acá, exista o no una cuenta con ese correo (para no filtrar qué
+// emails están registrados), así que el mensaje de vuelta es el mismo en
+// los dos casos. El link del mail apunta a /auth/callback, que ya sabe
+// canjear el code/token y mandar a "next" — acá next es la pantalla
+// donde se escribe la contraseña nueva.
+export async function requestPasswordReset(prevState, formData) {
+  const email = formData.get('email')?.toString().trim();
+  if (!email) return { error: 'Escribe tu correo.' };
+
+  const supabase = await createClient();
+  const origin = await requestOrigin();
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/callback?next=${encodeURIComponent('/restablecer-contrasena')}`,
+  });
+  if (error) return { error: friendlyAuthError(error) };
+
+  return { error: null, sent: true };
+}
+
+// Pone la contraseña nueva — solo funciona con la sesión de recuperación
+// que deja /auth/callback al canjear el link del mail (restablecer-
+// contrasena/page.js ya chequea que exista esa sesión antes de mostrar
+// este formulario).
+export async function updatePassword(prevState, formData) {
+  const password = formData.get('password')?.toString();
+  if (!password || password.length < 6) return { error: 'La contraseña debe tener al menos 6 caracteres.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: friendlyAuthError(error) };
+
+  redirect('/');
+}
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();

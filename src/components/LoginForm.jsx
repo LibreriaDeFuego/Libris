@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import Link from 'next/link';
 import { signIn, signUp } from '@/app/login/actions';
 import { UsernameField } from '@/components/UsernameField';
 import { Button } from '@/design-system/components/core/Button.jsx';
@@ -48,7 +49,14 @@ export function LoginForm({ next = '/', googleEnabled = false }) {
           <Input name="email" type="email" placeholder="tu@ejemplo.com" required />
         </div>
         <div>
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>Contraseña</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', fontWeight: 600 }}>Contraseña</div>
+            {mode === 'signIn' && (
+              <Link href="/recuperar-contrasena" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-link)' }}>
+                ¿Olvidaste tu contraseña?
+              </Link>
+            )}
+          </div>
           <Input name="password" type="password" placeholder="••••••••" required minLength={6} />
         </div>
 

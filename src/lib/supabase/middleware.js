@@ -3,9 +3,12 @@ import { NextResponse } from 'next/server';
 import { USERNAME_COOKIE } from '@/lib/username';
 
 // Rutas donde no tiene sentido exigir un username antes de seguir: el login
-// en sí, la propia pantalla de elegirlo (evita el loop), y el intercambio de
-// código de Google, que todavía no tiene sesión armada.
-const EXEMPT_PATHS = ['/login', '/elegir-usuario', '/auth/callback'];
+// en sí, la propia pantalla de elegirlo (evita el loop), el intercambio de
+// código de Google/recuperación de contraseña (todavía no tiene sesión
+// armada), y poner la contraseña nueva — esa pantalla ya trae su propia
+// sesión de recuperación, no tiene sentido interrumpirla pidiendo un
+// username primero.
+const EXEMPT_PATHS = ['/login', '/elegir-usuario', '/auth/callback', '/restablecer-contrasena'];
 
 function isExempt(pathname) {
   return EXEMPT_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
