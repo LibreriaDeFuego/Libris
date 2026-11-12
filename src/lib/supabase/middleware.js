@@ -14,9 +14,30 @@ function isExempt(pathname) {
   return EXEMPT_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+// La app vive en dos dominios sin que uno redirija al otro: libris.cl (el
+// real — assetlinks.json, la app de Android, todo apunta ahí) y el alias
+// que pone Vercel solo, libris-relea.vercel.app. Las cookies de sesión
+// quedan atadas al dominio donde se inició sesión — entrar alguna vez por
+// uno y otras veces por el otro (un link viejo armado con
+// window.location.origin, un acceso directo instalado de antes) deja dos
+// sesiones separadas, cada una "olvidada" al volver por el otro dominio.
+// Se consolida todo en libris.cl de una — nunca un *.vercel.app al azar
+// (esos son previews de ramas/PRs, no deben redirigir a producción).
+const NON_CANONICAL_HOSTS = ['libris-relea.vercel.app'];
+const CANONICAL_HOST = 'libris.cl';
+
 // Refreshes the Supabase auth session on every request so server components
 // always see a valid (non-expired) session. Called from src/middleware.js.
 export async function updateSession(request) {
+  const host = request.headers.get('host');
+  if (host && NON_CANONICAL_HOSTS.includes(host)) {
+    const url = request.nextUrl.clone();
+    url.protocol = 'https';
+    url.host = CANONICAL_HOST;
+    url.port = '';
+    return NextResponse.redirect(url, 308);
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
