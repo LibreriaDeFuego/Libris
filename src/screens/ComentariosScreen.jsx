@@ -312,7 +312,19 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   // comentarios de Tu camino) arranca en ese capítulo; si no existe entre
   // los del libro, cae al de siempre (el primero).
   const cameFromChapterLink = Boolean(initialChapterId && orderedChapters.some((c) => c.id === initialChapterId));
-  const [chapterId, setChapterId] = useState(() => (cameFromChapterLink ? initialChapterId : orderedChapters[0]?.id ?? null));
+  // Sin capítulo puntual (por ejemplo, desde "ver mi reseña" en el camino
+  // de solo lectura de un libro anterior — PastChapterPath — ese link no
+  // indica ningún capítulo), antes esto arrancaba SIEMPRE en el primero:
+  // si la conversación de verdad estaba en otro capítulo, la pantalla se
+  // veía vacía, sin ninguna pista de dónde mirar entre, a veces, 16
+  // capítulos. `comments` ya viene ordenado por fecha (más nuevo primero,
+  // ver comentarios/page.js), así que el primero no-respuesta/no-reseña
+  // es, directo, el capítulo con la actividad más reciente.
+  const defaultChapterId = useMemo(() => {
+    const latest = comments.find((c) => !c.parent_comment_id && c.kind !== 'review' && c.chapter_id);
+    return latest?.chapter_id ?? orderedChapters[0]?.id ?? null;
+  }, [comments, orderedChapters]);
+  const [chapterId, setChapterId] = useState(() => (cameFromChapterLink ? initialChapterId : defaultChapterId));
   const [editingReview, setEditingReview] = useState(null);
   const [editingQuote, setEditingQuote] = useState(null);
   const [editingComment, setEditingComment] = useState(null);
@@ -322,6 +334,18 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   const visibleComments = chapterId
     ? comments.filter((c) => c.chapter_id === chapterId && !c.parent_comment_id && !deletedIds.has(c.id))
     : [];
+
+  // Cuántos comentarios tiene cada capítulo — para que el selector (sin
+  // capítulo puntual) muestre de un vistazo dónde hay algo, en vez de
+  // obligar a tocar cada pastilla a ciegas para encontrar la conversación.
+  const commentCountByChapter = useMemo(() => {
+    const map = new Map();
+    for (const c of comments) {
+      if (c.parent_comment_id || c.kind === 'review' || !c.chapter_id || deletedIds.has(c.id)) continue;
+      map.set(c.chapter_id, (map.get(c.chapter_id) ?? 0) + 1);
+    }
+    return map;
+  }, [comments, deletedIds]);
 
   // Entrando desde un capítulo puntual (pastilla de Tu camino), el objetivo
   // es leer lo que ya se dijo de ESE capítulo y comentar si querés — nada
@@ -429,9 +453,17 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: 'auto' }}>
-              {orderedChapters.map((c) => (
-                <Chip key={c.id} selected={chapterId === c.id} onClick={() => setChapterId(c.id)}>{chapterDisplayLabel(c)}</Chip>
-              ))}
+              {orderedChapters.map((c) => {
+                const count = commentCountByChapter.get(c.id) ?? 0;
+                return (
+                  <Chip key={c.id} selected={chapterId === c.id} onClick={() => setChapterId(c.id)}>
+                    {chapterDisplayLabel(c)}
+                    {count > 0 && (
+                      <span style={{ marginLeft: 5, opacity: 0.75, fontWeight: 700 }}>· {count}</span>
+                    )}
+                  </Chip>
+                );
+              })}
             </div>
           )}
 
