@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { IconButton } from '@/design-system/components/core/IconButton.jsx';
 import { Icon } from '@/design-system/components/core/Icon.jsx';
+import { SITE_URL } from '@/lib/siteUrl';
 
 export function InviteButton({ clubId, tone = 'light' }) {
   const [copied, setCopied] = useState(false);
 
   async function handleClick() {
-    const url = `${window.location.origin}/unirse/${clubId}`;
+    const url = `${SITE_URL}/unirse/${clubId}`;
 
     // En el celular abre el menú nativo de compartir (WhatsApp, etc.); si el
     // usuario lo cancela no hacemos nada más.

@@ -16,6 +16,7 @@ import { PostComposer } from '@/components/PostComposer';
 import { UsernameField } from '@/components/UsernameField';
 import { ActivityCard } from '@/components/ActivityCard';
 import { FollowButton } from '@/components/FollowButton';
+import { SITE_URL } from '@/lib/siteUrl';
 
 const initialState = { error: null };
 
@@ -61,7 +62,7 @@ function ProfileMenu({ profileId, onEdit }) {
 
   async function handleShare() {
     setOpen(false);
-    const url = `${window.location.origin}/perfil/${profileId}`;
+    const url = `${SITE_URL}/perfil/${profileId}`;
 
     if (navigator.share) {
       try {
