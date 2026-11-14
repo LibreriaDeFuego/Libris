@@ -14,9 +14,35 @@ function isExempt(pathname) {
   return EXEMPT_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+// Los <Link> que están a la vista se precargan solos en segundo plano,
+// antes de que alguien haga click, y esa precarga pasa por acá igual que
+// una navegación real. Si el token de acceso ya venció (dura 1 hora — pasa
+// fácil con la app cerrada un rato) y la precarga llega casi al mismo
+// tiempo que la navegación real, las dos leen la MISMA cookie de refresh
+// token y ambas intentan renovarla a la vez: Supabase solo deja usar cada
+// refresh token una vez, así que la segunda falla con "ya fue usado" — y
+// esa falla cierra la sesión, aunque la otra sí haya funcionado. Esto es
+// lo que se vive como "entro a Libris y rebota, hay que ingresar de
+// nuevo": pasa justo al reabrir, cuando el token ya venció y se disparan
+// varios pedidos a la vez. Las precargas no necesitan la sesión al día
+// (no son lo que la persona está viendo) así que no tiene sentido que
+// compitan por este refresh — la navegación real sigue renovando todo
+// normal cuando efectivamente pasa.
+function isPrefetch(request) {
+  return (
+    request.headers.get('next-router-prefetch') === '1' ||
+    request.headers.get('purpose') === 'prefetch' ||
+    request.headers.get('sec-purpose') === 'prefetch'
+  );
+}
+
 // Refreshes the Supabase auth session on every request so server components
-// always see a valid (non-expired) session. Called from src/middleware.js.
+// always see a valid (non-expired) session. Called from src/proxy.js.
 export async function updateSession(request) {
+  if (isPrefetch(request)) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
