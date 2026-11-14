@@ -64,23 +64,7 @@ export async function updateSession(request) {
 
   // Do not remove — refreshes the session and is required for the cookies
   // above to actually get written back to the response.
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  // TEMPORAL — diagnóstico del bug "entro y rebota, pide contraseña de
-  // nuevo". Nunca registra valores de cookies, solo sus nombres y el
-  // resultado de getUser(), para ver en los logs de Vercel qué pasa
-  // justo cuando falla. Sacar este bloque una vez encontrada la causa.
-  const authCookieNames = request.cookies.getAll()
-    .map((c) => c.name)
-    .filter((n) => n.startsWith('sb-'));
-  console.log('[diag-sesion]', JSON.stringify({
-    path: request.nextUrl.pathname,
-    authCookieNames,
-    hasUser: !!user,
-    errorName: error?.name ?? null,
-    errorMessage: error?.message ?? null,
-    errorStatus: error?.status ?? null,
-  }));
+  const { data: { user } } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
 
