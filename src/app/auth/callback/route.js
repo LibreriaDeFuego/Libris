@@ -17,6 +17,15 @@ export async function GET(request) {
 
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
+    // TEMPORAL — diagnóstico del bug "entro con Google y rebota". Sacar
+    // una vez encontrada la causa real.
+    console.log('[diag-callback]', JSON.stringify({
+      hasCode: true,
+      ok: !error,
+      errorName: error?.name ?? null,
+      errorMessage: error?.message ?? null,
+      errorStatus: error?.status ?? null,
+    }));
     if (!error) return NextResponse.redirect(`${origin}${next}`);
   } else if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
