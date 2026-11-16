@@ -245,7 +245,6 @@ function ChapterComposerBar({ clubBookId, chapterId, book, myProfile, myProfileI
             chapterId={chapterId}
             book={book}
             currentUserId={myProfileId}
-            showBadgeTab
             chapterBadges={chapterBadges}
             onDone={() => setOpen(false)}
           />

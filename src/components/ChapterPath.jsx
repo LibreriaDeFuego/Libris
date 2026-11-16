@@ -512,6 +512,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                     label={chapterLabel(chapter)}
                     isAdmin={isAdmin}
                     currentUserId={currentUserId}
+                    chapterBadges={badgesHere}
                     onDismiss={() => setComposerChapterId(null)}
                   />
                 )}
@@ -811,10 +812,23 @@ function SpoilerWarning({ label, href, onDismiss }) {
 // pestaña de Pregunta. `isAdmin` ahí adentro ya no decide si se ve la
 // pestaña (cualquier miembro puede armar una, migración 064) — decide si
 // se pueden editar/borrar las preguntas de OTROS, no solo la propia.
-function ChapterCommentsPanel({ clubBookId, book, chapterId, label, isAdmin, currentUserId, onDismiss }) {
+//
+// "Insignia" (migración 067) sí va en las dos — el broche "+" de acá es,
+// para la mayoría, la puerta de entrada de siempre a "agregar algo en
+// este capítulo"; dejar la insignia solo en la barra de Comentarios (y
+// no acá) hacía que no se encontrara.
+function ChapterCommentsPanel({ clubBookId, book, chapterId, label, isAdmin, currentUserId, chapterBadges = [], onDismiss }) {
   return (
     <Modal title={`Agregar · ${label}`} onClose={onDismiss}>
-      <ChapterComposerTabs clubBookId={clubBookId} chapterId={chapterId} book={book} isAdmin={isAdmin} currentUserId={currentUserId} onDone={onDismiss} />
+      <ChapterComposerTabs
+        clubBookId={clubBookId}
+        chapterId={chapterId}
+        book={book}
+        isAdmin={isAdmin}
+        currentUserId={currentUserId}
+        chapterBadges={chapterBadges}
+        onDone={onDismiss}
+      />
     </Modal>
   );
 }

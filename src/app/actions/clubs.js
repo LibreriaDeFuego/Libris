@@ -1124,10 +1124,6 @@ export async function toggleCommentLike(commentId) {
   const { error } = existing
     ? await supabase.from('comment_likes').delete().eq('id', existing.id)
     : await supabase.from('comment_likes').insert({ comment_id: commentId, profile_id: user.id });
-  // TEMPORAL — diagnóstico de "puse la insignia y no aparece en ningún
-  // lado". Sacar una vez encontrada la causa real.
-  if (error) console.error('[diag-insignia]', JSON.stringify({ chapterId, clubBookId, kind, errorMessage: error.message, errorCode: error.code, errorDetails: error.details, errorHint: error.hint }));
-
   if (error) return { error: friendlyDbError(error) };
 
   revalidatePath('/', 'layout');
