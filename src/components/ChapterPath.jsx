@@ -9,7 +9,7 @@ import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { updateProgress, getClubMembersProgress, getChapterQuestions, answerChapterQuestion } from '@/app/actions/clubs';
 import { ChapterComposerTabs } from '@/components/ChapterComposerTabs';
-import { badgeTypeOf } from '@/lib/chapterBadges';
+import { badgeTypeOf, badgeSentence } from '@/lib/chapterBadges';
 
 // Lo leído ya no es un color plano: el camino recorrido va de un gris
 // azulado frío (el capítulo más viejo) al coral de siempre — justo en
@@ -379,7 +379,6 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
             // un <div>, no un botón.
             const badgesHere = chapterBadges[chapter.id] ?? [];
             const myBadge = badgeTypeOf(badgesHere.find((b) => b.profileId === currentUserId)?.kind);
-            const otherBadges = badgesHere.filter((b) => b.profileId !== currentUserId);
 
             const extras = (
               <SideExtras
@@ -488,11 +487,11 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                   </div>
                 )}
 
-                {otherBadges.length > 0 && (
+                {badgesHere.length > 0 && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', margin: '4px 0 0' }}>
                     <div />
                     <div />
-                    <ChapterBadgeChips badges={otherBadges} />
+                    <ChapterBadgeChips badges={badgesHere} currentUserId={currentUserId} />
                   </div>
                 )}
 
@@ -729,20 +728,25 @@ function CompanionAvatars({ companions }) {
   );
 }
 
-// Las insignias de OTRAS personas en este capítulo (migración 067) — la
-// propia ya se ve en el broche del nodo, acá solo lo que puso el resto
-// del club. Agrupadas por tipo (un chip por insignia distinta, no una
-// por persona) para no llenar la fila si varios eligieron lo mismo.
-function ChapterBadgeChips({ badges }) {
-  const names = new Map();
+// Las insignias de este capítulo, en una oración por tipo — "A Camila
+// le rompió el corazón", "Te enganchó a ti y a Camila" si vos también
+// la pusiste (ver badgeSentence, chapterBadges.js). La propia ya se ve
+// además en el broche del nodo; acá igual se nombra ("Te...") porque
+// la burbuja cuenta entre quiénes, no es solo un recordatorio de la
+// propia. Agrupadas por tipo, no por persona, para no llenar la fila
+// si varios eligieron lo mismo.
+function ChapterBadgeChips({ badges, currentUserId }) {
+  const byKind = new Map();
   for (const b of badges) {
-    const list = names.get(b.kind) ?? [];
-    list.push(b.displayName);
-    names.set(b.kind, list);
+    const list = byKind.get(b.kind) ?? [];
+    if (b.profileId !== currentUserId) list.push(b.displayName);
+    byKind.set(b.kind, list);
   }
+  const includesMe = new Set(badges.filter((b) => b.profileId === currentUserId).map((b) => b.kind));
+
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-      {[...names.entries()].map(([kind, people]) => {
+      {[...byKind.entries()].map(([kind, otherNames]) => {
         const type = badgeTypeOf(kind);
         if (!type) return null;
         return (
@@ -753,7 +757,7 @@ function ChapterBadgeChips({ badges }) {
               background: type.bg, fontSize: 11, color: type.text, fontWeight: 600,
             }}
           >
-            {type.emoji} {people.join(', ')}
+            {type.emoji} {badgeSentence(kind, otherNames, includesMe.has(kind))}
           </div>
         );
       })}
