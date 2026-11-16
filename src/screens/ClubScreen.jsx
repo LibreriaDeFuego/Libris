@@ -31,7 +31,7 @@ import { formatMeetingDate, googleMapsUrl } from '@/lib/meetingFormat';
 // el libro que resolvió la página (el principal del club, o el que pida
 // "?libro=" — ver club/[clubId]/page.js) — un libro en paralelo se ve y se
 // usa exactamente igual que el principal, nada queda en solo lectura ahí.
-export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, activity, commentCounts, chapterBadges, pendingQuestionChapterIds, answeredQuestionChapterIds, isAdmin, currentUserId, pendingRequestCount = 0, otherBooks = [] }) {
+export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, myProgress, myReview, activity, commentCounts, chapterBadges, companions, pendingQuestionChapterIds, answeredQuestionChapterIds, isAdmin, currentUserId, pendingRequestCount = 0, otherBooks = [] }) {
   const [showModal, setShowModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const router = useRouter();
@@ -125,6 +125,7 @@ export function ClubScreen({ club, clubs, book, clubBookId, chapters, volumes, m
                     streakCount={myProgress?.streak_count ?? 0}
                     commentCounts={commentCounts ?? {}}
                     chapterBadges={chapterBadges ?? {}}
+                    companions={companions ?? []}
                     pendingQuestionChapterIds={pendingQuestionChapterIds ?? []}
                     answeredQuestionChapterIds={answeredQuestionChapterIds ?? []}
                     isAdmin={isAdmin}

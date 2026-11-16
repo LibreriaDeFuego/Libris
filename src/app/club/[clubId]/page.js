@@ -2,6 +2,7 @@ import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs, getPrincipalClubBook } from '@/lib/activeClub';
 import { getClubHeroExtras, getChapterCommentCounts, getChapterBadges, getChaptersWithQuestions, getClubOtherBooks } from '@/lib/clubDetail';
+import { getClubMembersProgress } from '@/app/actions/clubs';
 import { ClubScreen } from '@/screens/ClubScreen.jsx';
 
 export default async function Page({ params, searchParams }) {
@@ -67,7 +68,7 @@ export default async function Page({ params, searchParams }) {
     );
   }
 
-  const [heroExtras, commentCounts, chapterBadges, questionsByChapter, otherBooks] = await Promise.all([
+  const [heroExtras, commentCounts, chapterBadges, companionsResult, questionsByChapter, otherBooks] = await Promise.all([
     // Chapters, volumes, mi progreso, mi reseña, actividad reciente y
     // solicitudes pendientes — ver src/lib/clubDetail.js.
     getClubHeroExtras(supabase, { clubId, clubBookId: clubBook.id, userId: user.id, isAdmin }),
@@ -77,6 +78,9 @@ export default async function Page({ params, searchParams }) {
     // Insignias de capítulo (migración 067) — quién marcó qué en cada
     // capítulo, para el broche de Tu camino.
     getChapterBadges(supabase, clubBook.id),
+    // "Quiénes están leyendo" — siempre a la vista en Tu camino (antes
+    // era un botón "Ver compañeros" que lo pedía recién al tocarlo).
+    getClubMembersProgress(clubBook.id),
     // Qué capítulos tienen alguna pregunta sin responder (o ya respondida
     // del todo), para el distintivo del nodo en Tu camino (migraciones
     // 053/054).
@@ -99,6 +103,7 @@ export default async function Page({ params, searchParams }) {
       activity={heroExtras.activity}
       commentCounts={commentCounts}
       chapterBadges={chapterBadges}
+      companions={companionsResult.members}
       pendingQuestionChapterIds={questionsByChapter.pending}
       answeredQuestionChapterIds={questionsByChapter.answered}
       otherBooks={otherBooks}

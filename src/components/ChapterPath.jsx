@@ -7,7 +7,7 @@ import { Avatar } from '@/design-system/components/core/Avatar.jsx';
 import { Button } from '@/design-system/components/core/Button.jsx';
 import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
-import { updateProgress, getClubMembersProgress, getChapterQuestions, answerChapterQuestion } from '@/app/actions/clubs';
+import { updateProgress, getChapterQuestions, answerChapterQuestion } from '@/app/actions/clubs';
 import { ChapterComposerTabs } from '@/components/ChapterComposerTabs';
 import { badgeTypeOf, badgeSentence } from '@/lib/chapterBadges';
 
@@ -90,10 +90,11 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 //
 // "Quiénes están leyendo" — se había sacado del todo (ver README), quedaba
 // redundante frente a los integrantes del club en "Mis clubes de lectura".
-// Vuelve, pero como algo que se elige ver o no: un botón en el encabezado
-// ("Ver compañeros" / "Ocultar compañeros") que, recién al tocarlo, trae el
-// capítulo actual de cada compañero (getClubMembersProgress) y los muestra
-// como un stack de avatares chicos debajo del nodo donde va cada uno.
+// Vuelve, siempre a la vista (sin ningún botón para mostrarla u ocultarla —
+// se probó así, opcional, pero el pedido fue verlo sí o sí): el capítulo
+// actual de cada compañero (`companions`, ya resuelto por el servidor —
+// page.js, getClubMembersProgress) se muestra como un stack de avatares
+// chicos debajo del nodo donde va cada uno.
 //
 // Distintivo de pregunta (migraciones 053/054) — hasta acá, una pregunta
 // de capítulo solo se veía al toparte con ella, en el modal que salta al
@@ -121,7 +122,7 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // pasando igual, no hace falta tocarlo: una prop de más que nadie lee no
 // rompe nada, y reactivar la insignia el día de mañana es no más que
 // sumarla de nuevo a esta firma.
-export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, commentCounts = {}, chapterBadges = {}, pendingQuestionChapterIds = [], answeredQuestionChapterIds = [], isAdmin = false, currentUserId, onOpenFull, onFinishBook }) {
+export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, commentCounts = {}, chapterBadges = {}, companions = [], pendingQuestionChapterIds = [], answeredQuestionChapterIds = [], isAdmin = false, currentUserId, onOpenFull, onFinishBook }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -129,9 +130,6 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
   const [spoilerWarning, setSpoilerWarning] = useState(null); // { chapterId, label } | null
   const [composerChapterId, setComposerChapterId] = useState(null);
   const [finishPending, setFinishPending] = useState(false);
-  const [showCompanions, setShowCompanions] = useState(false);
-  const [companions, setCompanions] = useState(null); // null = todavía no se pidió
-  const [loadingCompanions, setLoadingCompanions] = useState(false);
   const [questionQueue, setQuestionQueue] = useState(null); // { chapterLabel, total, items } | null — migración 053/054; "items" se va achicando a medida que se responde/salta cada una
   const currentNodeRef = useRef(null);
 
@@ -148,12 +146,11 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
     currentNodeRef.current?.scrollIntoView({ block: 'center' });
   }, []);
 
-  // Agrupa a los compañeros ya traídos (getClubMembersProgress) por el
-  // capítulo donde está cada uno — solo tiene datos reales después de tocar
-  // "Ver compañeros" al menos una vez (antes, `companions` es null).
+  // Agrupa a los compañeros (ya resueltos por el servidor) por el
+  // capítulo donde está cada uno.
   const companionsByChapter = useMemo(() => {
     const map = new Map();
-    for (const m of companions ?? []) {
+    for (const m of companions) {
       const list = map.get(m.chapterId) ?? [];
       list.push(m);
       map.set(m.chapterId, list);
@@ -210,22 +207,6 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
   function openComposerFor(chapter) {
     setSpoilerWarning(null);
     setComposerChapterId((current) => (current === chapter.id ? null : chapter.id));
-  }
-
-  function handleToggleCompanions() {
-    if (showCompanions) {
-      setShowCompanions(false);
-      return;
-    }
-    setShowCompanions(true);
-    if (companions == null) {
-      setLoadingCompanions(true);
-      startTransition(async () => {
-        const data = await getClubMembersProgress(clubBookId);
-        setCompanions(data.members ?? []);
-        setLoadingCompanions(false);
-      });
-    }
   }
 
   function handleTap(chapter) {
@@ -324,24 +305,8 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
             </button>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Toca el capítulo en el que vas</div>
-          <button
-            type="button"
-            onClick={handleToggleCompanions}
-            style={{
-              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none',
-              padding: '2px 0', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: 'var(--text-link)', fontFamily: 'var(--font-body)',
-            }}
-          >
-            <Icon name="users" size={12} />
-            {showCompanions ? 'Ocultar compañeros' : 'Ver compañeros'}
-          </button>
-        </div>
-        {showCompanions && loadingCompanions && (
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Buscando a tus compañeros…</div>
-        )}
-        {showCompanions && !loadingCompanions && companions?.length === 0 && (
+        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-tertiary)' }}>Toca el capítulo en el que vas</div>
+        {companions.length === 0 && (
           <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Nadie más registró su progreso todavía.</div>
         )}
       </div>
@@ -371,7 +336,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
 
             const volumeKey = volumeKeyOf(chapter);
             const isFirstOfVolume = showVolumeHeaders && (i === 0 || volumeKeyOf(path[i - 1]) !== volumeKey);
-            const chapterCompanions = showCompanions ? (companionsByChapter.get(chapter.id) ?? []) : [];
+            const chapterCompanions = companionsByChapter.get(chapter.id) ?? [];
 
             // Insignias de capítulo (migración 067) — acá solo se VEN, no se
             // ponen (eso vive en Comentarios, el botón "Tu insignia" o la
