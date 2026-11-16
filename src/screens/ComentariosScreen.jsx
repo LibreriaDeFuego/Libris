@@ -22,7 +22,7 @@ import { FinalReviewModal } from './FinalReviewModal.jsx';
 import { EditQuoteModal } from '@/components/EditQuoteModal';
 import { EditCommentModal } from '@/components/EditCommentModal';
 import { EditVoiceModal } from '@/components/EditVoiceModal';
-import { deleteBookReview, deleteQuote, deleteComment, toggleShareToFeed } from '@/app/actions/clubs';
+import { deleteBookReview, deleteQuote, deleteComment } from '@/app/actions/clubs';
 import { deleteVoiceComment } from '@/app/actions/media';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 import { orderChapters, chapterDisplayLabel } from '@/lib/orderChapters';
@@ -54,7 +54,7 @@ const TEXT_LINE_CLAMP = 5;
 // lo escribió. `onDeleteX` ya sirve para los dos casos: `deleteComment`/
 // `deleteQuote`/`deleteVoiceComment` (clubs.js/media.js) chequean del lado
 // del servidor si sos el dueño o admin del club antes de borrar.
-function CommentRow({ comment, book, clubName, isOwn, isAdmin, onEditQuote, onDeleteQuote, onEditComment, onDeleteComment, onEditVoice, onDeleteVoice, replies, canShare, readOnly }) {
+function CommentRow({ comment, book, clubName, isOwn, isAdmin, onEditQuote, onDeleteQuote, onEditComment, onDeleteComment, onEditVoice, onDeleteVoice, replies, readOnly }) {
   const canModerate = isAdmin && !isOwn && !readOnly;
   const canEditOwn = isOwn && !readOnly;
   const [expanded, setExpanded] = useState(false);
@@ -151,7 +151,6 @@ function CommentRow({ comment, book, clubName, isOwn, isAdmin, onEditQuote, onDe
           liked={comment.liked_by_me}
           likeCount={comment.like_count}
           replies={replies}
-          share={canShare && !readOnly ? { shared: comment.shared_to_feed, onToggle: () => toggleShareToFeed(comment.id) } : undefined}
           readOnly={readOnly}
         />
       </div>
@@ -486,7 +485,6 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
                   onEditVoice={() => setEditingVoice(comment)}
                   onDeleteVoice={() => handleDeleteVoice(comment.id)}
                   replies={repliesByParent.get(comment.id) ?? []}
-                  canShare={comment.profile_id === myProfileId && (comment.kind === 'text' || comment.kind === 'voice')}
                   readOnly={readOnly}
                 />
               ))}

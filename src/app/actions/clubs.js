@@ -1385,29 +1385,3 @@ export async function answerChapterQuestion(formData) {
   return { error: null, results };
 }
 
-// Comparte (o deja de compartir) tu propio comentario de capítulo o nota
-// de voz en Inicio — migración 031. Reseñas, citas y fotos no necesitan
-// esto: ya aparecen siempre ahí, no cambia nada para ellas.
-export async function toggleShareToFeed(commentId) {
-  const supabase = await createClient();
-  const user = await requireUser(supabase);
-  if (!commentId) return { error: 'Falta el comentario.' };
-
-  const { data: existing } = await supabase
-    .from('comments')
-    .select('shared_to_feed')
-    .eq('id', commentId)
-    .eq('profile_id', user.id)
-    .maybeSingle();
-  if (!existing) return { error: 'No encontramos el comentario.' };
-
-  const { error } = await supabase
-    .from('comments')
-    .update({ shared_to_feed: !existing.shared_to_feed })
-    .eq('id', commentId)
-    .eq('profile_id', user.id);
-  if (error) return { error: friendlyDbError(error) };
-
-  revalidatePath('/', 'layout');
-  return { error: null };
-}

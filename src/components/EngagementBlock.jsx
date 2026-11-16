@@ -8,7 +8,6 @@ import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { LikeButton } from '@/components/LikeButton';
 import { RepostButton } from '@/components/RepostButton';
-import { ShareButton } from '@/components/ShareButton';
 import { postReply, toggleCommentLike } from '@/app/actions/clubs';
 import { formatRelativeTime } from '@/lib/formatRelativeTime';
 
@@ -109,7 +108,7 @@ function ThreadGroup({ root, replies: childReplies, onReply }) {
 
 const PREVIEW_COUNT = 2;
 
-// Me gusta + Comentar (+ Compartir, opcional) para una reseña, cita,
+// Me gusta + Comentar para una reseña, cita,
 // comentario o nota de voz puntual — y, debajo, su hilo de respuestas: las
 // que ya hay (agrupadas por a quién le contestan, con su propio "me gusta"
 // chico) y el campo para escribir una nueva si se tocó "Comentar". El
@@ -150,7 +149,7 @@ const PREVIEW_COUNT = 2;
 // nada nuevo), pero "Comentar" desaparece del todo — nada de responder acá
 // ni desde el "Responder" de cada respuesta puesta. Solo aplica a la
 // versión sin `compact` — ComentariosScreen es la única que no la usa.
-export function EngagementBlock({ commentId, liked, likeCount, replies, share, repost, repostId, compact = false, readOnly = false }) {
+export function EngagementBlock({ commentId, liked, likeCount, replies, repost, repostId, compact = false, readOnly = false }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [body, setBody] = useState('');
@@ -215,7 +214,6 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share, r
               <span style={{ fontSize: 'var(--fs-2xs)', fontWeight: 600, color: 'var(--text-tertiary)' }}>{replies.length}</span>
             )}
           </button>
-          {share && <ShareButton shared={share.shared} onToggle={share.onToggle} />}
         </div>
 
         {replies.length > 0 && (
@@ -290,7 +288,6 @@ export function EngagementBlock({ commentId, liked, likeCount, replies, share, r
             <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-secondary)' }}>Comentar</span>
           </button>
         )}
-        {share && <ShareButton shared={share.shared} onToggle={share.onToggle} />}
       </div>
 
       {(replies.length > 0 || replyOpen) && (
