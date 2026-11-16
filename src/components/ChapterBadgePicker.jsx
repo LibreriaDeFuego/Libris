@@ -13,13 +13,16 @@ import { CHAPTER_BADGE_TYPES } from '@/lib/chapterBadges';
 export function ChapterBadgePicker({ chapterId, clubBookId, myProfileId, badges = [] }) {
   const myEntry = badges.find((b) => b.profileId === myProfileId);
   const [myKind, setMyKind] = useState(myEntry?.kind ?? null);
+  const [error, setError] = useState(null);
   const [pending, startTransition] = useTransition();
   const others = badges.filter((b) => b.profileId !== myProfileId);
 
   function handlePick(kind) {
     if (pending) return;
+    const previous = myKind;
     const next = myKind === kind ? null : kind;
     setMyKind(next);
+    setError(null);
 
     const formData = new FormData();
     formData.set('chapterId', chapterId);
@@ -27,7 +30,10 @@ export function ChapterBadgePicker({ chapterId, clubBookId, myProfileId, badges 
     formData.set('kind', kind);
     startTransition(async () => {
       const result = await toggleChapterBadge(formData);
-      if (result?.error) setMyKind(myKind); // vuelve a lo que había si falló
+      if (result?.error) {
+        setMyKind(previous); // vuelve a lo que había si falló
+        setError(result.error);
+      }
     });
   }
 
@@ -64,6 +70,10 @@ export function ChapterBadgePicker({ chapterId, clubBookId, myProfileId, badges 
           );
         })}
       </div>
+
+      {error && (
+        <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--danger)' }}>{error}</div>
+      )}
 
       {others.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
