@@ -377,7 +377,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                 commentInfo={commentInfo}
                 isAhead={isAhead}
                 onCommentTap={() => handleSpoilerTap(chapter)}
-                href={!isAhead ? `/club/${clubId}/comentarios?capitulo=${chapter.id}` : null}
+                href={!isAhead ? `/club/${clubId}/comentarios?capitulo=${chapter.id}&libro=${clubBookId}` : null}
               />
             );
             const composerOpen = composerChapterId === chapter.id;
@@ -468,7 +468,7 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                 {spoilerWarning?.chapterId === chapter.id && (
                   <SpoilerWarning
                     label={spoilerWarning.label}
-                    href={`/club/${clubId}/comentarios?capitulo=${chapter.id}`}
+                    href={`/club/${clubId}/comentarios?capitulo=${chapter.id}&libro=${clubBookId}`}
                     onDismiss={() => setSpoilerWarning(null)}
                   />
                 )}
