@@ -12,6 +12,8 @@ import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { ChapterComposerTabs } from '@/components/ChapterComposerTabs';
+import { ChapterBadgePicker } from '@/components/ChapterBadgePicker';
+import { badgeTypeOf } from '@/lib/chapterBadges';
 import { PhotoCarousel } from '@/components/PhotoCarousel';
 import { DownloadQuoteImageButton } from '@/components/DownloadQuoteImageButton';
 import { QuoteFeedCard } from '@/components/QuoteFeedCard';
@@ -214,14 +216,14 @@ function ReviewCard({ review, book, isOwn, onEdit, onDelete, replies, readOnly }
 // (`ChapterComposerTabs`, compartido con el broche "+" de Tu camino) — en
 // vez de mostrar los formularios sueltos, sin pestañas, adentro de la
 // propia pantalla.
-function ChapterComposerBar({ clubBookId, chapterId, book, myProfile }) {
+function ChapterComposerBar({ clubBookId, chapterId, book, myProfile, myProfileId, chapterBadges }) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <button
         type="button"
-        aria-label="Comentar, citar, agregar una foto o GIF, o grabar una nota de voz en este capítulo"
+        aria-label="Comentar, citar, agregar una foto o GIF, grabar una nota de voz, o poner una insignia en este capítulo"
         onClick={() => setOpen(true)}
         style={{
           display: 'flex', alignItems: 'center', gap: 8, width: '100%',
@@ -238,7 +240,15 @@ function ChapterComposerBar({ clubBookId, chapterId, book, myProfile }) {
 
       {open && (
         <Modal title="Agregar" onClose={() => setOpen(false)}>
-          <ChapterComposerTabs clubBookId={clubBookId} chapterId={chapterId} book={book} onDone={() => setOpen(false)} />
+          <ChapterComposerTabs
+            clubBookId={clubBookId}
+            chapterId={chapterId}
+            book={book}
+            currentUserId={myProfileId}
+            showBadgeTab
+            chapterBadges={chapterBadges}
+            onDone={() => setOpen(false)}
+          />
         </Modal>
       )}
     </>
@@ -269,7 +279,7 @@ function ChapterComposerBar({ clubBookId, chapterId, book, myProfile }) {
 // aunque sea tuya) o de responder en su hilo (EngagementBlock). Entrando
 // sin ese parámetro (el libro activo de siempre) esta pantalla se comporta
 // exactamente igual que antes.
-export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myProfileId, myProfile, isAdmin = false, initialChapterId, readOnly = false }) {
+export function ComentariosScreen({ clubBookId, comments, chapters, volumes, book, clubName, myProfileId, myProfile, isAdmin = false, initialChapterId, readOnly = false, chapterBadges = {} }) {
   const router = useRouter();
   const orderedChapters = useMemo(() => orderChapters(chapters ?? [], volumes ?? []), [chapters, volumes]);
   // Antes de esto, borrar acá dependía por completo de que revalidatePath
@@ -283,6 +293,11 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   const [deletedIds, setDeletedIds] = useState(() => new Set());
   const [toast, setToast] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
+  // Insignia de capítulo (migración 067) — el botón "Tu insignia" de la
+  // barra del capítulo (abajo) despliega el mismo selector que la
+  // pestaña "Insignia" del panel de Agregar (ChapterComposerBar); los
+  // dos leen y escriben sobre las mismas insignias de este capítulo.
+  const [badgeOpen, setBadgeOpen] = useState(false);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -333,6 +348,9 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
   const visibleComments = chapterId
     ? comments.filter((c) => c.chapter_id === chapterId && !c.parent_comment_id && !deletedIds.has(c.id))
     : [];
+
+  const currentChapterBadges = chapterBadges[chapterId] ?? [];
+  const myBadgeType = badgeTypeOf(currentChapterBadges.find((b) => b.profileId === myProfileId)?.kind);
 
   // Cuántos comentarios tiene cada capítulo — para que el selector (sin
   // capítulo puntual) muestre de un vistazo dónde hay algo, en vez de
@@ -447,8 +465,29 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
       {orderedChapters.length > 0 ? (
         <>
           {cameFromChapterLink ? (
-            <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
-              {chapterDisplayLabel(orderedChapters.find((c) => c.id === chapterId))}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                {chapterDisplayLabel(orderedChapters.find((c) => c.id === chapterId))}
+              </div>
+              {!readOnly && (
+                <button
+                  type="button"
+                  aria-label={myBadgeType ? `Tu insignia: ${myBadgeType.label}, toca para cambiarla` : 'Poner una insignia en este capítulo'}
+                  onClick={() => setBadgeOpen((v) => !v)}
+                  style={{
+                    flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                    fontFamily: 'var(--font-body)', borderRadius: 'var(--radius-pill)', padding: '6px 12px',
+                    border: `1px solid ${myBadgeType ? myBadgeType.text : 'var(--border-default)'}`,
+                    background: myBadgeType ? myBadgeType.bg : 'var(--surface-card)',
+                  }}
+                >
+                  {myBadgeType && <span style={{ fontSize: 15 }}>{myBadgeType.emoji}</span>}
+                  <span style={{ fontSize: 'var(--fs-2xs)', fontWeight: 700, color: myBadgeType ? myBadgeType.text : 'var(--text-tertiary)' }}>
+                    Tu insignia
+                  </span>
+                  <Icon name={badgeOpen ? 'chevron-up' : 'chevron-down'} size={12} color={myBadgeType ? myBadgeType.text : 'var(--text-tertiary)'} />
+                </button>
+              )}
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: 'auto' }}>
@@ -463,6 +502,12 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
                   </Chip>
                 );
               })}
+            </div>
+          )}
+
+          {cameFromChapterLink && badgeOpen && !readOnly && (
+            <div style={{ padding: 14, borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
+              <ChapterBadgePicker chapterId={chapterId} clubBookId={clubBookId} myProfileId={myProfileId} badges={currentChapterBadges} />
             </div>
           )}
 
@@ -505,7 +550,14 @@ export function ComentariosScreen({ clubBookId, comments, chapters, volumes, boo
                 padding: '10px 0 4px', marginTop: 4,
               }}
             >
-              <ChapterComposerBar clubBookId={clubBookId} chapterId={chapterId} book={book} myProfile={myProfile} />
+              <ChapterComposerBar
+                clubBookId={clubBookId}
+                chapterId={chapterId}
+                book={book}
+                myProfile={myProfile}
+                myProfileId={myProfileId}
+                chapterBadges={currentChapterBadges}
+              />
             </div>
           )}
         </>

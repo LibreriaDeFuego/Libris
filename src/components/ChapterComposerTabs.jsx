@@ -6,6 +6,7 @@ import { getChapterQuestions } from '@/app/actions/clubs';
 import { NewCommentForm } from '@/components/NewCommentForm';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { ChapterQuestionsManager } from '@/screens/GestionCapitulosScreen.jsx';
+import { ChapterBadgePicker } from '@/components/ChapterBadgePicker';
 
 // Una pestaña de TIPO del panel de agregar — ícono + rótulo apilados,
 // centrados, con una rayita coral bajo la activa. Cita/Foto·GIF/Voz/
@@ -83,8 +84,14 @@ function QuestionTab({ chapterId, clubBookId, isAdmin, currentUserId }) {
 // `NewCommentForm` resuelve Comentario/Cita/Foto·GIF por dentro (mismo
 // formulario, distinta configuración vía `kind`/`autoOpenPicker`); Voz
 // sigue siendo `VoiceRecorder`, aparte.
-export function ChapterComposerTabs({ clubBookId, chapterId, book, isAdmin = false, currentUserId, onDone }) {
-  const [activeTab, setActiveTab] = useState('comment'); // 'comment' (default) | 'quote' | 'photo' | 'voice' | 'question'
+//
+// `showBadgeTab`/`chapterBadges` (opcional, migración 067) — una sexta
+// pestaña, "Insignia" (ChapterBadgePicker, el mismo selector que el
+// botón "Tu insignia" de la barra de Comentarios). Solo la pasa
+// ComentariosScreen (ChapterComposerBar) — el broche "+" de Tu camino
+// (ChapterPath) no la pide, ahí la insignia no se pone, solo se ve.
+export function ChapterComposerTabs({ clubBookId, chapterId, book, isAdmin = false, currentUserId, showBadgeTab = false, chapterBadges = [], onDone }) {
+  const [activeTab, setActiveTab] = useState('comment'); // 'comment' (default) | 'quote' | 'photo' | 'voice' | 'question' | 'badge'
 
   function toggleTab(tab) {
     setActiveTab((current) => (current === tab ? 'comment' : tab));
@@ -97,12 +104,17 @@ export function ChapterComposerTabs({ clubBookId, chapterId, book, isAdmin = fal
         <TypeTabButton active={activeTab === 'photo'} onClick={() => toggleTab('photo')} icon="image" label="Foto/GIF" />
         <TypeTabButton active={activeTab === 'voice'} onClick={() => toggleTab('voice')} icon="mic" label="Voz" />
         <TypeTabButton active={activeTab === 'question'} onClick={() => toggleTab('question')} icon="clipboard-list" label="Pregunta" />
+        {showBadgeTab && (
+          <TypeTabButton active={activeTab === 'badge'} onClick={() => toggleTab('badge')} icon="sparkles" label="Insignia" />
+        )}
       </div>
 
       {activeTab === 'voice' ? (
         <VoiceRecorder extraFields={{ clubBookId, chapterId }} showSpoilerOption={false} onDone={onDone} />
       ) : activeTab === 'question' ? (
         <QuestionTab chapterId={chapterId} clubBookId={clubBookId} isAdmin={isAdmin} currentUserId={currentUserId} />
+      ) : activeTab === 'badge' ? (
+        <ChapterBadgePicker chapterId={chapterId} clubBookId={clubBookId} myProfileId={currentUserId} badges={chapterBadges} />
       ) : (
         <NewCommentForm
           key={activeTab}

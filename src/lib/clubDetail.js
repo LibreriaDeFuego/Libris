@@ -128,6 +128,28 @@ export async function getChapterCommentCounts(supabase, clubBookId) {
   return counts;
 }
 
+// Insignias de capítulo (migración 067) — todas las de este libro, de
+// cualquier persona del club, agrupadas por capítulo; mismo patrón que
+// getChapterCommentCounts (una sola consulta para todo el camino, en
+// vez de una por capítulo). Tu camino y Comentarios usan la misma
+// forma: un array por capítulo, cada entrada con quién la puso.
+export async function getChapterBadges(supabase, clubBookId) {
+  if (!clubBookId) return {};
+
+  const { data } = await supabase
+    .from('chapter_badges')
+    .select('chapter_id, kind, profile_id, profiles(display_name)')
+    .eq('club_book_id', clubBookId);
+
+  const byChapter = {};
+  for (const row of data ?? []) {
+    const list = byChapter[row.chapter_id] ?? [];
+    list.push({ profileId: row.profile_id, displayName: row.profiles?.display_name ?? 'Alguien', kind: row.kind });
+    byChapter[row.chapter_id] = list;
+  }
+  return byChapter;
+}
+
 // Todos los libros del club que NO sean el que se está mirando ahora
 // mismo (migración 060) — para la sección "Otros libros del club" en Tu
 // camino. Mezcla dos tipos bien distintos, cada uno con su propia

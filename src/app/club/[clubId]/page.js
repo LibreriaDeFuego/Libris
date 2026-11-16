@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs, getPrincipalClubBook } from '@/lib/activeClub';
-import { getClubHeroExtras, getChapterCommentCounts, getChaptersWithQuestions, getClubOtherBooks } from '@/lib/clubDetail';
+import { getClubHeroExtras, getChapterCommentCounts, getChapterBadges, getChaptersWithQuestions, getClubOtherBooks } from '@/lib/clubDetail';
 import { ClubScreen } from '@/screens/ClubScreen.jsx';
 
 export default async function Page({ params, searchParams }) {
@@ -67,13 +67,16 @@ export default async function Page({ params, searchParams }) {
     );
   }
 
-  const [heroExtras, commentCounts, questionsByChapter, otherBooks] = await Promise.all([
+  const [heroExtras, commentCounts, chapterBadges, questionsByChapter, otherBooks] = await Promise.all([
     // Chapters, volumes, mi progreso, mi reseña, actividad reciente y
     // solicitudes pendientes — ver src/lib/clubDetail.js.
     getClubHeroExtras(supabase, { clubId, clubBookId: clubBook.id, userId: user.id, isAdmin }),
     // Cuántos comentarios tiene cada capítulo, para la pastilla de
     // "Comentarios" en Tu camino.
     getChapterCommentCounts(supabase, clubBook.id),
+    // Insignias de capítulo (migración 067) — quién marcó qué en cada
+    // capítulo, para el broche de Tu camino.
+    getChapterBadges(supabase, clubBook.id),
     // Qué capítulos tienen alguna pregunta sin responder (o ya respondida
     // del todo), para el distintivo del nodo en Tu camino (migraciones
     // 053/054).
@@ -95,6 +98,7 @@ export default async function Page({ params, searchParams }) {
       myReview={heroExtras.myReview}
       activity={heroExtras.activity}
       commentCounts={commentCounts}
+      chapterBadges={chapterBadges}
       pendingQuestionChapterIds={questionsByChapter.pending}
       answeredQuestionChapterIds={questionsByChapter.answered}
       otherBooks={otherBooks}

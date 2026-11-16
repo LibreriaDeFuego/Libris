@@ -9,6 +9,7 @@ import { Textarea } from '@/design-system/components/forms/Textarea.jsx';
 import { Modal } from '@/design-system/components/feedback/Modal.jsx';
 import { updateProgress, getClubMembersProgress, getChapterQuestions, answerChapterQuestion } from '@/app/actions/clubs';
 import { ChapterComposerTabs } from '@/components/ChapterComposerTabs';
+import { badgeTypeOf } from '@/lib/chapterBadges';
 
 // Lo leído ya no es un color plano: el camino recorrido va de un gris
 // azulado frío (el capítulo más viejo) al coral de siempre — justo en
@@ -120,7 +121,7 @@ const VOLUME_PALETTE = ['#5B4B8A', '#C98A2E', '#2B7A78', '#9C5261', '#5C8A46', '
 // pasando igual, no hace falta tocarlo: una prop de más que nadie lee no
 // rompe nada, y reactivar la insignia el día de mañana es no más que
 // sumarla de nuevo a esta firma.
-export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, commentCounts = {}, pendingQuestionChapterIds = [], answeredQuestionChapterIds = [], isAdmin = false, currentUserId, onOpenFull, onFinishBook }) {
+export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], currentChapterId, commentCounts = {}, chapterBadges = {}, pendingQuestionChapterIds = [], answeredQuestionChapterIds = [], isAdmin = false, currentUserId, onOpenFull, onFinishBook }) {
   const [pending, startTransition] = useTransition();
   const [optimisticId, setOptimisticId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -372,6 +373,14 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
             const isFirstOfVolume = showVolumeHeaders && (i === 0 || volumeKeyOf(path[i - 1]) !== volumeKey);
             const chapterCompanions = showCompanions ? (companionsByChapter.get(chapter.id) ?? []) : [];
 
+            // Insignias de capítulo (migración 067) — acá solo se VEN, no se
+            // ponen (eso vive en Comentarios, el botón "Tu insignia" o la
+            // pestaña del panel de Agregar); por eso el broche de abajo es
+            // un <div>, no un botón.
+            const badgesHere = chapterBadges[chapter.id] ?? [];
+            const myBadge = badgeTypeOf(badgesHere.find((b) => b.profileId === currentUserId)?.kind);
+            const otherBadges = badgesHere.filter((b) => b.profileId !== currentUserId);
+
             const extras = (
               <SideExtras
                 commentInfo={commentInfo}
@@ -449,6 +458,20 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                     >
                       <Icon name={composerOpen ? 'x' : 'plus'} size={11} />
                     </button>
+                    {myBadge && (
+                      <div
+                        role="img"
+                        aria-label={`Tu insignia: ${myBadge.label}`}
+                        title={myBadge.label}
+                        style={{
+                          position: 'absolute', top: -7, right: -9, width: 20, height: 20, borderRadius: '50%',
+                          background: myBadge.bg, border: '2px solid var(--surface-page)', boxShadow: 'var(--shadow-sm)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
+                        }}
+                      >
+                        {myBadge.emoji}
+                      </div>
+                    )}
                   </div>
                   <div style={{ textAlign: 'left' }}>
                     <NodeLabel chapter={chapter} isCurrent={isCurrent} isDone={isDone} align="left" />
@@ -462,6 +485,14 @@ export function ChapterPath({ clubId, clubBookId, book, chapters, volumes = [], 
                       <CompanionAvatars companions={chapterCompanions} />
                     </div>
                     <div />
+                  </div>
+                )}
+
+                {otherBadges.length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px 1fr', margin: '4px 0 0' }}>
+                    <div />
+                    <div />
+                    <ChapterBadgeChips badges={otherBadges} />
                   </div>
                 )}
 
@@ -693,6 +724,38 @@ function CompanionAvatars({ companions }) {
           +{extra}
         </div>
       )}
+    </div>
+  );
+}
+
+// Las insignias de OTRAS personas en este capítulo (migración 067) — la
+// propia ya se ve en el broche del nodo, acá solo lo que puso el resto
+// del club. Agrupadas por tipo (un chip por insignia distinta, no una
+// por persona) para no llenar la fila si varios eligieron lo mismo.
+function ChapterBadgeChips({ badges }) {
+  const names = new Map();
+  for (const b of badges) {
+    const list = names.get(b.kind) ?? [];
+    list.push(b.displayName);
+    names.set(b.kind, list);
+  }
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+      {[...names.entries()].map(([kind, people]) => {
+        const type = badgeTypeOf(kind);
+        if (!type) return null;
+        return (
+          <div
+            key={kind}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 'var(--radius-pill)',
+              background: type.bg, fontSize: 11, color: type.text, fontWeight: 600,
+            }}
+          >
+            {type.emoji} {people.join(', ')}
+          </div>
+        );
+      })}
     </div>
   );
 }

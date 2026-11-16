@@ -1130,6 +1130,40 @@ export async function toggleCommentLike(commentId) {
   return { error: null };
 }
 
+// Insignia de capítulo (migración 067) — una sola por persona por
+// capítulo. Tocar la misma que ya tenías puesta la saca (delete);
+// tocar otra distinta la cambia (update); no tener ninguna todavía la
+// pone (insert). El propio "kind" ya viene validado por el check
+// constraint de la tabla — acá no hace falta repetirlo a mano.
+export async function toggleChapterBadge(formData) {
+  const supabase = await createClient();
+  const user = await requireUser(supabase);
+  const chapterId = formData.get('chapterId');
+  const clubBookId = formData.get('clubBookId');
+  const kind = formData.get('kind');
+  if (!chapterId || !clubBookId || !kind) return { error: 'Falta información.' };
+
+  const { data: existing } = await supabase
+    .from('chapter_badges')
+    .select('id, kind')
+    .eq('chapter_id', chapterId)
+    .eq('profile_id', user.id)
+    .maybeSingle();
+
+  let error;
+  if (existing?.kind === kind) {
+    ({ error } = await supabase.from('chapter_badges').delete().eq('id', existing.id));
+  } else if (existing) {
+    ({ error } = await supabase.from('chapter_badges').update({ kind }).eq('id', existing.id));
+  } else {
+    ({ error } = await supabase.from('chapter_badges').insert({ chapter_id: chapterId, club_book_id: clubBookId, profile_id: user.id, kind }));
+  }
+  if (error) return { error: friendlyDbError(error) };
+
+  revalidatePath('/', 'layout');
+  return { error: null };
+}
+
 // Responde a una reseña, cita, comentario o nota de voz — migración 030.
 // La respuesta es un comentario más (kind = 'text'), con parent_comment_id
 // apuntando SIEMPRE al original (nunca a otra respuesta — un solo nivel

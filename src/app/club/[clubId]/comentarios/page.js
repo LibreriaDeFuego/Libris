@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs, getPrincipalClubBook } from '@/lib/activeClub';
+import { getChapterBadges } from '@/lib/clubDetail';
 import { signCommentImageUrls } from '@/lib/commentPhotos';
 import { ComentariosScreen } from '@/screens/ComentariosScreen.jsx';
 
@@ -40,23 +41,28 @@ export default async function Page({ params, searchParams }) {
     if (!clubBook) redirect(`/club/${clubId}`);
   }
 
-  const [{ data: comments, error: commentsError }, { data: chapters }, { data: volumes }, { data: myProfile }] = await Promise.all([
-    supabase
-      .from('comments')
-      .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, parent_comment_id, reply_to_id, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, card_style, card_color, comment_photos(path, position), profiles(display_name, avatar_url)')
-      .eq('club_book_id', clubBook.id)
-      // repost_id is null (migración 040) — un comentario dejado en el
-      // repost de algo de este club vive scopeado a ese repost, no acá:
-      // sin este filtro aparecería colgando del original en la pantalla
-      // de Comentarios de todo el club, exactamente lo que no debía pasar.
-      .is('repost_id', null)
-      .order('created_at', { ascending: false }),
-    supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
-    supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
-    // Para el avatar de la barra fija de "agregar" (ChapterComposerBar) —
-    // mismo dato que ya usa PostComposer en Perfil, acá no venía cargado
-    // porque ninguna consulta anterior necesitaba el PROPIO perfil.
-    supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).single(),
+  const [[{ data: comments, error: commentsError }, { data: chapters }, { data: volumes }, { data: myProfile }], chapterBadges] = await Promise.all([
+    Promise.all([
+      supabase
+        .from('comments')
+        .select('id, kind, title, body, is_spoiler, created_at, profile_id, chapter_id, parent_comment_id, reply_to_id, voice_url, voice_transcript, voice_duration_seconds, quote_style, quote_image_url, card_style, card_color, comment_photos(path, position), profiles(display_name, avatar_url)')
+        .eq('club_book_id', clubBook.id)
+        // repost_id is null (migración 040) — un comentario dejado en el
+        // repost de algo de este club vive scopeado a ese repost, no acá:
+        // sin este filtro aparecería colgando del original en la pantalla
+        // de Comentarios de todo el club, exactamente lo que no debía pasar.
+        .is('repost_id', null)
+        .order('created_at', { ascending: false }),
+      supabase.from('chapters').select('id, number, title, label, volume_id').eq('club_book_id', clubBook.id).order('number'),
+      supabase.from('volumes').select('id, name, position').eq('club_book_id', clubBook.id).order('position'),
+      // Para el avatar de la barra fija de "agregar" (ChapterComposerBar) —
+      // mismo dato que ya usa PostComposer en Perfil, acá no venía cargado
+      // porque ninguna consulta anterior necesitaba el PROPIO perfil.
+      supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).single(),
+    ]),
+    // Insignias de capítulo (migración 067), para el botón "Tu insignia"
+    // y la pestaña del panel de Agregar.
+    getChapterBadges(supabase, clubBook.id),
   ]);
   // Antes este select nunca chequeaba su propio error — si el embed de
   // "comment_photos(path, position)" fallara, "comments" quedaba en null y
@@ -116,6 +122,7 @@ export default async function Page({ params, searchParams }) {
       isAdmin={club.role === 'admin'}
       initialChapterId={capitulo ?? null}
       readOnly={readOnly}
+      chapterBadges={chapterBadges}
     />
   );
 }
