@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export const metadata = {
   title: 'Libris',
-  description: 'Clubes de lectura: progreso compartido, comentarios y contenido editorial.',
+  description: 'Clubes de lectura: progreso compartido y comentarios.',
   manifest: '/manifest.webmanifest',
 };
 

@@ -50,7 +50,6 @@ export async function uploadBookCover(prevState, formData) {
   if (error) return { error: friendlyDbError(error) };
 
   revalidatePath('/', 'layout');
-  revalidatePath('/recursos');
   return { error: null };
 }
 
